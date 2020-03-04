@@ -134,15 +134,15 @@ class SGMScan(object):
             for key in self.keys():
                 represent += f"\t {key}:\n\t\t\t"
                 val = self[key]
-                if not isinstance(val, int):
+                if isinstance(val, dict):
                     for k in val.keys():
-                        if hasattr(val[k], 'shape') and hasattr(val[k], 'dtype'):
+                        if hasattr(val[k],'shape') and hasattr(val[k], 'dtype'):
                             represent += f"{k} : array(shape:{val[k].shape}, type:{val[k].dtype}), \n\t\t\t"
                         else:
                             represent += f"{k} : {val[k]},\n\t\t\t"
-                    represent += "\n\t"
+                    represent +="\n\t"
                 else:
-                    represent += f"{val}"
+                    represent += f"{val} \n\t\t\t"
             return represent
 
     def __init__(self, **kwargs):
@@ -246,10 +246,18 @@ class SGMData(object):
         # Reload independent axis data as dataarray
         indep = [{k: da.from_array(v, chunks='auto').astype('f4') for k, v in d.items()} for d in indep]
 
-        # Added data to entry dictionary
-        entries = {
-        entry: {"independent": indep[i], "signals": signals[i], "other": other_axis[i], "npartitions": self.npartitions}
-        for i, entry in enumerate(NXentries)}
+        #Get sample name if it exists.
+        sample = []
+        for entry in NXentries:
+            if "sample" in h5[entry].keys():
+                if "name" in h5[entry + "/sample"].keys():
+                    sample.append(str(h5[entry + "/sample/name"][()]))
+                elif "description" in h5[entry + "/sample"].keys():
+                    sample.append(str(h5[entry + "/sample/description"][()]))
+
+        #Added data to entry dictionary
+        entries = {entry: {"sample":sample[i],"independent":indep[i], "signals":signals[i], "other":other_axis[i],
+                           "npartitions":self.npartitions} for i, entry in enumerate(NXentries)}
         return {file_root: entries}
 
     async def interpolate(self, **kwargs):
