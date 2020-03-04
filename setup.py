@@ -7,9 +7,9 @@ def readme():
 
 setup(
     name="sgm-data",
-    version="0.1b",
+    version="0.1",
     description="Module for loading, interpolating and plotting data taken at the SGM Beamline at the Canadian Light Source.",
-    long_desciptions=readme(),
+    long_description=readme(),
     long_description_content_type="text/markdown",
     url="https://github.lightsource.ca/arthurz/sgmdata",
     author="Zachary Arthur",

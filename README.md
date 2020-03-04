@@ -2,7 +2,7 @@
 ### Installation:
 Using pip:
 ```commandline
-pip install sgmdata
+pip install sgm-data
 ```
 or from source: 
 ```commandline
