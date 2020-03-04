@@ -269,4 +269,3 @@ class SGMData(object):
         return f"Scans: {self.scans}"
 
 
-
