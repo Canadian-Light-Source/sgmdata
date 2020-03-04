@@ -1,214 +1,272 @@
 import os
 import h5py
 import h5pyd
-import numpy as np
+from dask import compute, delayed
+import dask.array as da
 import dask.dataframe as dd
+from dask.distributed import Client
 import pandas as pd
+import numpy as np
+import asyncio
 
 
-class sgmdata(object):
+class SGMScan(object):
+    """
+        Data class for storing dask arrays for SGM data files that have been grouped into 'NXentry',
+        and then divided into signals, independent axes, and other data.  Contains convenience classes
+        for interpolation.
+    """
+
+    class DataDict(dict):
+        def __getattr__(self, name):
+            return self[name]
+
+        def __setattr__(self, name, value):
+            self[name] = value
+
+        @staticmethod
+        def label_bins(bins, bin_edges, independent, npartitions):
+            """
+                Program creates an array the length of an independent axis and fills it
+                with bin center values that the independent array falls into.
+            """
+            bin_labels = {}
+            val = independent
+            for i, key in enumerate(val.keys()):
+                bin_labels[key] = np.full(val[key].shape, np.nan)
+                indep_value = val[key]
+                for j, b in enumerate(bins[i]):
+                    bin_labels[key][np.where(
+                        np.logical_and(indep_value >= bin_edges[i][j], indep_value <= bin_edges[i][j + 1]))] = b
+            axes = np.vstack([v for k, v in bin_labels.items()]).T
+            bin_l_dask = da.from_array(axes, chunks='auto')
+            columns = [k for k, v in bin_labels.items()]
+            return dd.from_dask_array(bin_l_dask, columns=columns).compute()
+
+        def make_df(self, labels=None):
+            df = dd.from_delayed(labels)
+            c = [k for k, v in self['independent'].items()]
+            for k, v in self['signals'].items():
+                if len(v.shape) == 2:
+                    columns = [k + "-" + str(i) for i in range(v.shape[1])]
+                elif len(v.shape) == 1:
+                    columns = [k]
+                else:
+                    continue
+                df = df.merge(dd.from_dask_array(v, columns=columns))
+
+            self.__setattr__('dataframe', {"binned": df.groupby(c).mean()})
+            return df.groupby(c).mean()
+
+        def interpolate(self, **kwargs):
+            """
+                Creates the bins required for each independent axes to be histogrammed into for interpolation,
+                then uses dask dataframe groupby commands to perform a linear interpolation.
+                Optional Keywords:
+                           start (type: list or number) -- starting position of the new array
+                           stop  (type: list or number) -- ending position of the new array
+                           bins (type: list of numbers or arrays) --  this can be an array of bin values for each axes,
+                                                                      or can be the number of bins desired.
+                           resolution (type: list or number) -- used instead of bins to define the bin to bin distance.
+            """
+            if 'compute' in kwargs.keys():
+                compute = kwargs['compute']
+            else:
+                compute = True
+            axis = self['independent']
+            dim = len(axis.keys())
+            if 'start' not in kwargs.keys():
+                start = [int(v.min()) for k, v in axis.items()]
+            else:
+                start = kwargs['start']
+            if 'stop' not in kwargs.keys():
+                stop = [int(v.max()) + 1 for k, v in axis.items()]
+            else:
+                stop = kwargs['stop']
+            if not isinstance(start, list):
+                start = [start for i, _ in enumerate(axis.keys())]
+            if not isinstance(stop, list):
+                stop = [stop for i, _ in enumerate(axis.keys())]
+            if len(start) != len(stop):
+                raise ValueError("Start and Stop coordinates must have same length")
+            if 'resolution' in kwargs.keys() and 'bins' in kwargs.keys():
+                raise KeyError("You can only use the keyword bins, or resolution not both")
+            if 'resolution' not in kwargs.keys() and 'bins' not in kwargs.keys():
+                bin_num = [int(np.unique(v.compute()).shape[0] / 5) for k, v in axis.items()]
+                offset = [abs(stop[i] - start[i]) / (2 * bin_num[i]) for i in range(len(bin_num))]
+                bins = [np.linspace(start[i], stop[i], bin_num[i], endpoint=True) for i in range(len(bin_num))]
+            elif 'resolution' in kwargs.keys():
+                resolution = kwargs['resolution']
+                if not isinstance(kwargs['resolution'], list):
+                    resolution = [resolution for i, _ in enumerate(axis.keys())]
+                bin_num = [int(abs(stop[i] - start[i]) / resolution[i]) for i, _ in enumerate(axis.keys())]
+                offset = [item / 2 for item in resolution]
+                bins = [np.linspace(start[i], stop[i], bin_num[i], endpoint=True) for i in range(len(bin_num))]
+            elif 'bins' in kwargs.keys():
+                if isinstance(kwargs['bins'], list):
+                    if len(kwargs['bins'][0]) == 1:
+                        bin_num = [np.floor(len(np.unique(axis[k])) / kwargs['bins'][i]) for i, k in
+                                   enumerate(axis.keys())]
+                        bins = [np.linspace(start[i], stop[i], bin_num[i], endpoint=True) for i in range(len(bin_num))]
+                    else:
+                        start = [item[0] for item in kwargs['bins']]
+                        stop = [item[1] for item in kwargs['bins']]
+                        bin_num = []
+                elif isinstance(kwargs['bins'], int):
+                    bin_num = [int(len(axis[k]) / kwargs['bins']) for i, k in enumerate(axis.keys())]
+            bin_edges = [np.linspace(start[i] - offset[i], stop[i] + offset[i], bin_num[i] + 1, endpoint=True) for i in
+                         range(len(bin_num))]
+            self.__setattr__("new_axes", {"values": bins, "edges": bin_edges})
+            labels = delayed(self.label_bins)(bins, bin_edges, self['independent'], self.npartitions)
+            df = self.make_df(labels)
+            if compute:
+                nm = [k for k, v in self['independent'].items()]
+                if len(nm) == 1:
+                    idx = pd.Index(bins[0], name=nm[0])
+                else:
+                    idx = pd.MultiIndex.from_tuples(list(zip(*bins)), names=nm)
+                return df.compute().reindex(idx).interpolate()
+            else:
+                return df
+
+        def __repr__(self):
+            represent = ""
+            for key in self.keys():
+                represent += f"\t {key}:\n\t\t\t"
+                val = self[key]
+                if not isinstance(val, int):
+                    for k in val.keys():
+                        if hasattr(val[k], 'shape') and hasattr(val[k], 'dtype'):
+                            represent += f"{k} : array(shape:{val[k].shape}, type:{val[k].dtype}), \n\t\t\t"
+                        else:
+                            represent += f"{k} : {val[k]},\n\t\t\t"
+                    represent += "\n\t"
+                else:
+                    represent += f"{val}"
+            return represent
 
     def __init__(self, **kwargs):
         self.__dict__.update(kwargs)
-        if not hasattr(self, "data"):
-            self.data = {}
+        for key, value in kwargs.items():
+            self.__dict__[key] = SGMScan.DataDict(value)
+
+    def __repr__(self):
+        represent = ""
+        for key in self.__dict__.keys():
+            represent += f"\n Entry: {key},\n\t Type: {self.__dict__[key]}"
+        return represent
+
+    def __getitem__(self, item):
+        return self.__dict__[item]
 
 
-    def plot(self, **kwargs):
-        pass
+class SGMData(object):
+    """
+        Class for loading in data from h5py or h5pyd files for raw SGM data.
+        To substantiate pass the class pass a single (or list of) system file paths
+        (or hsds path).  e.g. data = SGMData('/path/to/my/file.nxs') or SGMData(['1.h5', '2.h5'])
 
-    def interpolate(self, **kwargs):
-        if 'output_path' not in kwargs.keys():
-            output_path = "output-dir/"
-        if not os.path.exists(output_path):
-            os.makedirs(output_path)
+        Optional Keywords:  npartitions (type: integer) -- choose how many divisions (threads)
+                                                           to split the file data arrays into.
+                            scheduler (type: str) -- use dask cluster for operations, e.g. 'dscheduler:8786'
+                            axes (type: list(str)) -- names of the axes to use as independent axis and ignore
+                                                    spec command issued
+    """
 
-        # For holding the names of x and y axis
-        x_axis_name_1d = ""
-        x_axis_name_2d = ""
-        y_axis_name_2d = ""
+    def __init__(self, files, **kwargs):
+        self.__dict__.update(kwargs)
+        if not isinstance(files, list):
+            files = [files]
+        if not hasattr(self, 'npartitions'):
+            self.npartitions = 3
+        self.scans = {k.split('/')[-1].split(".")[0]: [] for k in files}
+        self.interp_params = {}
+        L = [self._load_data(f) for f in files]
+        self.scans.update({k: SGMScan(**v) for d in L for k, v in d.items()})
+        self.entries = self.scans.items
 
-        # A list to hold data which will be processed
-        all_entries = {}
+    def _find_data(self, node, indep=None, other=False):
+        data = {}
 
-        for entry in self.input_data:
-            results_list = []
+        def search(name, node):
+            if indep:
+                if isinstance(node, h5pyd.Dataset) or isinstance(node, h5py.Dataset):
+                    if "S" not in str(node.dtype).upper() and node.shape and node.shape[0] > 1:
+                        d_name = name.split('/')[-1]
+                        l = [True for axis in indep if axis in d_name]
+                        if any(l) and not other:
+                            data.update({d_name: node})
+                        elif other and not any(l):
+                            data.update({d_name: node})
 
-            # Get the file name and path
-            file_name = entry["file_name"]
-            file_path = entry["file_path"]
+        node.visititems(search)
+        return data
 
-            # Construct a full path to the input file
-            full_file_path = file_path + file_name
+    def _load_data(self, file):
+        """
+            Function loads data in from SGM data file, and using the command value groups the data as
+            either independent, signal or other.
+        """
+        # Try to open the file locally or from a url provided.
+        try:
+            h5 = h5pyd.File(file, 'r')
+        except:
+            if os.path.exists(file):
+                h5 = h5py.File(file, 'r')
+            else:
+                return
+        file_root = file.split("/")[-1].split(".")[0]
+        # Find the number of scans within the file
+        NXentries = [str(x) for x in h5['/'].keys() if 'NXentry' in str(h5[x].attrs.get('NX_class'))]
+        # Get the commands used to declare the above scans
+        independent = []
+        if not hasattr(self, 'axes'):
+            try:
+                commands = [str(h5[entry + '/command'][()]).split() for entry in NXentries]
+            except:
+                raise KeyError(
+                    "Scan entry didn't have a 'command' string saved. Command load can be skipped by providing a list of independent axis names")
+            for i, command in enumerate(commands):
+                if 'mesh' in command[0]:
+                    independent.append((command[1], command[5]))
+                elif 'scan' in command[0]:
+                    independent.append((command[1],))
+        else:
+            for i, entry in enumerate(NXentries):
+                independent.append(tuple(self.axes))
+        indep = [self._find_data(h5[entry], independent[i]) for i, entry in enumerate(NXentries)]
+        # search for data that is not an array mentioned in the command
+        data = [self._find_data(h5[entry], independent[i], other=True) for i, entry in enumerate(NXentries)]
+        # filter for data that is the same length as the independent axis
+        signals = [{k: da.from_array(v, chunks='auto').astype('f4') for k, v in d.items() if
+                    np.abs(v.shape[0] - list(indep[i].values())[0].shape[0]) < 2} for i, d in enumerate(data)]
+        # group all remaining arrays
+        other_axis = [{k: da.from_array(v, chunks='auto').astype('f4') for k, v in d.items() if
+                       np.abs(v.shape[0] - list(indep[i].values())[0].shape[0]) > 2} for i, d in enumerate(data)]
+        # Reload independent axis data as dataarray
+        indep = [{k: da.from_array(v, chunks='auto').astype('f4') for k, v in d.items()} for d in indep]
 
-            # Read the input file into a hdf5 object
-            hdf5file = h5py.File(full_file_path, "r")
-            # Get the dimension of the independent variable name(s) (1d or 2d)
-            indep_dimension = len(entry["indep"])
+        # Added data to entry dictionary
+        entries = {
+        entry: {"independent": indep[i], "signals": signals[i], "other": other_axis[i], "npartitions": self.npartitions}
+        for i, entry in enumerate(NXentries)}
+        return {file_root: entries}
 
-            # A list to store the independent variable values
-            indep_value = []
+    async def interpolate(self, **kwargs):
+        entries = []
+        for file, val in self.entries():
+            for key, entry in val.__dict__.items():
+                entries.append(await self._interpolate(entry, **kwargs))
+        return entries
 
-            # List to store number of bins for xas, or number of grids for map
-            num_of_bins = []
+    async def _interpolate(self, entry, **kwargs):
+        return entry.interpolate(**kwargs)
 
-            # A flag to check if the starting point in the independent
-            # variable array is greater than the stopping point
-            flip = False
-            # The input scan is xas
-            if (indep_dimension == 1):
+    def __str__(self):
+        return f"Scans: {self.scans}"
 
-                # Get the independent variable range and resolution
-                indep_range = entry["range"].split(" ")
-                if "resolution" in entry.keys():
-                    resolution_1d = entry["resolution"]
+    def __repr__(self):
+        return f"Scans: {self.scans}"
 
-                    # Calculate the number of regularly spaced bins to create
-                    num_of_bins = int(abs(int(indep_range[1]) - int(indep_range[0])) / float(resolution_1d))
-                    offset = float(resolution_1d) / 2
-                    start = min(int(indep_range[0]), int(indep_range[1]))
-                    stop = max(int(indep_range[0]), int(indep_range[1]))
-                    bin_edges = np.linspace(start - offset, stop + offset, num_of_bins + 1)
-                    bins = np.linspace(start, stop, num_of_bins)
-                    # bin_edges = np.array([[np.amin(bin_edges[i:i+2]), np.amax(bin_edges[i:i+2])] for i in range(len(bins))])
-                elif "bins" in entry.keys():
-                    bins = np.array(entry["bins"])
-                    offset1 = (bins[0] + bins[1]) / 2
-                    offset2 = (bins[-2] + bins[-1]) / 2
-                    bin_edges = [np.mean(bins[b:b + 1]) for b in range(len(bins[1:-1]))]
-                    bin_edges.append(bins[-1] + offset2)
-                    bin_edges.insert(0, bins[0] - offset1)
 
-                # Get the independent variable name
 
-                bin_value = np.array(hdf5file[entry["indep"][0]][()], dtype=np.float32)
-                x_axis_name_1d = entry["indep"][0].split("/")[-1]
-                nxentry = entry["indep"][0].split("/")[0]
-                bin_label = np.full(bin_value.shape[0], np.nan)
-                for i, b in enumerate(bins):
-                    bin_label[np.where(np.logical_and(bin_value >= bin_edges[i], bin_value <= bin_edges[i + 1]))] = b
-
-                axis = [x_axis_name_1d]
-                idx = pd.Index(bins, name=['x'])
-                # bin_label = [label if b < max(bin_edges[i:i+2]) and b > min(bin_edges[i:i+2]) else np.nan for i, label in enumerate(bins) for b in bin_value]
-                df = dd.from_pandas(pd.DataFrame({x_axis_name_1d: bin_value, "bins": bin_label}), npartitions=1)
-            # The input scan is map
-            elif (indep_dimension == 2):
-
-                # Get the x and y names
-                x_axis_name_2d = entry["indep"][0].split("/")[-1]
-                y_axis_name_2d = entry["indep"][1].split("/")[-1]
-
-                # Get the x and y data
-                x_value = np.array(hdf5file[entry["indep"][0]][()], dtype=np.float32)
-                y_value = np.array(hdf5file[entry["indep"][1]][()], dtype=np.float32)
-
-                # Pre-process the x values. The data needs to be shifted due to how they were collected
-                shift = 0.5
-                shifted_data = np.zeros(len(x_value), dtype=np.float32)
-                shifted_data[0] = x_value[0]
-                for i in range(1, len(x_value)):
-                    shifted_data[i] = x_value[i] + shift * (x_value[i] - x_value[i - 1])
-
-                # x_value is now shifted
-                x_value = shifted_data
-
-                # Get the independent variable range and resolution
-                indep_range = [float(item) for item in entry["range"].split(" ")]
-                if "resolution" in entry.keys():
-                    resolution_2d = entry["resolution"]
-
-                    # Split the resolution to get x and y resolution separately
-                    resolution_2d = resolution_2d.split(" ")
-
-                    # Calculate the number of grids to create for x and y
-                    x_bins = int((indep_range[1] - indep_range[0]) / float(resolution_2d[0]))
-                    y_bins = int((indep_range[3] - indep_range[2]) / float(resolution_2d[1]))
-
-                    if (x_bins < 0 or y_bins < 0):
-                        flip = True
-
-                    num_of_bins = [abs(x_bins), abs(y_bins)]
-                    startx = min(indep_range[:2])
-                    stopx = max(indep_range[:2])
-                    xoffset = float(resolution_2d[0]) / 2
-                    starty = min(indep_range[2:])
-                    stopy = max(indep_range[2:])
-                    yoffset = float(resolution_2d[1]) / 2
-                    bin_edges_x = np.linspace(startx - xoffset, stopx + xoffset, num_of_bins[0] + 1, dtype=np.float32)
-                    bin_edges_y = np.linspace(starty - yoffset, stopy + yoffset, num_of_bins[1] + 1, dtype=np.float32)
-                    regular_x = np.linspace(min(indep_range[:2]), max(indep_range[:2]), num_of_bins[0],
-                                            dtype=np.float32)
-                    regular_y = np.linspace(min(indep_range[2:]), max(indep_range[2:]), num_of_bins[1],
-                                            dtype=np.float32)
-
-                else:
-                    print("Not implimented yet, skipping file %s %s" % (file_name, entry_name))
-                    continue
-
-                bin_value_x = x_value
-                bin_label_x = np.full(bin_value_x.shape[0], np.nan)
-                bin_value_y = y_value
-                bin_label_y = np.full(bin_value_y.shape[0], np.nan)
-
-                bins = [regular_x, regular_y]
-                for i, b in enumerate(bins[0]):
-                    bin_label_x[
-                        np.where(np.logical_and(bin_value_x >= bin_edges_x[i], bin_value_x <= bin_edges_x[i + 1]))] = b
-                for i, b in enumerate(bins[1]):
-                    bin_label_y[
-                        np.where(np.logical_and(bin_value_y >= bin_edges_y[i], bin_value_y <= bin_edges_y[i + 1]))] = b
-                axis = [y_axis_name_2d, x_axis_name_2d]
-                _x = np.array([-1 * regular_x if i % 2 else regular_x for i in range(len(regular_y))]).flatten()
-                _y = np.array([[regular_y[j] for i in range(len(regular_x))] for j in range(len(regular_y))]).flatten()
-                array = [_y, _x]
-                idx = pd.MultiIndex.from_tuples(list(zip(*array)), names=['x', 'y'])
-                df = dd.from_pandas(pd.DataFrame(
-                    {x_axis_name_2d: bin_value_x, y_axis_name_2d: bin_value_y, "bins_x": bin_label_x,
-                     "bins_y": bin_label_y}), npartitions=1)
-
-            # Get all the dependent variables path
-            dep_keys = [k for (k, v) in entry.items() if
-                        k not in ["file_name", "file_path", "entry", "indep", "command", "range", "resolution"]]
-
-            for k in dep_keys:
-                # Get the full path of the dependent variable
-                path = entry[k]
-
-                # Get the entry name
-                entry_name = path.split("/")[0]
-
-                # Read the dependent variable data
-                dep_value = np.array(hdf5file[path][()], dtype=np.float32)
-
-                if flip and dep_value.ndim == 1:
-                    dep_value = np.flip(dep_value, 0)
-                    # print(file_name+"_"+entry_name+"_"+k, "flipped")
-
-                # Add file and entry name, dependent variable name, independent variable value, dependent
-                # variable value, independent variable dimension, and the number of bins to create
-                if len(dep_value.shape) == 2:
-                    temp = dd.from_pandas(
-                        pd.DataFrame(dep_value, columns=[k + "_{}".format(i) for i in range(dep_value.shape[1])]),
-                        npartitions=1)
-                    new_df = df.join(temp)
-                elif len(dep_value.shape) == 1:
-                    temp = dd.from_pandas(pd.DataFrame(dep_value, columns=[k]), npartitions=1)
-                    new_df = df.join(temp)
-                if indep_dimension == 1:
-                    final = new_df.groupby(by=["bins"]).mean()  # .reindex(index=f_index, method='nearest')
-                elif indep_dimension == 2:
-                    final = new_df.groupby(by=["bins_y",
-                                               "bins_x"]).mean()  # .reindex(index=idx, inplace=True).interpolate(inplace=True).drop(columns=axis)
-                results_list.append(final)
-
-            all_entries.update({file_name + "/" + entry_name: [result.compute().reindex(index=idx).interpolate() for
-                                                               result in results_list]})
-
-            # Close connection to the "hdf5file"
-            hdf5file.close()
-        self.data = all_entries
-        return all_entries
-
-    def write(self, file, **kwargs):
-        pass
