@@ -156,6 +156,29 @@ class SGMScan(object):
                     represent += f"{val} \n\t"
             return represent
 
+        def _repr_html_(self):
+            plot = self._repr_html_plot()
+
+
+            both = [
+                "<script type=\"text/javascript\" src=\"https://cdn.pydata.org/bokeh/release/bokeh-1.4.0.min.js\"></script>",
+                "<script type=\"text/javascript\" src=\"https://cdn.pydata.org/bokeh/release/bokeh-widgets-1.4.0.min.js\"></script>",
+                plot,
+
+            ]
+            return "\n".join(both)
+
+        def _repr_html_plot(self):
+
+            plot = [
+                "<table>",
+                "  <thead>",
+                "    <tr><td> </td><th> Array </th><th> Chunk </th></tr>",
+                "  </tbody>",
+                "</table>",
+            ]
+            return "\n".join(plot)
+
     def __init__(self, **kwargs):
         self.__dict__.update(kwargs)
         for key, value in kwargs.items():
@@ -192,12 +215,12 @@ class SGMData(object):
             self.npartitions = 3
         if not hasattr(self, 'threads'):
             self.threads = 4
-        self.scans = {k.split('/')[-1].split(".")[0]: [] for k in files}
+        files = [os.path.abspath(file) for file in files]
+        self.scans = {k.split('/')[-1].split(".")[0] : [] for k in files}
         self.interp_params = {}
         with ThreadPool(self.threads) as pool:
-            l = list(tqdm(pool.imap_unordered(self._load_data, files), total=len(files)))
-        l = [item for item in l if item]
-        self.scans.update({k: SGMScan(**v) for d in l for k, v in d.items()})
+                L = list(tqdm(pool.imap_unordered(self._load_data, files), total=len(files)))
+        self.scans.update({k:SGMScan(**v) for d in L for k,v in d.items()})
         self.entries = self.scans.items
 
     def _find_data(self, node, indep=None, other=False):
@@ -217,7 +240,7 @@ class SGMData(object):
         node.visititems(search)
         return data
 
-    def _file_data(self, file):
+    def _load_data(self, file):
         """
             Function loads data in from SGM data file, and using the command value groups the data as
             either independent, signal or other.
@@ -235,6 +258,7 @@ class SGMData(object):
         NXentries = [str(x) for x in h5['/'].keys() if 'NXentry' in str(h5[x].attrs.get('NX_class'))]
         # Get the commands used to declare the above scans
         independent = []
+        commands =[]
         if not hasattr(self, 'axes'):
             try:
                 if hasattr(self, 'scan_type'):
@@ -262,18 +286,25 @@ class SGMData(object):
         # search for data that is not an array mentioned in the command
         data = [self._find_data(h5[entry], independent[i], other=True) for i, entry in enumerate(NXentries)]
         # filter for data that is the same length as the independent axis
-        signals = [{k: da.from_array(v, chunks='auto').astype('f4') for k, v in d.items() if
-                    np.abs(v.shape[0] - list(indep[i].values())[0].shape[0]) < 2} for i, d in enumerate(data)]
-        # group all remaining arrays
-        other_axis = [{k: da.from_array(v, chunks='auto').astype('f4') for k, v in d.items() if
-                       np.abs(v.shape[0] - list(indep[i].values())[0].shape[0]) > 2} for i, d in enumerate(data)]
-        # Reload independent axis data as dataarray
-        indep = [{k: da.from_array(v, chunks='auto').astype('f4') for k, v in d.items()} for d in indep]
+        signals = [{k: da.from_array(v, chunks=tuple([np.int(np.divide(dim, self.npartitions))
+                                                      for dim in v.shape])).astype('f4') for k,v in d.items()
+                    if np.abs(v.shape[0]-list(indep[i].values())[0].shape[0]) < 2} for i, d in enumerate(data)]
+        #group all remaining arrays
+        other_axis = [{k: da.from_array(v, chunks=tuple([np.int(np.divide(dim, 2)) for dim in v.shape]))
+                       for k,v in d.items() if np.abs(v.shape[0]-list(indep[i].values())[0].shape[0]) > 2}
+                      for i, d in enumerate(data)]
+        #Reload independent axis data as dataarray
+        indep = [{k: da.from_array(v, chunks=tuple([np.int(np.divide(dim, self.npartitions))
+                                                    for dim in v.shape])).astype('f4')
+                  for k,v in d.items()} for d in indep]
 
         # Get sample name if it exists and add data to scan dictionary
         entries = {}
         for i, entry in enumerate(NXentries):
-            scan = {}
+            try:
+                scan = {"command":commands[i]}
+            except IndexError:
+                scan = {}
             if "sample" in h5[entry].keys():
                 if "name" in h5[entry + "/sample"].keys():
                     scan.update({"sample": str(h5[entry + "/sample/name"][()])})

@@ -1,4 +1,4 @@
-from load import SGMData
+from .load import SGMData
 
 
 
