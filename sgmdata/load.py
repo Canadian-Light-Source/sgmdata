@@ -9,7 +9,7 @@ import pandas as pd
 import numpy as np
 from multiprocessing.pool import ThreadPool
 from functools import partial
-import asyncio
+from sgm.plots import eemscan
 
 try:
     shell = get_ipython().__class__.__name__
@@ -19,6 +19,10 @@ try:
         from tqdm import tqdm  # Other type (?)
 except NameError:
     from tqdm import tqdm
+
+
+
+
 
 
 class SGMScan(object):
@@ -157,27 +161,40 @@ class SGMScan(object):
             return represent
 
         def _repr_html_(self):
-            plot = self._repr_html_plot()
-
-
-            both = [
-                "<script type=\"text/javascript\" src=\"https://cdn.pydata.org/bokeh/release/bokeh-1.4.0.min.js\"></script>",
-                "<script type=\"text/javascript\" src=\"https://cdn.pydata.org/bokeh/release/bokeh-widgets-1.4.0.min.js\"></script>",
-                plot,
-
+            entry = [
+                "<td>",
+                str(self.command),
+                "</td>",
+                "<td>",
+                str(list(self.independent.keys())),
+                "</td>",
+                "<td>",
+                str(list(self.signals.keys())),
+                "</td>",
+                "<td>",
+                str(list(self.other.keys())),
+                "</td>",
             ]
-            return "\n".join(both)
+            return " ".join(entry)
 
-        def _repr_html_plot(self):
-
-            plot = [
-                "<table>",
-                "  <thead>",
-                "    <tr><td> </td><th> Array </th><th> Chunk </th></tr>",
-                "  </tbody>",
-                "</table>",
-            ]
-            return "\n".join(plot)
+        def plot(self):
+            dim = len(self.independent)
+            if dim == 1 and 'en' in self.independent.keys():
+                keys = eemscan.required
+                if 'dataframe' in self.__dict__.keys():
+                    if 'binned' in self['dataframe'].keys():
+                        df = self['dataframe']['binned'].compute()
+                        data = {k: df.fitler(regex=("%s.*" % k), axis=1).to_numpy().T for k in keys}
+                        eemscan.plot(**data)
+                else:
+                    ds = int(self.independent['en'].shape[0] / 1000) + 1
+                    data = {k: self.signals[k][::ds].T.compute() for k in self.signals.keys() if k in keys}
+                    data.update(
+                        {k: self.independent[k][::ds].T.compute() for k in self.independent.keys() if k in keys})
+                    data.update({k: self.other[k].compute().T for k in self.other.keys() if k in keys})
+                    if 'image' in keys:
+                        data.update({'image': self.signals['sdd1'][::ds].T.compute()})
+                    eemscan.plot(**data)
 
     def __init__(self, **kwargs):
         self.__dict__.update(kwargs)
@@ -189,6 +206,20 @@ class SGMScan(object):
         for key in self.__dict__.keys():
             represent += f"\n Entry: {key},\n\t Type: {self.__dict__[key]}"
         return represent
+
+    def _repr_html_(self):
+        table = [
+            "<table>",
+            "  <thead>",
+            "    <tr><td> </td><th> Command </th><th> Independent </th><th> Signals </th><th> Other </th></tr>",
+            "  </thead>",
+            "  <tbody>",
+        ]
+        for key in self.__dict__.keys():
+            table.append(f"<tr><th> {key}</th>" + self.__dict__[key]._repr_html_() + "</tr>")
+        table.append("</tbody></table>")
+
+        return "\n".join(table)
 
     def __getitem__(self, item):
         return self.__dict__[item]
@@ -333,3 +364,18 @@ class SGMData(object):
 
     def __repr__(self):
         return f"Scans: {self.scans}"
+
+    def _repr_html_(self):
+        table = [
+            "<table>",
+            "  <thead>",
+            "    <tr><th>File</th><th> Entry </th><th> Command </th><th> Independent </th><th> Signals </th><th> Other </th></tr>",
+            "  </thead>",
+            "  <tbody>",
+        ]
+        for key in self.scans.keys():
+            for subkey in self.scans[key].__dict__.keys():
+                table.append(f"<tr><th>{key}</th><td>{subkey}</td>" + self.scans[key][subkey]._repr_html_() + "</tr>")
+        table.append("</tbody></table>")
+
+        return "\n".join(table)
