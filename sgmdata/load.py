@@ -9,7 +9,8 @@ import pandas as pd
 import numpy as np
 from multiprocessing.pool import ThreadPool
 from functools import partial
-from sgm.plots import eemscan
+from .plots import eemscan
+import warnings
 
 try:
     shell = get_ipython().__class__.__name__
@@ -19,9 +20,6 @@ try:
         from tqdm import tqdm  # Other type (?)
 except NameError:
     from tqdm import tqdm
-
-
-
 
 
 
@@ -114,7 +112,14 @@ class SGMScan(object):
                 resolution = kwargs['resolution']
                 if not isinstance(kwargs['resolution'], list):
                     resolution = [resolution for i, _ in enumerate(axis.keys())]
+                max_res = [int(np.unique(np.floor(v.compute() * 100)).shape[0] / 1.1) for k, v in axis.items()]
                 bin_num = [int(abs(stop[i] - start[i]) / resolution[i]) for i, _ in enumerate(axis.keys())]
+                for i, l in enumerate(max_res):
+                    if l < bin_num[i]:
+                        warnings.warn(
+                            "Resolution setting can't be higher than experimental resolution, setting resolution for axis %s to %f" % (
+                            i, abs(stop[i] - start[i]) / l), UserWarning)
+                        bin_num[i] = l
                 offset = [item / 2 for item in resolution]
                 bins = [np.linspace(start[i], stop[i], bin_num[i], endpoint=True) for i in range(len(bin_num))]
             elif 'bins' in kwargs.keys():
@@ -138,9 +143,22 @@ class SGMScan(object):
                 nm = [k for k, v in self['independent'].items()]
                 if len(nm) == 1:
                     idx = pd.Index(bins[0], name=nm[0])
+                    df = df.compute().reindex(idx).interpolate()
+                    self.__setattr__('binned', {"dataframe": df})
+                    return df
+                elif len(nm) == 2:
+                    _y = np.array([bins[1] for b in bins[0]]).flatten()
+                    _x = np.array([[bins[0][j] for i in range(len(bins[1]))] for j in range(len(bins[0]))]).flatten()
+                    array = [_x, _y]
+                    idx = pd.MultiIndex.from_tuples(list(zip(*array)), names=nm)
+                    #This method works for now, but can take a fair amount of time.
+                    df = df.compute().unstack().interpolate(method='nearest').fillna(0).stack().reindex(idx)
+                    binned = {"dataframe": df}
+                    self.__setattr__('binned', binned)
+                    return df
                 else:
-                    idx = pd.MultiIndex.from_tuples(list(zip(*bins)), names=nm)
-                return df.compute().reindex(idx).interpolate()
+                    raise ValueError("Too many independent axis for interpolation")
+
             else:
                 return df
 
@@ -162,6 +180,9 @@ class SGMScan(object):
 
         def _repr_html_(self):
             entry = [
+                "<td>",
+                str(self.sample),
+                "</td>",
                 "<td>",
                 str(self.command),
                 "</td>",
@@ -211,7 +232,7 @@ class SGMScan(object):
         table = [
             "<table>",
             "  <thead>",
-            "    <tr><td> </td><th> Command </th><th> Independent </th><th> Signals </th><th> Other </th></tr>",
+            "    <tr><td> </td><th>Sample</th><th> Command </th><th> Independent </th><th> Signals </th><th> Other </th></tr>",
             "  </thead>",
             "  <tbody>",
         ]
@@ -276,30 +297,35 @@ class SGMData(object):
             Function loads data in from SGM data file, and using the command value groups the data as
             either independent, signal or other.
         """
+        entries = {}
         # Try to open the file locally or from a url provided.
         try:
             h5 = h5pyd.File(file, 'r')
-        except:
+        except Exception as e:
             if os.path.exists(file):
                 h5 = h5py.File(file, 'r')
             else:
+                raise Exception(e)
                 return
         file_root = file.split("/")[-1].split(".")[0]
         # Find the number of scans within the file
         NXentries = [str(x) for x in h5['/'].keys() if 'NXentry' in str(h5[x].attrs.get('NX_class'))]
         # Get the commands used to declare the above scans
         independent = []
-        commands =[]
         if not hasattr(self, 'axes'):
             try:
                 if hasattr(self, 'scan_type'):
-                    commands = [str(h5[entry + '/command'][()]).split() for entry in NXentries if
-                                str(h5[entry + '/command'][()]).split()[0] == self.scan_type]
+                    commands = [
+                        str(h5[entry + '/command'][()]).split() if isinstance(h5[entry + '/command'][()], str) else str(
+                            h5[entry + '/command'][()], 'utf-8').split()[:-1] for entry in NXentries if
+                        str(h5[entry + '/command'][()]).split()[0] == self.scan_type]
                     allowed = [i for i, entry in enumerate(NXentries) if
                                str(h5[entry + '/command'][()]).split()[0] == self.scan_type]
                     NXentries = [entry for i, entry in enumerate(NXentries) if i in allowed]
                 else:
-                    commands = [str(h5[entry + '/command'][()]).split() for entry in NXentries]
+                    commands = [
+                        str(h5[entry + '/command'][()]).split() if isinstance(h5[entry + '/command'][()], str) else str(
+                            h5[entry + '/command'][()], 'utf-8').split()[:-1] for entry in NXentries]
             except:
                 raise KeyError(
                     "Scan entry didn't have a 'command' string saved. Command load can be skipped by providing a list of independent axis names")
@@ -312,35 +338,37 @@ class SGMData(object):
             for i, entry in enumerate(NXentries):
                 independent.append(tuple(self.axes))
         if not independent:
-            return False
+            return {}
         indep = [self._find_data(h5[entry], independent[i]) for i, entry in enumerate(NXentries)]
         # search for data that is not an array mentioned in the command
         data = [self._find_data(h5[entry], independent[i], other=True) for i, entry in enumerate(NXentries)]
         # filter for data that is the same length as the independent axis
-        signals = [{k: da.from_array(v, chunks=tuple([np.int(np.divide(dim, self.npartitions))
-                                                      for dim in v.shape])).astype('f4') for k,v in d.items()
-                    if np.abs(v.shape[0]-list(indep[i].values())[0].shape[0]) < 2} for i, d in enumerate(data)]
-        #group all remaining arrays
-        other_axis = [{k: da.from_array(v, chunks=tuple([np.int(np.divide(dim, 2)) for dim in v.shape]))
-                       for k,v in d.items() if np.abs(v.shape[0]-list(indep[i].values())[0].shape[0]) > 2}
-                      for i, d in enumerate(data)]
-        #Reload independent axis data as dataarray
-        indep = [{k: da.from_array(v, chunks=tuple([np.int(np.divide(dim, self.npartitions))
-                                                    for dim in v.shape])).astype('f4')
-                  for k,v in d.items()} for d in indep]
+        signals = [{k: da.from_array(v, chunks=tuple(
+            [np.int(np.divide(dim, self.npartitions)) for dim in v.shape])).astype('f4') for k, v in d.items() if
+                    np.abs(v.shape[0] - list(indep[i].values())[0].shape[0]) < 2} for i, d in enumerate(data)]
+        # group all remaining arrays
+        other_axis = [
+            {k: da.from_array(v, chunks=tuple([np.int(np.divide(dim, 2)) for dim in v.shape])) for k, v in d.items() if
+             np.abs(v.shape[0] - list(indep[i].values())[0].shape[0]) > 2} for i, d in enumerate(data)]
+        # Reload independent axis data as dataarray
+        indep = [{k: da.from_array(v,
+                                   chunks=tuple([np.int(np.divide(dim, self.npartitions)) for dim in v.shape])).astype(
+            'f4') for k, v in d.items()} for d in indep]
 
         # Get sample name if it exists and add data to scan dictionary
-        entries = {}
         for i, entry in enumerate(NXentries):
             try:
-                scan = {"command":commands[i]}
+                scan = {"command": commands[i]}
             except IndexError:
                 scan = {}
             if "sample" in h5[entry].keys():
                 if "name" in h5[entry + "/sample"].keys():
-                    scan.update({"sample": str(h5[entry + "/sample/name"][()])})
-                if "description" in h5[entry + "/sample"].keys():
-                    scan.update({"description": str(h5[entry + "/sample/description"][()])})
+                    if isinstance(h5[entry + "/sample/name"][()], str):
+                        scan.update({"sample": str(h5[entry + "/sample/name"][()])})
+                    if "description" in h5[entry + "/sample"].keys():
+                        scan.update({"description": str(h5[entry + "/sample/description"][()])})
+                elif "description" in h5[entry + "/sample"].keys():
+                    scan.update({"sample": str(h5[entry + "/sample/description"][()], 'utf-8').split('\x00')[0]})
             scan.update({"independent": indep[i], "signals": signals[i], "other": other_axis[i],
                          "npartitions": self.npartitions})
             entries.update({entry: scan})
@@ -369,7 +397,8 @@ class SGMData(object):
         table = [
             "<table>",
             "  <thead>",
-            "    <tr><th>File</th><th> Entry </th><th> Command </th><th> Independent </th><th> Signals </th><th> Other </th></tr>",
+            "    <tr><th>File</th><th> Entry </th><th> Sample </th><th> Command </th><th>"
+            " Independent </th><th> Signals </th><th> Other </th></tr>",
             "  </thead>",
             "  <tbody>",
         ]

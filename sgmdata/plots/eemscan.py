@@ -20,6 +20,8 @@ required = ['image', 'sdd1', 'sdd2', 'sdd3', 'sdd4', 'emission', 'en']
 
 
 def plot(**kwargs):
+    if 'emission' not in kwargs.keys():
+        kwargs['emisison'] = np.linspace(0, 2560, 256)
     source = ColumnDataSource(dict(image=[kwargs['image']],
                                    sdd1=[kwargs['sdd1']],
                                    sdd2=[kwargs['sdd2']],
