@@ -7,7 +7,18 @@ import dask.dataframe as dd
 from dask.distributed import Client
 import pandas as pd
 import numpy as np
+from multiprocessing.pool import ThreadPool
+from functools import partial
 import asyncio
+
+try:
+    shell = get_ipython().__class__.__name__
+    if shell == 'ZMQInteractiveShell':
+        from tqdm.notebook import tqdm  # Jupyter notebook or qtconsole
+    else:
+        from tqdm import tqdm  # Other type (?)
+except NameError:
+    from tqdm import tqdm
 
 
 class SGMScan(object):
@@ -136,13 +147,13 @@ class SGMScan(object):
                 val = self[key]
                 if isinstance(val, dict):
                     for k in val.keys():
-                        if hasattr(val[k],'shape') and hasattr(val[k], 'dtype'):
+                        if hasattr(val[k], 'shape') and hasattr(val[k], 'dtype'):
                             represent += f"{k} : array(shape:{val[k].shape}, type:{val[k].dtype}), \n\t\t\t"
                         else:
                             represent += f"{k} : {val[k]},\n\t\t\t"
-                    represent +="\n\t"
+                    represent += "\n\t"
                 else:
-                    represent += f"{val} \n\t\t\t"
+                    represent += f"{val} \n\t"
             return represent
 
     def __init__(self, **kwargs):
@@ -179,10 +190,14 @@ class SGMData(object):
             files = [files]
         if not hasattr(self, 'npartitions'):
             self.npartitions = 3
+        if not hasattr(self, 'threads'):
+            self.threads = 4
         self.scans = {k.split('/')[-1].split(".")[0]: [] for k in files}
         self.interp_params = {}
-        L = [self._load_data(f) for f in files]
-        self.scans.update({k: SGMScan(**v) for d in L for k, v in d.items()})
+        with ThreadPool(self.threads) as pool:
+            l = list(tqdm(pool.imap_unordered(self._load_data, files), total=len(files)))
+        l = [item for item in l if item]
+        self.scans.update({k: SGMScan(**v) for d in l for k, v in d.items()})
         self.entries = self.scans.items
 
     def _find_data(self, node, indep=None, other=False):
@@ -202,7 +217,7 @@ class SGMData(object):
         node.visititems(search)
         return data
 
-    def _load_data(self, file):
+    def _file_data(self, file):
         """
             Function loads data in from SGM data file, and using the command value groups the data as
             either independent, signal or other.
@@ -222,7 +237,14 @@ class SGMData(object):
         independent = []
         if not hasattr(self, 'axes'):
             try:
-                commands = [str(h5[entry + '/command'][()]).split() for entry in NXentries]
+                if hasattr(self, 'scan_type'):
+                    commands = [str(h5[entry + '/command'][()]).split() for entry in NXentries if
+                                str(h5[entry + '/command'][()]).split()[0] == self.scan_type]
+                    allowed = [i for i, entry in enumerate(NXentries) if
+                               str(h5[entry + '/command'][()]).split()[0] == self.scan_type]
+                    NXentries = [entry for i, entry in enumerate(NXentries) if i in allowed]
+                else:
+                    commands = [str(h5[entry + '/command'][()]).split() for entry in NXentries]
             except:
                 raise KeyError(
                     "Scan entry didn't have a 'command' string saved. Command load can be skipped by providing a list of independent axis names")
@@ -234,6 +256,8 @@ class SGMData(object):
         else:
             for i, entry in enumerate(NXentries):
                 independent.append(tuple(self.axes))
+        if not independent:
+            return False
         indep = [self._find_data(h5[entry], independent[i]) for i, entry in enumerate(NXentries)]
         # search for data that is not an array mentioned in the command
         data = [self._find_data(h5[entry], independent[i], other=True) for i, entry in enumerate(NXentries)]
@@ -246,28 +270,31 @@ class SGMData(object):
         # Reload independent axis data as dataarray
         indep = [{k: da.from_array(v, chunks='auto').astype('f4') for k, v in d.items()} for d in indep]
 
-        #Get sample name if it exists.
-        sample = []
-        for entry in NXentries:
+        # Get sample name if it exists and add data to scan dictionary
+        entries = {}
+        for i, entry in enumerate(NXentries):
+            scan = {}
             if "sample" in h5[entry].keys():
                 if "name" in h5[entry + "/sample"].keys():
-                    sample.append(str(h5[entry + "/sample/name"][()]))
-                elif "description" in h5[entry + "/sample"].keys():
-                    sample.append(str(h5[entry + "/sample/description"][()]))
-
-        #Added data to entry dictionary
-        entries = {entry: {"sample":sample[i],"independent":indep[i], "signals":signals[i], "other":other_axis[i],
-                           "npartitions":self.npartitions} for i, entry in enumerate(NXentries)}
+                    scan.update({"sample": str(h5[entry + "/sample/name"][()])})
+                if "description" in h5[entry + "/sample"].keys():
+                    scan.update({"description": str(h5[entry + "/sample/description"][()])})
+            scan.update({"independent": indep[i], "signals": signals[i], "other": other_axis[i],
+                         "npartitions": self.npartitions})
+            entries.update({entry: scan})
         return {file_root: entries}
 
-    async def interpolate(self, **kwargs):
+    def interpolate(self, **kwargs):
+        _interpolate = partial(self._interpolate, **kwargs)
         entries = []
         for file, val in self.entries():
             for key, entry in val.__dict__.items():
-                entries.append(await self._interpolate(entry, **kwargs))
-        return entries
+                entries.append(entry)
+        with ThreadPool(self.threads) as pool:
+            results = list(tqdm(pool.imap_unordered(_interpolate, entries), total=len(entries)))
+        return results
 
-    async def _interpolate(self, entry, **kwargs):
+    def _interpolate(self, entry, **kwargs):
         return entry.interpolate(**kwargs)
 
     def __str__(self):
@@ -275,5 +302,3 @@ class SGMData(object):
 
     def __repr__(self):
         return f"Scans: {self.scans}"
-
-
