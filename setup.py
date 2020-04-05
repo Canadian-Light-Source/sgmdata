@@ -27,6 +27,7 @@ setup(
         "pandas>=0.25.3"
         "h5py>=2.10.0",
         "h5pyd",
+        "bokeh",
         "numpy",
 
     ]

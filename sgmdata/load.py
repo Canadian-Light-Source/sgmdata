@@ -199,6 +199,10 @@ class SGMScan(object):
             return " ".join(entry)
 
         def plot(self):
+            """
+            Determines the appropriate plot based on independent axis number and name
+            """
+
             dim = len(self.independent)
             if dim == 1 and 'en' in self.independent.keys():
                 keys = eemscan.required
@@ -386,6 +390,32 @@ class SGMData(object):
 
     def _interpolate(self, entry, **kwargs):
         return entry.interpolate(**kwargs)
+
+    def average(self, bad_scans = None):
+        sample_scans = {}
+        i = 1
+        for k, file in self.scans.items():
+            for entry, scan in file.items():
+                i = i + 1
+                if 'binned' in scan.keys():
+                    key=[]
+                    if 'sample' in scan.keys():
+                        key.append(scan['sample'])
+                    if 'command' in scan.keys():
+                        key.append("_".join(scan['command']))
+                    key = ":".join(key)
+                    if i not in bad_scans:
+                        if key in sample_scans.keys():
+                            l = sample_scans[key]
+                            sample_scans[key] = l.append(scan['binned']['dataframe'])
+                        else:
+                            sample_scans.update({key:[scan['binned']['dataframe']]})
+        average = {}
+        for k, v in sample_scans.items():
+            average.update({k:pd.concat(v).mean()})
+        self.average = average
+        return average
+
 
     def __str__(self):
         return f"Scans: {self.scans}"
