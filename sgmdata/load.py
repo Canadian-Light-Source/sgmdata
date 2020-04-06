@@ -89,11 +89,25 @@ class SGMScan(object):
             axis = self['independent']
             dim = len(axis.keys())
             if 'start' not in kwargs.keys():
-                start = [int(v.min()) for k, v in axis.items()]
+                if hasattr(self, 'command'):
+                    command = self.command
+                    if 'scan' in command[0]:
+                        start = [int(command[2])]
+                    elif 'mesh' in command[0]:
+                        start = [int(command[2]), int(command[6])]
+                else:
+                    start = [int(v.min()) for k, v in axis.items()]
             else:
                 start = kwargs['start']
             if 'stop' not in kwargs.keys():
-                stop = [int(v.max()) + 1 for k, v in axis.items()]
+                if hasattr(self, 'command'):
+                    command = self.command
+                    if 'scan' in command[0]:
+                        stop = [int(command[3])]
+                    elif 'mesh' in command[0]:
+                        stop = [int(command[3]), int(command[7])]
+                else:
+                    stop = [int(v.max()) + 1 for k, v in axis.items()]
             else:
                 stop = kwargs['stop']
             if not isinstance(start, list):
@@ -249,6 +263,28 @@ class SGMScan(object):
     def __getitem__(self, item):
         return self.__dict__[item]
 
+class DisplayDict(dict):
+    def __getattr__(self, name):
+        if name in self.__dict__.keys():
+            return self[name]
+        else:
+            return False
+
+    def __setattr__(self, name, value):
+        self[name] = value
+
+    def _repr_html_(self):
+        table = [
+            "<table>",
+            "  <thead>",
+            "    <tr><td> </td><th>Key</th><th>Value</th></tr>",
+            "  </thead>",
+            "  <tbody>",
+        ]
+        for key, value in self.__dict__.items():
+            table.append(f"<tr><th> {key}</th><th>{value}</th></tr>")
+        table.append("</tbody></table>")
+        return "\n".join(table)
 
 class SGMData(object):
     """
@@ -262,6 +298,20 @@ class SGMData(object):
                             axes (type: list(str)) -- names of the axes to use as independent axis and ignore
                                                     spec command issued
     """
+
+    class Processed(DisplayDict):
+
+        def plot(self):
+            if 'type' in self.__dict__.keys():
+                pass
+            elif 'command' in self.__dict__.keys():
+                if self.command[1] == 'en' and 'scan' in self.command[0]:
+                    keys = eemscan.required
+                    df = self.data
+                    data = {k: df.fitler(regex=("%s.*" % k), axis=1).to_numpy().T for k in keys}
+                    eemscan.plot(**data)
+                elif 'mesh' in self.command[0]:
+                    pass
 
     def __init__(self, files, **kwargs):
         self.__dict__.update(kwargs)
@@ -391,29 +441,42 @@ class SGMData(object):
     def _interpolate(self, entry, **kwargs):
         return entry.interpolate(**kwargs)
 
-    def average(self, bad_scans = None):
+    def mean(self, bad_scans=[]):
         sample_scans = {}
         i = 1
         for k, file in self.scans.items():
             for entry, scan in file.items():
                 i = i + 1
                 if 'binned' in scan.keys():
-                    key=[]
+                    key = []
                     if 'sample' in scan.keys():
                         key.append(scan['sample'])
                     if 'command' in scan.keys():
                         key.append("_".join(scan['command']))
-                    key = ":".join(key)
+                    if key:
+                        key = ":".join(key)
+                    else:
+                        key = "unknown"
                     if i not in bad_scans:
                         if key in sample_scans.keys():
-                            l = sample_scans[key]
-                            sample_scans[key] = l.append(scan['binned']['dataframe'])
+                            l = sample_scans[key] + [scan['binned']['dataframe']]
+                            sample_scans.update({key: l})
                         else:
-                            sample_scans.update({key:[scan['binned']['dataframe']]})
-        average = {}
+                            sample_scans.update({key: [scan['binned']['dataframe']]})
+        average = DisplayDict()
         for k, v in sample_scans.items():
-            average.update({k:pd.concat(v).mean()})
-        self.average = average
+            df_concat = pd.concat(v)
+            key = k.split(":")[0]
+            command = k.split(":")[-1]
+            df = df_concat.groupby(df_concat.index).mean()
+            roi_cols = df.filter(regex="sdd[1-4]_[0-2].*").columns
+            df.drop(columns=roi_cols, inplace=True)
+            if key in average.keys():
+                l = average[key] + [SGMData.Processed(command=command.split('_'), data=df)]
+                average.update({key: l})
+            else:
+                average.update({key: [SGMData.Processed(command=command.split('_'), data=df)]})
+        self.averaged = average
         return average
 
 
