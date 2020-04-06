@@ -216,14 +216,18 @@ class SGMScan(object):
             """
             Determines the appropriate plot based on independent axis number and name
             """
-
             dim = len(self.independent)
             if dim == 1 and 'en' in self.independent.keys():
                 keys = eemscan.required
-                if 'dataframe' in self.__dict__.keys():
-                    if 'binned' in self['dataframe'].keys():
-                        df = self['dataframe']['binned'].compute()
-                        data = {k: df.fitler(regex=("%s.*" % k), axis=1).to_numpy().T for k in keys}
+                if 'binned' in self.keys():
+                    if 'dataframe' in self['binned'].keys():
+                        df = self['binned']['dataframe']
+                        roi_cols = df.filter(regex="sdd[1-4]_[0-2].*").columns
+                        df.drop(columns=roi_cols, inplace=True)
+                        data = {k: df.filter(regex=("%s.*" % k), axis=1).to_numpy().T for k in keys}
+                        data.update({df.index.name: np.array(df.index), 'emission': np.linspace(0, 2560, 256)})
+                        if 'image' in keys:
+                            data.update({'image': data['sdd1']})
                         eemscan.plot(**data)
                 else:
                     ds = int(self.independent['en'].shape[0] / 1000) + 1
@@ -304,11 +308,15 @@ class SGMData(object):
         def plot(self):
             if 'type' in self.__dict__.keys():
                 pass
-            elif 'command' in self.__dict__.keys():
+            else:
                 if self.command[1] == 'en' and 'scan' in self.command[0]:
                     keys = eemscan.required
                     df = self.data
-                    data = {k: df.fitler(regex=("%s.*" % k), axis=1).to_numpy().T for k in keys}
+                    roi_cols = df.filter(regex="sdd[1-4]_[0-2].*").columns
+                    df.drop(columns = roi_cols, inplace=True)
+                    data = {k: df.filter(regex=("%s.*" % k), axis=1).to_numpy().T for k in keys}
+                    data.update({df.index.name: np.array(df.index), 'emission': np.linspace(0,2560,256)})
+                    data.update({'image':data['sdd1']})
                     eemscan.plot(**data)
                 elif 'mesh' in self.command[0]:
                     pass
@@ -447,35 +455,39 @@ class SGMData(object):
         for k, file in self.scans.items():
             for entry, scan in file.items():
                 i = i + 1
+                signals = [k for k, v in scan['signals'].items()]
                 if 'binned' in scan.keys():
                     key = []
                     if 'sample' in scan.keys():
                         key.append(scan['sample'])
+                    else:
+                        key.append('Unknown')
                     if 'command' in scan.keys():
                         key.append("_".join(scan['command']))
-                    if key:
-                        key = ":".join(key)
                     else:
-                        key = "unknown"
+                        key.append("None")
+                    key = ":".join(key)
                     if i not in bad_scans:
                         if key in sample_scans.keys():
-                            l = sample_scans[key] + [scan['binned']['dataframe']]
-                            sample_scans.update({key: l})
+                            l = sample_scans[key]['data'] + [scan['binned']['dataframe']]
+                            d = {'data': l, 'signals': signals}
+                            sample_scans.update({key: d})
                         else:
-                            sample_scans.update({key: [scan['binned']['dataframe']]})
+                            sample_scans.update({key: {'data': [scan['binned']['dataframe']], 'signals': signals}})
         average = DisplayDict()
         for k, v in sample_scans.items():
-            df_concat = pd.concat(v)
-            key = k.split(":")[0]
-            command = k.split(":")[-1]
-            df = df_concat.groupby(df_concat.index).mean()
-            roi_cols = df.filter(regex="sdd[1-4]_[0-2].*").columns
-            df.drop(columns=roi_cols, inplace=True)
-            if key in average.keys():
-                l = average[key] + [SGMData.Processed(command=command.split('_'), data=df)]
-                average.update({key: l})
-            else:
-                average.update({key: [SGMData.Processed(command=command.split('_'), data=df)]})
+            if len(v['data']) > 1:
+                df_concat = pd.concat(v['data'])
+                key = k.split(":")[0]
+                command = k.split(":")[-1]
+                df = df_concat.groupby(df_concat.index).mean()
+                if key in average.keys():
+                    l = average[key] + [
+                        SGMData.Processed(command=command.split('_'), data=df, signals=v['signals'], sample=key)]
+                    average.update({key: l})
+                else:
+                    average.update({key: [
+                        SGMData.Processed(command=command.split('_'), data=df, signals=v['signals'], sample=key)]})
         self.averaged = average
         return average
 
