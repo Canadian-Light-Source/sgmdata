@@ -212,6 +212,56 @@ class SGMScan(object):
             ]
             return " ".join(entry)
 
+        def write(self, filename=None):
+            """ Write data to NeXuS formatted data file."""
+            if 'sdd3' in self['signals']:
+                signal = u'sdd3'
+            elif 'ge32' in self['signals']:
+                signal = u'ge32'
+            elif 'tey' in self['signals']:
+                signal = u'tey'
+            elif 'mu_abs' in self['signals']:
+                signal = u'mu_abs'
+            else:
+                signal = self.signals[0]
+            if not filename:
+                filename = self.sample + ".nxs"
+            if 'binned' in self.keys():
+                if 'dataframe' in self['binned'].keys():
+                    df = self['binned']['dataframe']
+                    h5 = h5py.File(filename, "w")
+                    NXentries = [int(str(x).split("entry")[1]) for x in h5['/'].keys() if 'NXentry' in str(h5[x].attrs.get('NX_class'))]
+                    if NXentries:
+                        NXentries.sort()
+                        entry = 'entry' + str(NXentries[-1]+1)
+                    else:
+                        entry = 'entry1'
+                    axes = [nm for nm in df.index.names]
+                    nxent = h5.create_group(entry)
+                    nxent.attrs.create(u'NX_class', u'NXentry')
+                    nxdata = nxent.create_group('data')
+                    nxdata.attrs.create(u'NX_class', u'NXdata')
+                    nxdata.attrs.create(u'axes', axes)
+                    nxdata.attrs.create(u'signal', signal)
+                    if len(axes) == 1:
+                        arr = np.array(df.index)
+                        nxdata.create_dataset(df.index.name, arr.shape, data=arr, dtype=arr.dtype)
+                    elif len(axes) > 1:
+                        for i, ax in enumerate(axes):
+                            arr = np.array(df.index.levels[i])
+                            nxdata.create_dataset(ax, arr.shape, data=arr, dtype=arr.dtype)
+
+                    for sig in self.signals:
+                        arr = df.filter(regex="%s.*" % sig).to_numpy()
+                        if len(df.index.names) > 1:
+                            shape = [len(df.index.levels[0]),len(df.index.levels[1])]
+                            shape += [s for s in arr.shape[1:]]
+                            arr = np.reshape(arr, tuple(shape))
+                        nxdata.create_dataset(sig, arr.shape, data=arr)
+                    h5.close()
+            else:
+                raise AttributeError("no interpolated data found to write")
+
         def plot(self):
             """
             Determines the appropriate plot based on independent axis number and name
@@ -304,6 +354,49 @@ class SGMData(object):
     """
 
     class Processed(DisplayDict):
+
+        def write(self, filename=None):
+            if 'sdd3' in self['signals']:
+                signal = u'sdd3'
+            elif 'ge32' in self['signals']:
+                signal = u'ge32'
+            elif 'tey' in self['signals']:
+                signal = u'tey'
+            elif 'mu_abs' in self['signals']:
+                signal = u'mu_abs'
+            else:
+                signal = self.signals[0]
+            if not filename:
+                filename = self.sample + ".nxs"
+            h5 = h5py.File(filename, "a")
+            NXentries = [int(str(x).split("entry")[1]) for x in h5['/'].keys() if 'NXentry' in str(h5[x].attrs.get('NX_class'))]
+            if NXentries:
+                NXentries.sort()
+                entry = 'entry' + str(NXentries[-1]+1)
+            else:
+                entry = 'entry1'
+            axes = [nm for nm in self.data.index.names]
+            nxent = h5.create_group(entry)
+            nxent.attrs.create(u'NX_class', u'NXentry')
+            nxdata = nxent.create_group('data')
+            nxdata.attrs.create(u'NX_class', u'NXdata')
+            nxdata.attrs.create(u'axes', axes)
+            nxdata.attrs.create(u'signal', signal)
+            if len(axes) == 1:
+                arr = np.array(self.data.index)
+                nxdata.create_dataset(self.data.index.name, arr.shape, data=arr, dtype=arr.dtype)
+            elif len(axes) > 1:
+                for i, ax in enumerate(axes):
+                    arr = np.array(df.index.levels[i])
+                    nxdata.create_dataset(ax, arr.shape, data=arr, dtype=arr.dtype)
+            for sig in self.signals:
+                arr = self.data.filter(regex="%s." % sig).to_numpy()
+                if len(self.data.index.names) > 1:
+                    shape = [len(self.data.index.levels[0]),len(seld.data.index.levels[1])]
+                    shape += [s for s in arr.shape[1:]]
+                    arr = np.reshape(arr, tuple(shape))
+                nxdata.create_dataset(sig, arr.shape, data=arr, dtype=arr.dtype)
+            h5.close()
 
         def plot(self):
             if 'type' in self.__dict__.keys():
