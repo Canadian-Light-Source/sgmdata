@@ -177,7 +177,7 @@ class SGMScan(object):
                 return df
 
         def __repr__(self):
-            represent = ""
+            represent =  ""
             for key in self.keys():
                 represent += f"\t {key}:\n\t\t\t"
                 val = self[key]
@@ -387,12 +387,12 @@ class SGMData(object):
                 nxdata.create_dataset(self.data.index.name, arr.shape, data=arr, dtype=arr.dtype)
             elif len(axes) > 1:
                 for i, ax in enumerate(axes):
-                    arr = np.array(df.index.levels[i])
+                    arr = np.array(self.data.index.levels[i])
                     nxdata.create_dataset(ax, arr.shape, data=arr, dtype=arr.dtype)
             for sig in self.signals:
                 arr = self.data.filter(regex="%s." % sig).to_numpy()
                 if len(self.data.index.names) > 1:
-                    shape = [len(self.data.index.levels[0]),len(seld.data.index.levels[1])]
+                    shape = [len(self.data.index.levels[0]),len(self.data.index.levels[1])]
                     shape += [s for s in arr.shape[1:]]
                     arr = np.reshape(arr, tuple(shape))
                 nxdata.create_dataset(sig, arr.shape, data=arr, dtype=arr.dtype)
