@@ -188,7 +188,7 @@ def plot(**kwargs):
             }
             source.change.emit();
     """)
-    callback_color_palette = callback_color_range = CustomJS(args=dict(im=im, cl=color_bar), code="""
+    callback_color_palette = CustomJS(args=dict(im=im, cl=color_bar), code="""
             var p = "Inferno11";
             var f = cb_obj.value;
             if (f == "Viridis") {
@@ -203,7 +203,11 @@ def plot(**kwargs):
                 im.glyph.color_mapper.palette = %s;
                 cl.color_mapper.palette = %s;
             }
-    """ % (viridis, viridis, spectral, spectral, inferno, inferno))
+            if (f == "Colorblind") {
+                im.glyph.color_mapper.palette = %s;
+                cl.color_mapper.palette = %s;
+            }
+    """ % (viridis, viridis, spectral, spectral, inferno, inferno, colorblind, colorblind))
 
     callback_color_range = CustomJS(args=dict(im=im, cl=color_bar), code="""
             var o_min = cb_obj.value[0];
@@ -220,7 +224,6 @@ def plot(**kwargs):
 
     select_palette = Select(title="Colormap Select:", options=['Viridis', 'Spectral', 'Inferno'], value='Spectral',
                             callback=callback_color_palette)
-    select_palette
     select = Select(title="Detector Select:", options=['sdd1', 'sdd2', 'sdd3', 'sdd4'], value='sdd1')
     select.js_on_change('value', callback, select_callback)
 
