@@ -25,6 +25,15 @@ Useful functions:
 ```python
 data.scans  #contains a dictionary of the identified data arrays loaded from your file list
 data.interpolate(start=270, stop=2000, resolution=0.5) #bin the data in scans dictionary and interpolates missing points
-data.average(scans=[("file1.hdf5", "entry1"), ("file2.hdf5", "entry3")]) #TODO:  average interpolated data in scans dictionary. 
+data.mean() #average data with the same sample name, and spec command together. 
 ```
-
+Working with individual scans:
+```python
+df = data.scans['FilePrefix'].entry1.interpolate(start=270, stop=2000, resolution=0.1) #bin data for a single scan.
+df2 = data.scans['FilePrefix'].entry1.fit_mcas() #perform batch gaussian fitting of interpolated SDD signal
+```
+Plotting (with [Bokeh](https://docs.bokeh.org/en/latest/index.html)):
+```python
+data.scans['FilePrefix'].entry1.plot()
+data.average.plot()
+```

@@ -568,7 +568,12 @@ class SGMData(object):
                     scan.update({"sample": str(h5[entry + "/sample/description"][()], 'utf-8').split('\x00')[0]})
             scan.update({"independent": indep[i], "signals": signals[i], "other": other_axis[i],
                          "npartitions": self.npartitions})
-            entries.update({entry: scan})
+            if 'sample' in self.__dict__.keys():
+                if 'sample' in scan.keys():
+                    if self.sample in scan['sample']:
+                        entries.update({entry: scan})
+            else:
+                entries.update({entry: scan})
         return {file_root: entries}
 
     def interpolate(self, **kwargs):
