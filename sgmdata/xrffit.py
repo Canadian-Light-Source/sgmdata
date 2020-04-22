@@ -3,6 +3,7 @@ from scipy.signal import find_peaks
 from scipy.optimize import curve_fit
 from functools import partial
 from multiprocessing.pool import Pool, ThreadPool
+import pandas as pd
 
 try:
     shell = get_ipython().__class__.__name__
@@ -72,24 +73,32 @@ def fit_amp(args):
     return _fit_amp(*args)
 
 
-def fit_peaks(emission, sdd, first=True):
-    y = sdd.sum(axis=0).to_numpy()
-    y = y / len(sdd)
+def fit_peaks(emission, sdd, bounds=[]):
+    if not isinstance(sdd, list):
+        sdd = [sdd]
+    names = [list(s)[0].split('-')[0] for s in sdd]
+    y = sdd[0].sum(axis=0).to_numpy()
+    y = y / len(sdd[0])
+    if len(bounds) == 2:
+        idx = np.where(emission < bounds[1], emission, 0)
+        idx = np.where(idx > bounds[0])
+        y = y[idx[0]:idx[-1]]
     pks, hgts = find_peaks(y, distance=10, height=3)
-    new = np.zeros((len(sdd), len(pks)))
     guess = []
     for i in range(0, len(pks)):
         guess += [pks[i] * 10, hgts['peak_heights'][i], 50]
     pcalc, pcov = fit_xrf(emission, y, constrain_peaks(guess, 2, np.amax(y), 5))
     wid = pcalc[2::3]
-    amp = pcalc[1::3]
     ctr = pcalc[0::3]
-    xrfs = [[emission, sdd.to_numpy()[i], constrain_peaks(pcalc, 2, np.amax(y), 5, amp_only=True), wid, ctr] for i in
-            range(len(sdd))]
-    print("Fitting peak amplitudes")
-    with Pool(8) as pool:
-        L = list(tqdm(pool.imap_unordered(fit_amp, xrfs), total=len(xrfs)))
-
-    return L, xrfs
+    data = {}
+    for k, s in enumerate(sdd):
+        xrfs = [[emission, s.to_numpy()[i], constrain_peaks(pcalc, 2, np.amax(y), 5, amp_only=True), wid, ctr] for i in
+                range(len(s))]
+        print("Fitting peak amplitudes for %s" % names[k])
+        with Pool(8) as pool:
+            L = list(tqdm(pool.imap_unordered(fit_amp, xrfs), total=len(xrfs)))
+        temp = np.stack([item[0] for item in L], axis =0)
+        data.update({names[k] + "-" + f"{pks[j]}" : temp[:,j] for j in range(0, temp.shape[1])})
+    return pd.DataFrame(data, index=sdd[0].index)
 
 

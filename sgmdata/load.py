@@ -9,7 +9,8 @@ import pandas as pd
 import numpy as np
 from multiprocessing.pool import ThreadPool
 from functools import partial
-from .plots import eemscan
+from .plots import eemscan, xrfmap
+from .xrffit import fit_peaks
 import warnings
 
 try:
@@ -86,6 +87,10 @@ class SGMScan(object):
                 compute = kwargs['compute']
             else:
                 compute = True
+            if 'method' in kwargs.keys():
+                method = kwargs.keys()
+            else:
+                method = "nearest"
             axis = self['independent']
             dim = len(axis.keys())
             if 'start' not in kwargs.keys():
@@ -166,7 +171,7 @@ class SGMScan(object):
                     array = [_x, _y]
                     idx = pd.MultiIndex.from_tuples(list(zip(*array)), names=nm)
                     #This method works for now, but can take a fair amount of time.
-                    df = df.compute().unstack().interpolate(method='nearest').fillna(0).stack().reindex(idx)
+                    df = df.compute().unstack().interpolate(method=method).fillna(0).stack().reindex(idx)
                     binned = {"dataframe": df}
                     self.__setattr__('binned', binned)
                     return df
@@ -175,6 +180,31 @@ class SGMScan(object):
 
             else:
                 return df
+
+        def fit_mcas(self, detectors=[], emission=[]):
+            if not len(detectors):
+                detectors = [k for k,v in self['signals'].items() if 'sdd' in k or 'ge' in k]
+            if not len(emission):
+                if 'emission' in self['other']:
+                    emission = self['other']['emission'].compute()
+                else:
+                    sig = self['signals'][detectors[0]]
+                    emission = np.linspace(0, sig.shape[1]*10, sig.shape[1])
+            if 'binned' in self.keys():
+                df = self['binned']['dataframe']
+                roi_cols = df.filter(regex="sdd[1-4]_[0-2].*").columns
+                df.drop(columns=roi_cols, inplace=True)
+                scaler_cols = df.filter(regex="sdd[1-4].*").columns
+                scaler_df = df.drop(columns=scaler_cols, inplace=False)
+                data = []
+                for det in detectors:
+                    rgx = "%s.*" % det
+                    data.append(df.filter(regex=rgx, axis=1))
+                fit_df, pks, wid = fit_peaks(emission, data)
+                new_df = pd.concat([scaler_df, fit_df], axis=1, sort=False)
+                self['fit'] = {"dataframe": new_df, "emission":emission, "peaks": np.array([emission[p] for p in pks]), "width": wid }
+                return new_df
+
 
         def __repr__(self):
             represent =  ""
@@ -288,6 +318,20 @@ class SGMScan(object):
                     if 'image' in keys:
                         data.update({'image': self.signals['sdd1'][::ds].T.compute()})
                     eemscan.plot(**data)
+            elif dim == 2:
+                keys = xrfmap.required
+                if 'fit' in self.keys():
+                    df = self['fit']['dataframe']
+                    emission = self['fit']['emission']
+                    peaks = self['fit']['peaks']
+                    width = self['fit']['width']
+                    data = {k: df.filter(regex=("%s.*" % k), axis=1).to_numpy() for k in keys if k in self.signals.keys()}
+                    data.update({k:np.reshape(v, (len(df.index.levels[0]),len(df.index.levels[1]),v.shape[-1])) if len(v.shape) == 2 else np.reshape(v,(len(df.index.levels[0]),len(df.index.levels[1]))) for k,v in data.items()})
+                    data.update({n:df.index.levels[i] for i,n in enumerate(list(df.index.names))})
+                    data.update({'emission': emission, 'peaks':peaks, 'width': width})
+                    if 'image' in keys:
+                        data.update({"image": data['sdd1']})
+                    xrfmap.plot(**data)
 
     def __init__(self, **kwargs):
         self.__dict__.update(kwargs)
@@ -319,10 +363,8 @@ class SGMScan(object):
 
 class DisplayDict(dict):
     def __getattr__(self, name):
-        if name in self.__dict__.keys():
-            return self[name]
-        else:
-            return False
+        return self[name]
+
 
     def __setattr__(self, name, value):
         self[name] = value
@@ -402,7 +444,7 @@ class SGMData(object):
             if 'type' in self.__dict__.keys():
                 pass
             else:
-                if self.command[1] == 'en' and 'scan' in self.command[0]:
+                if 'scan' in self.command[0] and "en" == self.command[1]:
                     keys = eemscan.required
                     df = self.data
                     roi_cols = df.filter(regex="sdd[1-4]_[0-2].*").columns
@@ -546,7 +588,7 @@ class SGMData(object):
         sample_scans = {}
         i = 1
         for k, file in self.scans.items():
-            for entry, scan in file.items():
+            for entry, scan in file.__dict__.items():
                 i = i + 1
                 signals = [k for k, v in scan['signals'].items()]
                 if 'binned' in scan.keys():
