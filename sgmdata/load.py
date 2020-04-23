@@ -282,7 +282,7 @@ class SGMScan(object):
                             nxdata.create_dataset(ax, arr.shape, data=arr, dtype=arr.dtype)
 
                     for sig in self.signals:
-                        arr = df.filter(regex="%s.*" % sig).to_numpy()
+                        arr = df.filter(regex="%s.*" % sig.split('_')[0]).to_numpy()
                         if len(df.index.names) > 1:
                             shape = [len(df.index.levels[0]),len(df.index.levels[1])]
                             shape += [s for s in arr.shape[1:]]
@@ -301,22 +301,24 @@ class SGMScan(object):
                 keys = eemscan.required
                 if 'binned' in self.keys():
                     if 'dataframe' in self['binned'].keys():
+                        print("Plotting Interpolated Data")
                         df = self['binned']['dataframe']
                         roi_cols = df.filter(regex="sdd[1-4]_[0-2].*").columns
                         df.drop(columns=roi_cols, inplace=True)
-                        data = {k: df.filter(regex=("%s.*" % k), axis=1).to_numpy().T for k in keys}
+                        data = {k: df.filter(regex=("%s.*" % k), axis=1).to_numpy() for k in keys}
                         data.update({df.index.name: np.array(df.index), 'emission': np.linspace(0, 2560, 256)})
                         if 'image' in keys:
                             data.update({'image': data['sdd1']})
                         eemscan.plot(**data)
                 else:
+                    print("Plotting Raw Data")
                     ds = int(self.independent['en'].shape[0] / 1000) + 1
-                    data = {k: self.signals[k][::ds].T.compute() for k in self.signals.keys() if k in keys}
+                    data = {k: self.signals[s][::ds].compute() for s in self.signals.keys() for k in keys if k in s }
                     data.update(
-                        {k: self.independent[k][::ds].T.compute() for k in self.independent.keys() if k in keys})
-                    data.update({k: self.other[k].compute().T for k in self.other.keys() if k in keys})
+                        {k: self.independent[s][::ds].compute() for s in self.independent.keys() for k in keys if k in s })
+                    data.update({k: self.other[s].compute() for s in self.other.keys() for k in keys if k in s })
                     if 'image' in keys:
-                        data.update({'image': self.signals['sdd1'][::ds].T.compute()})
+                        data.update({'image': self.signals['sdd1'][::ds].compute()})
                     eemscan.plot(**data)
             elif dim == 2:
                 keys = xrfmap.required
@@ -325,7 +327,7 @@ class SGMScan(object):
                     emission = self['fit']['emission']
                     peaks = self['fit']['peaks']
                     width = self['fit']['width']
-                    data = {k: df.filter(regex=("%s.*" % k), axis=1).to_numpy() for k in keys if k in self.signals.keys()}
+                    data = {k: df.filter(regex=("%s.*" % k), axis=1).to_numpy() for k in keys if any(k in mystring for mystring in self.signals.keys())}
                     data.update({k:np.reshape(v, (len(df.index.levels[0]),len(df.index.levels[1]),v.shape[-1])) if len(v.shape) == 2 else np.reshape(v,(len(df.index.levels[0]),len(df.index.levels[1]))) for k,v in data.items()})
                     data.update({n:df.index.levels[i] for i,n in enumerate(list(df.index.names))})
                     data.update({'emission': emission, 'peaks':peaks, 'width': width})
@@ -432,7 +434,7 @@ class SGMData(object):
                     arr = np.array(self.data.index.levels[i])
                     nxdata.create_dataset(ax, arr.shape, data=arr, dtype=arr.dtype)
             for sig in self.signals:
-                arr = self.data.filter(regex="%s." % sig).to_numpy()
+                arr = self.data.filter(regex="%s." % sig.split('_')[0]).to_numpy()
                 if len(self.data.index.names) > 1:
                     shape = [len(self.data.index.levels[0]),len(self.data.index.levels[1])]
                     shape += [s for s in arr.shape[1:]]
@@ -449,7 +451,7 @@ class SGMData(object):
                     df = self.data
                     roi_cols = df.filter(regex="sdd[1-4]_[0-2].*").columns
                     df.drop(columns = roi_cols, inplace=True)
-                    data = {k: df.filter(regex=("%s.*" % k), axis=1).to_numpy().T for k in keys}
+                    data = {k: df.filter(regex=("%s.*" % k), axis=1).to_numpy() for k in keys}
                     data.update({df.index.name: np.array(df.index), 'emission': np.linspace(0,2560,256)})
                     data.update({'image':data['sdd1']})
                     eemscan.plot(**data)
