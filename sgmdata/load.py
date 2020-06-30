@@ -309,7 +309,7 @@ class SGMScan(object):
                         data = {k: v for k,v in data.items() if v.size}
                         data.update({df.index.name: np.array(df.index), 'emission': np.linspace(0, 2560, 256)})
                         if 'image' in keys:
-                            if self.sample:
+                            if hasattr(self, "sample"):
                                 data.update({'image': data['sdd1'], 'filename': str(self.sample)})
                             else:
                                 data.update({'image': data['sdd1']})
@@ -322,7 +322,7 @@ class SGMScan(object):
                         {k: self.independent[s][::ds].compute() for s in self.independent.keys() for k in keys if k in s })
                     data.update({k: self.other[s].compute() for s in self.other.keys() for k in keys if s in k })
                     if 'image' in keys:
-                        if self.sample:
+                        if hasattr(self, "sample"):
                             data.update({'image': self.signals['sdd1'][::ds].compute(), 'filename': str(self.sample)})
                         else:
                             data.update({'image': self.signals['sdd1'][::ds].compute()})
