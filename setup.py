@@ -7,7 +7,7 @@ def readme():
 
 setup(
     name="sgm-data",
-    version="0.3-beta",
+    version="0.2.2-beta",
     description="Module for loading, interpolating and plotting data taken at the SGM Beamline at the Canadian Light Source.",
     long_description=readme(),
     long_description_content_type="text/markdown",
