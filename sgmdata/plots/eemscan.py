@@ -24,6 +24,10 @@ def plot(**kwargs):
         kwargs['emission'] = np.linspace(0, 2560, 256)
     if 'io' in kwargs.keys():
         kwargs['i0'] = kwargs['io']
+    if "filename" not in kwargs.keys():
+        filename = "xas"
+    else:
+        filename = kwargs['filename']
     source = ColumnDataSource(dict(image=[kwargs['image'].T],
                                    sdd1=[kwargs['sdd1'].T],
                                    sdd2=[kwargs['sdd2'].T],
@@ -242,7 +246,6 @@ def plot(**kwargs):
 
     button = Button(label="Download XAS Spectrum", button_type="success")
 
-    filename = "xas"
 
     download = CustomJS(args=dict(s2=xas_source, aux=aux_source), code="""
         var sdd = s2.data;

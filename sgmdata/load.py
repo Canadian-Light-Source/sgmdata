@@ -9,8 +9,8 @@ import pandas as pd
 import numpy as np
 from multiprocessing.pool import ThreadPool
 from functools import partial
-from .plots import eemscan, xrfmap
-from .xrffit import fit_peaks
+from sgmdata.plots import eemscan, xrfmap
+from sgmdata.xrffit import fit_peaks
 import warnings
 
 try:
@@ -306,9 +306,13 @@ class SGMScan(object):
                         roi_cols = df.filter(regex="sdd[1-4]_[0-2].*").columns
                         df.drop(columns=roi_cols, inplace=True)
                         data = {k: df.filter(regex=("%s.*" % k), axis=1).to_numpy() for k in keys}
+                        data = {k: v for k,v in data.items() if v.size}
                         data.update({df.index.name: np.array(df.index), 'emission': np.linspace(0, 2560, 256)})
                         if 'image' in keys:
-                            data.update({'image': data['sdd1']})
+                            if self.sample:
+                                data.update({'image': data['sdd1'], 'filename': str(self.sample)})
+                            else:
+                                data.update({'image': data['sdd1']})
                         eemscan.plot(**data)
                 else:
                     print("Plotting Raw Data")
@@ -316,9 +320,12 @@ class SGMScan(object):
                     data = {k: self.signals[s][::ds].compute() for s in self.signals.keys() for k in keys if k in s }
                     data.update(
                         {k: self.independent[s][::ds].compute() for s in self.independent.keys() for k in keys if k in s })
-                    data.update({k: self.other[s].compute() for s in self.other.keys() for k in keys if k in s })
+                    data.update({k: self.other[s].compute() for s in self.other.keys() for k in keys if s in k })
                     if 'image' in keys:
-                        data.update({'image': self.signals['sdd1'][::ds].compute()})
+                        if self.sample:
+                            data.update({'image': self.signals['sdd1'][::ds].compute(), 'filename': str(self.sample)})
+                        else:
+                            data.update({'image': self.signals['sdd1'][::ds].compute()})
                     eemscan.plot(**data)
             elif dim == 2:
                 keys = xrfmap.required
@@ -506,7 +513,7 @@ class SGMData(object):
             else:
                 raise Exception(e)
                 return
-        file_root = file.split("/")[-1].split(".")[0]
+        file_root = file.split("\\")[-1].split("/")[-1].split(".")[0]
         # Find the number of scans within the file
         NXentries = [str(x) for x in h5['/'].keys() if 'NXentry' in str(h5[x].attrs.get('NX_class'))]
         # Get the commands used to declare the above scans
