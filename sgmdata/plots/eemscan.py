@@ -1,6 +1,7 @@
 from bokeh.layouts import column, row, gridplot
 from bokeh.palettes import all_palettes
-from bokeh.models import CustomJS, ColumnDataSource, Select, RangeSlider, ColorBar, LinearColorMapper, Rect, Button
+from bokeh.models import CustomJS, ColumnDataSource, Select, RangeSlider, ColorBar, LinearColorMapper, Rect, Button, \
+    CheckboxButtonGroup
 from bokeh.plotting import Figure, output_notebook, output_file, show
 from bokeh.embed import json_item
 from bokeh import events
@@ -22,7 +23,9 @@ required = ['image', 'sdd1', 'sdd2', 'sdd3', 'sdd4', 'emission', 'en', 'tey', 'p
 def plot(**kwargs):
     if 'emission' not in kwargs.keys():
         kwargs['emission'] = np.linspace(0, 2560, 256)
-    if 'io' in kwargs.keys():
+    if 'io' in kwargs.keys() and np.any(kwargs['io']):
+        kwargs['i0'] = kwargs['io']
+    if 'pd' in kwargs.keys() and np.any(kwargs['pd']):
         kwargs['i0'] = kwargs['io']
     if "filename" not in kwargs.keys():
         filename = "xas"
@@ -40,10 +43,20 @@ def plot(**kwargs):
                                             emission_tot=kwargs['emission']))
 
     proj_y = np.sum(source.data['image'][0], axis=0)
+    tey_max = np.amax(kwargs['tey'])
+    pd_max = np.amax(kwargs['pd'])
+    io_max = np.amax(kwargs['i0'])
+
+    if tey_max == 0:
+        tey_max = 1
+    if pd_max == 0:
+        pd_max = 1
+    if io_max == 0:
+        io_max = 1
     aux_source = ColumnDataSource(data=dict(en=kwargs['en'],
-                                            tey=(kwargs['tey'] / np.amax(kwargs['tey'])) * np.amax(proj_y),
-                                            pd=(kwargs['pd'] / np.amax(kwargs['pd'])) * np.amax(proj_y),
-                                            i0=(kwargs['i0'] / np.amax(kwargs['i0'])) * np.amax(proj_y)
+                                            tey=(kwargs['tey'] / tey_max) * np.amax(proj_y),
+                                            pd=(kwargs['pd'] / pd_max) * np.amax(proj_y),
+                                            i0=(kwargs['i0'] / io_max) * np.amax(proj_y)
                                             ))
 
     xas_source = ColumnDataSource(data=dict(proj_y=proj_y,
@@ -71,12 +84,14 @@ def plot(**kwargs):
                     palette="Spectral11")
     color_bar = ColorBar(color_mapper=color_mapper, label_standoff=12, border_line_color=None, location=(0, 0))
 
-    xrf = Figure(plot_width=200, plot_height=600, y_range=plot.y_range, tools="save,hover,box_zoom,pan", title="XRF Projection")
+    xrf = Figure(plot_width=200, plot_height=600, y_range=plot.y_range, tools="save,hover,box_zoom, pan",
+                 title="XRF Projection")
     xrf.circle('proj_x', 'emission', source=xrf_source, alpha=0.6)
     xrf.yaxis.visible = False
     xrf.xaxis.major_label_orientation = "vertical"
 
-    xas = Figure(plot_width=600, plot_height=225, x_range=plot.x_range, tools="save,hover,box_zoom,pan", title="XAS Projection")
+    xas = Figure(plot_width=600, plot_height=225, x_range=plot.x_range, tools="save,hover,box_zoom,wheel_zoom,pan",
+                 title="XAS Projection")
     xas.line('en', 'proj_y', source=xas_source, line_color='purple', alpha=0.6, legend_label="EEMs")
     xas.line('en', 'tey', source=aux_source, line_color='black', alpha=0.6, legend_label="TEY")
     xas.line('en', 'pd', source=aux_source, line_color="navy", alpha=0.6, legend_label="Diode")
@@ -105,6 +120,18 @@ def plot(**kwargs):
             var sum = 0.0;
             if ('geometry' in cb_obj){
                 var inds = cb_obj['geometry'];
+                if (inds['x1'] > xarr[xarr.length - 1]){
+                    inds['x1'] = xarr[xarr.length - 1];
+                }
+                if (inds['y1'] > yarr[yarr.length - 1]){
+                    inds['y1'] = yarr[yarr.length - 1];
+                }  
+                if (inds['x0'] < xarr[0]){
+                    inds['x0'] = xarr[0];
+                }
+                if (inds['y0'] < yarr[0]){
+                    inds['y0'] = yarr[0];
+                }    
                 rect['x'] = [inds['x0']/2 + inds['x1']/2];
                 rect['y'] = [inds['y0']/2 + inds['y1']/2];
                 rect['width'] = [inds['x1'] - inds['x0']];
@@ -112,7 +139,15 @@ def plot(**kwargs):
             }
             else if(rect['x'] && rect['x'].length){
                 var inds = {x0: rect['x'][0] - rect['width'][0]/2, x1: rect['x'][0] + rect['width'][0]/2, y0:rect['y'][0] - rect['height'][0]/2, y1:rect['y'][0] + rect['height'][0]/2};
-            }else{
+
+            }
+            else if('active' in cb_obj && typeof inds !== 'undefined'){
+                inds['y0'] = yarr[0];
+                inds['x0'] = xarr[0];
+                inds['y1'] = yarr[yarr.length - 1];
+                inds['x1'] = xarr[xarr.length - 1];
+            }
+            else{
                 d2['proj_x'] = d2['proj_x_tot'];
                 d2['emission'] = d2['emission_tot'];
                 d3['en'] = d3['en_tot'];
@@ -193,19 +228,26 @@ def plot(**kwargs):
             var sdd3 = source.data['sdd3'][0];
             var sdd4 = source.data['sdd4'][0];
             var d = source.data['image'];
-            var f = cb_obj.value;
-            if (f == "sdd1") {
-                d[0] = sdd1;
+            var sum = new Array();
+            function sumArrays(...arrays) {
+              const n = arrays.reduce((max, xs) => Math.max(max, xs.length), 0);
+              const result = Float64Array.from({ length: n });
+              return result.map((_, i) => arrays.map(xs => xs[i] || 0).reduce((sum, x) => sum + x, 0));
             }
-            if (f == "sdd2") {
-                d[0] = sdd2;
+            var f = cb_obj.active;
+            if (f.indexOf(0) > -1) {
+                sum.push(sdd1);
             }
-            if (f == "sdd3") {
-                d[0] = sdd3;
+            if (f.indexOf(1) > -1) {
+                sum.push(sdd2);
             }
-            if (f == "sdd4") {
-                d[0] = sdd4;
+            if (f.indexOf(2) > -1) {
+                sum.push(sdd3);
             }
+            if (f.indexOf(3) > -1) {
+                sum.push(sdd4);
+            }
+            d[0] = sumArrays(...sum);
             source.change.emit();
     """)
     callback_color_palette = callback_color_range = CustomJS(args=dict(im=im, cl=color_bar), code="""
@@ -241,11 +283,10 @@ def plot(**kwargs):
     select_palette = Select(title="Colormap Select:", options=['Viridis', 'Spectral', 'Inferno'], value='Spectral',
                             callback=callback_color_palette)
 
-    select = Select(title="Detector Select:", options=['sdd1', 'sdd2', 'sdd3', 'sdd4'], value='sdd1')
-    select.js_on_change('value', callback, select_callback)
+    select = CheckboxButtonGroup(name="Detector Select:", labels=['sdd1', 'sdd2', 'sdd3', 'sdd4'], active=[0])
+    select.js_on_change('active', callback, select_callback)
 
     button = Button(label="Download XAS Spectrum", button_type="success")
-
 
     download = CustomJS(args=dict(s2=xas_source, aux=aux_source), code="""
         var sdd = s2.data;
