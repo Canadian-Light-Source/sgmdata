@@ -7,7 +7,7 @@ def readme():
 
 setup(
     name="sgm-data",
-    version="0.2.3-beta",
+    version="0.3.1-beta",
     description="Module for loading, interpolating and plotting data taken at the SGM Beamline at the Canadian Light Source.",
     long_description=readme(),
     long_description_content_type="text/markdown",
@@ -23,13 +23,14 @@ setup(
     packages=find_packages(),
     include_package_data=True,
     install_requires=[
-        "dask>=2.11.0",
+        "dask[complete]>=2.11.0",
         "pandas>=0.25.3"
         "h5py>=2.10.0",
         "h5pyd>=0.7.1",
         "bokeh>=1.4.0",
         "numpy>=1.18.1",
         "scipy>=1.4.1",
+        "tqdm"
     ]
 
 

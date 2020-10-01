@@ -472,6 +472,12 @@ class SGMData(object):
         self.interp_params = {}
         with ThreadPool(self.threads) as pool:
                 L = list(tqdm(pool.imap_unordered(self._load_data, files), total=len(files)))
+        err = [l['ERROR'] for l in L if 'ERROR' in l.keys()]
+        L = [l for l in L if 'ERROR' not in l.keys()]
+        if len(err):
+            warnings.warn(f"Some scan files were not loaded: {err}")
+            for e in err:
+                del self.scans[e]
         self.scans.update({k:SGMScan(**v) for d in L for k,v in d.items()})
         self.entries = self.scans.items
 
@@ -499,15 +505,19 @@ class SGMData(object):
         """
         entries = {}
         # Try to open the file locally or from a url provided.
+        file_root = file.split("\\")[-1].split("/")[-1].split(".")[0]
         try:
             h5 = h5pyd.File(file, 'r')
         except Exception as e:
             if os.path.exists(file):
-                h5 = h5py.File(file, 'r')
+                try:
+                    h5 = h5py.File(file, 'r')
+                except Exception as f:
+                    warnings.warn(f"Could not open file, h5py raised: {f}")
+                    return {"ERROR": file_root}
             else:
-                raise Exception(e)
-                return
-        file_root = file.split("\\")[-1].split("/")[-1].split(".")[0]
+                warnings.warn(f"File does not exist: {file}")
+                return {"ERROR": file_root}
         # Find the number of scans within the file
         NXentries = [str(x) for x in h5['/'].keys() if 'NXentry' in str(h5[x].attrs.get('NX_class'))]
         # Get the commands used to declare the above scans
@@ -527,8 +537,9 @@ class SGMData(object):
                         str(h5[entry + '/command'][()]).split() if isinstance(h5[entry + '/command'][()], str) else str(
                             h5[entry + '/command'][()], 'utf-8').split()[:-1] for entry in NXentries]
             except:
-                raise KeyError(
+                warnings.warn(
                     "Scan entry didn't have a 'command' string saved. Command load can be skipped by providing a list of independent axis names")
+                return {"ERROR": file_root}
             for i, command in enumerate(commands):
                 if 'mesh' in command[0]:
                     independent.append((command[1], command[5]))
@@ -538,22 +549,31 @@ class SGMData(object):
             for i, entry in enumerate(NXentries):
                 independent.append(tuple(self.axes))
         if not independent:
-            return {}
+            return {"ERROR": file_root}
         indep = [self._find_data(h5[entry], independent[i]) for i, entry in enumerate(NXentries)]
         # search for data that is not an array mentioned in the command
         data = [self._find_data(h5[entry], independent[i], other=True) for i, entry in enumerate(NXentries)]
         # filter for data that is the same length as the independent axis
-        signals = [{k: da.from_array(v, chunks=tuple(
-            [np.int(np.divide(dim, self.npartitions)) for dim in v.shape])).astype('f4') for k, v in d.items() if
+        try:
+            signals = [{k: da.from_array(v, chunks=tuple(
+                [np.int(np.divide(dim, self.npartitions)) for dim in v.shape])).astype('f4') for k, v in d.items() if
                     np.abs(v.shape[0] - list(indep[i].values())[0].shape[0]) < 2} for i, d in enumerate(data)]
+        except IndexError:
+            return {"ERROR": file_root}
         # group all remaining arrays
-        other_axis = [
-            {k: da.from_array(v, chunks=tuple([np.int(np.divide(dim, 2)) for dim in v.shape])) for k, v in d.items() if
-             np.abs(v.shape[0] - list(indep[i].values())[0].shape[0]) > 2} for i, d in enumerate(data)]
+        try:
+            other_axis = [
+                {k: da.from_array(v, chunks=tuple([np.int(np.divide(dim, 2)) for dim in v.shape])) for k, v in d.items() if
+                     np.abs(v.shape[0] - list(indep[i].values())[0].shape[0]) > 2} for i, d in enumerate(data)]
+        except:
+            return {"ERROR": file_root}
         # Reload independent axis data as dataarray
-        indep = [{k: da.from_array(v,
+        try:
+            indep = [{k: da.from_array(v,
                                    chunks=tuple([np.int(np.divide(dim, self.npartitions)) for dim in v.shape])).astype(
-            'f4') for k, v in d.items()} for d in indep]
+                                    'f4') for k, v in d.items()} for d in indep]
+        except:
+            return {"ERROR": file_root}
 
         # Get sample name if it exists and add data to scan dictionary
         for i, entry in enumerate(NXentries):
@@ -578,6 +598,7 @@ class SGMData(object):
             else:
                 entries.update({entry: scan})
         return {file_root: entries}
+
 
     def interpolate(self, **kwargs):
         _interpolate = partial(self._interpolate, **kwargs)
