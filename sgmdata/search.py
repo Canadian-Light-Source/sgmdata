@@ -291,21 +291,27 @@ class SGMQuery(object):
         h5.close()
 
 
-def badscans(interp, cont=55, dump=30, sat=55):
+def badscans(interp, **kwargs):
+    cont = kwargs.get('cont', 55)
+    dump = kwargs.get('dump', 30)
+    sat = kwargs.get('sat', 60)
+    sdd_max = kwargs.get('sdd_max', 50000)
     bad_scans = []
-    health = [scan_health(i) for i in interp]
+    health = [scan_health(i, sdd_max=sdd_max) for i in interp]
     pbar = tqdm(health)
-    for i, t in enumerate(pbar):
+    for i,t in enumerate(pbar):
         pbar.set_description("Finding bad scans...")
-        if t[0] > cont or t[1] > dump or t[2] > sat:
+        if t[0] >= cont or t[1] >= dump or t[2] >= sat:
+            print(i, t)
             bad_scans.append(i)
     return bad_scans
-
 
 def preprocess(sample, **kwargs):
     user = kwargs.get('user', False)
     cl = kwargs.get('client', False)
-    bs_args = kwargs.get('bscan_thresh', dict(cont=55, dump=30, sat=55))
+    bs_args = kwargs.get('bscan_thresh', dict(cont=55, dump=30, sat=60))
+    sdd_max = kwargs.get('sdd_max', 105000)
+    clear = kwargs.get('clear', True)
     if isinstance(bs_args, tuple):
         bs_args = dict(cont=bs_args[0], dump=bs_args[1], sat=bs_args[2])
     resolution = kwargs.get('resolution', 0.1)
@@ -324,13 +330,22 @@ def preprocess(sample, **kwargs):
         bscans = badscans(interp, **bs_args)
         if len(bscans) != len(sgm_data.scans):
             print("Removed %d bad scan(s) from average. Averaging..." % len(bscans), end=" ")
-            sgm_data.mean(bad_scans=bscans)
-            _, http = sgmq.write_avg(sgm_data.averaged, bad_scans=bscans)
+            if any(bscans):
+                sgm_data.mean(bad_scans=bscans)
+                _, http = sgmq.write_avg(sgm_data.averaged, bad_scans=bscans)
+            else:
+                sgm_data.mean()
+                _, http = sgmq.write_avg(sgm_data.averaged)
+
             html = "\n".join([
                                  '<button onclick="window.open(\'%s\',\'processed\',\'width=1000,height=700\'); return false;">Open %s</button>' % (
                                  l, sgmq.sample) for i, l in enumerate(http)])
-            clear_output()
+            if clear:
+                clear_output()
+            print(f"Averaged {len(sgm_data.scans) - len(bscans)} scans for {sample}")
+            del sgm_data
             return HTML(html)
         else:
-            warnings.warn("There were no scans that passed the health check. Aborting..")
-            clear_output()
+            if clear:
+                clear_output()
+            warnings.warn(f"There were no scans that passed the health check for {sample}.")

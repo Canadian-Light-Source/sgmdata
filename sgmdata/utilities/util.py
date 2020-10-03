@@ -316,7 +316,7 @@ def test_beam_dump(detector, indep):
 
 
 
-def scan_health(df, verbose=False):    
+def scan_health(df, verbose=False, sdd_max=105000):
     #---------- Edit these variables to test the code ----------
     # Full path of the input data
     #file_path = "/Users/habib/Desktop/SoftwareDevs/Repositories/SGMScansBining/beam-dump-test-data/MK_section1_C_scan4-015d.hdf5"
@@ -348,7 +348,7 @@ def scan_health(df, verbose=False):
     
     dump = np.amax([test_beam_dump((k,v), EN)[1] for k,v in det.items()])
     abrupt = np.amax([test_abrupt_change((k,v))[1] for k,v in det.items()])
-    rate = np.amax([test_detector_count_rates((k,v), sdds_range=(0, 50000))[1] for k,v in det.items() if k != 'i0' and k != 'pd'])
+    rate = np.mean([test_detector_count_rates((k,v), sdds_range=(0, sdd_max))[1] for k,v in det.items() if k != 'i0' and k != 'pd'])
 
     if verbose:
         print("----------- BEAM DUMP RESULTS ----------")
