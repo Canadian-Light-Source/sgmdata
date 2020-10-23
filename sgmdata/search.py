@@ -30,7 +30,7 @@ class SGMQuery(object):
             self.user = kwargs.get('user', os.environ['JUPYTERHUB_USER'])
         else:
             self.user = os.environ['JUPYTERHUB_USER']
-        self.connection = psycopg2.connect(database=config.get('postgres'), user=config.get('db_env_postgres_user'), password=config.get('two20twoK0da'),
+        self.connection = psycopg2.connect(database=config.get('postgres'), user=config.get('db_env_postgres_user'), password=config.get('db_env_secret'),
                                            host=config.get('db_port_5432_tcp_addr'), port=config.get('db_port_5432_tcp_port'))
         self.cursor = self.connection.cursor()
         self.project_id = None
@@ -301,7 +301,7 @@ def badscans(interp, **kwargs):
     pbar = tqdm(health)
     for i,t in enumerate(pbar):
         pbar.set_description("Finding bad scans...")
-        if t[0] >= cont or t[1] >= dump or t[2] >= sat:
+        if t[0] > cont or t[1] > dump or t[2] > sat:
             print(i, t)
             bad_scans.append(i)
     return bad_scans
