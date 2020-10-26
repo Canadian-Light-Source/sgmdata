@@ -5,7 +5,7 @@ import numpy as np
 
 
 #Utility for visualizing HDF5 layout.
-def h5Tree(name, node):
+def printTree(name, node):
     BOLD = '\033[1m'
     UNDERLINE = '\033[4m'
     END = '\033[0m'
