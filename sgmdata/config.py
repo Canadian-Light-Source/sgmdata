@@ -8,7 +8,7 @@ cfg = {
     'db_port_5432_tcp_port': '5080',
     'db_env_db': 'postgres',
     'db_env_postgres_user': 'sgmpostgres',
-    'h5endpoing': "https://vsrv-sgm-hdf5-01.clsi.ca:6050",
+    'h5endpoint': "https://vsrv-sgm-hdf5-01.clsi.ca:6050",
     'h5user': 'admin',
     'debug': logging.INFO,
 }
