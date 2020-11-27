@@ -321,5 +321,6 @@ def plot(**kwargs):
 
     options = column(select, button, slider, select_palette)
     layout = gridplot([[xas, options], [plot, xrf]])
-
+    if kwargs.get('json', False):
+        return json_item(layout)
     show(layout)
