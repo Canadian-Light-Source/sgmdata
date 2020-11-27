@@ -25,8 +25,6 @@ def plot(**kwargs):
         kwargs['emission'] = np.linspace(0, 2560, 256)
     if 'io' in kwargs.keys() and np.any(kwargs['io']):
         kwargs['i0'] = kwargs['io']
-    if 'pd' in kwargs.keys() and np.any(kwargs['pd']):
-        kwargs['i0'] = kwargs['io']
     if "filename" not in kwargs.keys():
         filename = "xas"
     else:
