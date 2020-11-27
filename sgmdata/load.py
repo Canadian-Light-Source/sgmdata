@@ -311,7 +311,7 @@ class SGMScan(object):
                         if 'image' in keys:
                             data.update({'image': data['sdd1'], 'filename': str(self.sample)})
                         data.update({'json': json_out})
-                        eemscan.plot(**data)
+                        return eemscan.plot(**data)
                 else:
                     print("Plotting Raw Data")
                     ds = int(self.independent['en'].shape[0] / 1000) + 1
@@ -322,7 +322,7 @@ class SGMScan(object):
                     if 'image' in keys:
                         data.update({'image': self.signals['sdd1'][::ds].compute(), 'filename': str(self.sample)})
                     data.update({'json':json_out})
-                    eemscan.plot(**data)
+                    return eemscan.plot(**data)
             elif dim == 2:
                 keys = xrfmap.required
                 if 'fit' in self.keys():
@@ -458,7 +458,7 @@ class SGMData(object):
                     data = {k: df.filter(regex=("%s.*" % k), axis=1).to_numpy() for k in keys}
                     data.update({df.index.name: np.array(df.index), 'emission': np.linspace(0,2560,256)})
                     data.update({'image':data['sdd1'], 'json':json_out})
-                    eemscan.plot(**data)
+                    return eemscan.plot(**data)
                 elif 'mesh' in self.command[0]:
                     pass
 
