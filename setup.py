@@ -4,10 +4,10 @@ def readme():
     with open('README.md') as f:
         README = f.read()
     return README
-
+exec(open('sgmdata/version.py').read())
 setup(
     name="sgm-data",
-    version="0.3.1-beta",
+    version=__version__,
     description="Module for loading, interpolating and plotting data taken at the SGM Beamline at the Canadian Light Source.",
     long_description=readme(),
     long_description_content_type="text/markdown",
