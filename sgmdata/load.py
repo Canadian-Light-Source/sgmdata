@@ -97,22 +97,22 @@ class SGMScan(object):
                 if hasattr(self, 'command'):
                     command = self.command
                     if 'scan' in command[0]:
-                        start = [int(command[2])]
+                        start = [round(float(command[2]))]
                     elif 'mesh' in command[0]:
-                        start = [int(command[2]), int(command[6])]
+                        start = [round(float(command[2])), round(float(command[6]))]
                 else:
-                    start = [int(v.min()) for k, v in axis.items()]
+                    start = [round(v.min()) for k, v in axis.items()]
             else:
                 start = kwargs['start']
             if 'stop' not in kwargs.keys():
                 if hasattr(self, 'command'):
                     command = self.command
                     if 'scan' in command[0]:
-                        stop = [int(command[3])]
+                        stop = [round(float(command[3]))]
                     elif 'mesh' in command[0]:
-                        stop = [int(command[3]), int(command[7])]
+                        stop = [round(float(command[3])), round(float(command[7]))]
                 else:
-                    stop = [int(v.max()) + 1 for k, v in axis.items()]
+                    stop = [round(v.max()) + 1 for k, v in axis.items()]
             else:
                 stop = kwargs['stop']
             if not isinstance(start, list):
