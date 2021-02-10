@@ -237,5 +237,6 @@ def plot(**kwargs):
         options = column(det_select, intensity_slider, palette_select, xrf)
 
     layout = gridplot([[plot, options]])
-
+    if kwargs.get('json', False):
+        return json_item(layout)
     show(layout)

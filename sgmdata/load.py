@@ -292,7 +292,7 @@ class SGMScan(object):
             else:
                 raise AttributeError("no interpolated data found to write")
 
-        def plot(self):
+        def plot(self, json_out = False):
             """
             Determines the appropriate plot based on independent axis number and name
             """
@@ -310,7 +310,8 @@ class SGMScan(object):
                         data.update({df.index.name: np.array(df.index), 'emission': np.linspace(0, 2560, 256)})
                         if 'image' in keys:
                             data.update({'image': data['sdd1'], 'filename': str(self.sample)})
-                        eemscan.plot(**data)
+                        data.update({'json': json_out})
+                        return eemscan.plot(**data)
                 else:
                     print("Plotting Raw Data")
                     ds = int(self.independent['en'].shape[0] / 1000) + 1
@@ -320,7 +321,8 @@ class SGMScan(object):
                     data.update({k: self.other[s].compute() for s in self.other.keys() for k in keys if s in k })
                     if 'image' in keys:
                         data.update({'image': self.signals['sdd1'][::ds].compute(), 'filename': str(self.sample)})
-                    eemscan.plot(**data)
+                    data.update({'json':json_out})
+                    return eemscan.plot(**data)
             elif dim == 2:
                 keys = xrfmap.required
                 if 'fit' in self.keys():
@@ -334,6 +336,7 @@ class SGMScan(object):
                     data.update({'emission': emission, 'peaks':peaks, 'width': width})
                     if 'image' in keys:
                         data.update({"image": data['sdd1']})
+                    data.update({'json': json_out})
                     xrfmap.plot(**data)
 
     def __init__(self, **kwargs):
@@ -443,7 +446,7 @@ class SGMData(object):
                 nxdata.create_dataset(sig, arr.shape, data=arr, dtype=arr.dtype)
             h5.close()
 
-        def plot(self):
+        def plot(self, json_out=False):
             if 'type' in self.__dict__.keys():
                 pass
             else:
@@ -454,8 +457,8 @@ class SGMData(object):
                     df.drop(columns = roi_cols, inplace=True)
                     data = {k: df.filter(regex=("%s.*" % k), axis=1).to_numpy() for k in keys}
                     data.update({df.index.name: np.array(df.index), 'emission': np.linspace(0,2560,256)})
-                    data.update({'image':data['sdd1']})
-                    eemscan.plot(**data)
+                    data.update({'image':data['sdd1'], 'json':json_out})
+                    return eemscan.plot(**data)
                 elif 'mesh' in self.command[0]:
                     pass
 
