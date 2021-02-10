@@ -2,8 +2,8 @@ import numpy as np
 from scipy.signal import find_peaks
 from scipy.optimize import curve_fit
 from functools import partial
-from multiprocessing.pool import Pool, ThreadPool
 import pandas as pd
+from multiprocessing.pool import Pool, ThreadPool
 
 try:
     shell = get_ipython().__class__.__name__
@@ -77,8 +77,12 @@ def fit_peaks(emission, sdd, bounds=[]):
     if not isinstance(sdd, list):
         sdd = [sdd]
     names = [list(s)[0].split('-')[0] for s in sdd]
-    y = sdd[0].sum(axis=0).to_numpy()
-    y = y / len(sdd[0])
+    if len(names) >=3:
+        y = sdd[2].sum(axis=0).to_numpy()
+        y = y / len(sdd[2])
+    else:
+        y = sdd[0].sum(axis=0).to_numpy()
+        y = y / len(sdd[0])
     if len(bounds) == 2:
         idx = np.where(emission < bounds[1], emission, 0)
         idx = np.where(idx > bounds[0])
@@ -99,6 +103,6 @@ def fit_peaks(emission, sdd, bounds=[]):
             L = list(tqdm(pool.imap_unordered(fit_amp, xrfs), total=len(xrfs)))
         temp = np.stack([item[0] for item in L], axis =0)
         data.update({names[k] + "-" + f"{pks[j]}" : temp[:,j] for j in range(0, temp.shape[1])})
-    return pd.DataFrame(data, index=sdd[0].index)
+    return pd.DataFrame(data, index=sdd[0].index), pks, wid
 
 
