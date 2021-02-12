@@ -61,7 +61,7 @@ class SGMQuery(object):
         self.scan_ids = {}
         self.processed_ids = []
         self.domains = []
-        self.avg_id = -1
+        self.avg_id = []
         self.get_paths()
 
     def get_paths(self):
@@ -112,20 +112,20 @@ class SGMQuery(object):
 
             # Get most common average scan id.
             f = Counter(avg_ids)
-            self.avg_id = f.most_common()[0][0]
+            self.avg_id = [f.most_common()[0][0]]
             if not self.avg_id:
                 print(f"No average scan found for, {self.sample}, in account {self.user}.")
                 return []
 
             SQL = "SELECT domain from lims_xasscanaverage WHERE project_id = %d AND id = %d;" % \
                   (
-                      self.project_id, self.avg_id
+                      self.project_id, self.avg_id[0]
                   )
 
             self.cursor.execute(SQL)
             self.avg_domain = self.cursor.fetchone()
             if self.avg_domain:
-                self.avg_domain = self.avg_domain[0]
+                self.avg_domain = [self.avg_domain[0]]
             else:
                 print(f"Average scan for {self.sample}, is in a different account.")
                 return []
@@ -320,6 +320,8 @@ class SGMQuery(object):
                     sqldata = {'domain': domain, 'indep': indep, 'name': self.sample}
                     avg = self.addAverageScantoDatabase(sqldata, processed=processed)
                     sgmlive_list.append("https://sgmdata.lightsource.ca/users/xasexperiment/useravg/%d" % avg)
+                    self.avg_id.append(avg)
+            self.avg_domain = domain_list
         return domain_list, sgmlive_list
 
     def write(self, data, domain, **kwargs):
@@ -385,8 +387,9 @@ def preprocess(sample, **kwargs):
     bs_args = kwargs.get('bscan_thresh', dict(cont=55, dump=30, sat=60))
     sdd_max = kwargs.get('sdd_max', 105000)
     clear = kwargs.get('clear', True)
+    query_return = kwargs.get('query', False)
     if isinstance(bs_args, tuple):
-        bs_args = dict(cont=bs_args[0], dump=bs_args[1], sat=bs_args[2])
+        bs_args = dict(cont=bs_args[0], dump=bs_args[1], sat=bs_args[2], sdd_max=sdd_max)
     resolution = kwargs.get('resolution', 0.1)
     if user:
         sgmq = SGMQuery(sample=sample, user=user)
@@ -417,6 +420,8 @@ def preprocess(sample, **kwargs):
                 clear_output()
             print(f"Averaged {len(sgm_data.scans) - len(bscans)} scans for {sample}")
             del sgm_data
+            if query_return:
+                return sgmq
             return HTML(html)
         else:
             if clear:
