@@ -34,6 +34,22 @@ class SGMQuery(object):
 
         if 'processed' not in kwargs.keys():
             self.processed = False
+        if 'daterange' not in kwargs.keys():
+            self.daterange = ()
+        elif isinstance(tuple, self.daterange) and len(self.daterange) == 2:
+            if not isinstance(datetime, self.daterange[0]) and not isinstance(datetime, self.daterange[1]):
+                try:
+                    firstdate = datetime.datetime.strptime(self.daterange[0], '%Y-%m-%d')
+                    enddate = datetime.datetime.strptime(self.daterange[1], '%Y-%m-%d')
+                except ValueError:
+                    raise ValueError("Incorrect data format, should be (YYYY-MM-DD. YYYY-MM-DD), or YYYY-MM-DD")
+                self.daterange = (firstdate, enddate)
+        elif isinstance(str, self.daterange):
+            try:
+                firstdate = datetime.datetime.strptime(self.daterange, '%Y-%m-%d')
+            except ValueError:
+                raise ValueError("Incorrect data format, should be (YYYY-MM-DD. YYYY-MM-DD), or YYYY-MM-DD")
+            self.daterange = (firstdate, datetime.datetime.utcnow())
         self.connection = psycopg2.connect(database=config.get('db_env_db'), user=config.get('db_env_postgres_user'), password=config.get('db_env_secret'),
                                            host=config.get('db_port_5432_tcp_addr'), port=config.get('db_port_5432_tcp_port'))
         self.cursor = self.connection.cursor()
@@ -63,10 +79,17 @@ class SGMQuery(object):
         else:
             print(f"No sample, {self.sample}, in account {self.user}.")
             return []
-        SQL = "SELECT id, domain, \"group\" from lims_xasscan WHERE project_id = %d AND sample_id = %d;" % \
-              (
-                  self.project_id, self.sample_id
-              )
+        if self.daterange:
+            SQL = "SELECT id, domain, \"group\" from lims_xasscan WHERE project_id = %d AND sample_id = %d " \
+                  "AND (created BETWEEN '%s' AND '%s');" % \
+                  (
+                      self.project_id, self.sample_id, self.daterange[0], self.daterange[1]
+                  )
+        else:
+            SQL = "SELECT id, domain, \"group\" from lims_xasscan WHERE project_id = %d AND sample_id = %d;" % \
+                  (
+                      self.project_id, self.sample_id
+                  )
         self.cursor.execute(SQL)
         domains = self.cursor.fetchmany(500)
         if self.processed:
