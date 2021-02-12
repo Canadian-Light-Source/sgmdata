@@ -100,16 +100,23 @@ class SGMQuery(object):
 
             self.cursor.execute(SQL)
             average_ids = self.cursor.fetchmany(500)
+            if not average_ids:
+                print(f"No processed scans found for, {self.sample}, in account {self.user}.")
+                return []
             avg_ids = [i[0] for i in average_ids]
+            if not average_ids:
+                print(f"No average scan found for, {self.sample}, in account {self.user}.")
+                return []
             procdomains = [i[1] for i in average_ids]
             self.processed_ids = [i[2] for i in average_ids]
 
             # Get most common average scan id.
             f = Counter(avg_ids)
             self.avg_id = f.most_common()[0][0]
+
             SQL = "SELECT domain from lims_xasscanaverage WHERE project_id = %d AND id = %d;" % \
                   (
-                      self.project_id, self.avg_id[0]
+                      self.project_id, self.avg_id
                   )
 
             self.cursor.execute(SQL)
