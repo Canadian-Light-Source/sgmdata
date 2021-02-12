@@ -123,7 +123,12 @@ class SGMQuery(object):
                   )
 
             self.cursor.execute(SQL)
-            self.avg_domain = self.cursor.fetchone()[0]
+            self.avg_domain = self.cursor.fetchone()
+            if self.avg_domain:
+                self.avg_domain = self.avg_domain[0]
+            else:
+                print(f"Average scan for {self.sample}, is in a different account.")
+                return []
 
             if self.admin:
                 self.paths = ["/home/jovyan/data/" + d.split('.')[1] + "/" + d.split('.')[0] + '.nxs' for d in
