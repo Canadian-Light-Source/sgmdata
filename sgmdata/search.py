@@ -81,7 +81,7 @@ class SGMQuery(object):
             return []
         if self.daterange:
             SQL = "SELECT id, domain, \"group\" from lims_xasscan WHERE project_id = %d AND sample_id = %d " \
-                  "AND (created BETWEEN '%s' AND '%s');" % \
+                  "AND (start_time BETWEEN '%s' AND '%s');" % \
                   (
                       self.project_id, self.sample_id, self.daterange[0], self.daterange[1]
                   )
