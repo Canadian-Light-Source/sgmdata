@@ -44,8 +44,6 @@ class SGMQuery(object):
                 except ValueError:
                     raise ValueError("Incorrect data format, should be (YYYY-MM-DD. YYYY-MM-DD), or YYYY-MM-DD")
                 self.daterange = (firstdate, enddate)
-            else:
-                raise ValueError("Incorrect data format, should be (YYYY-MM-DD. YYYY-MM-DD), or YYYY-MM-DD")
         elif isinstance(self.daterange, str):
             try:
                 firstdate = datetime.datetime.strptime(self.daterange, '%Y-%m-%d')
