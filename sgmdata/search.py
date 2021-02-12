@@ -111,7 +111,7 @@ class SGMQuery(object):
             # Get most common average scan id.
             f = Counter(avg_ids)
             self.avg_id = [f.most_common()[0][0]]
-            if not self.avg_id:
+            if not self.avg_id[0]:
                 print(f"No average scan found for, {self.sample}, in account {self.user}.")
                 return []
 
