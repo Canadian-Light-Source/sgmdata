@@ -37,7 +37,7 @@ class SGMQuery(object):
         if 'daterange' not in kwargs.keys():
             self.daterange = ()
         elif isinstance(self.daterange,tuple) and len(self.daterange) == 2:
-            if not isinstance(self.daterange[0], datetime) and not isinstance(self.daterange[1], datetime):
+            if not isinstance(self.daterange[0], datetime.date) and not isinstance(self.daterange[1], datetime.date):
                 try:
                     firstdate = datetime.datetime.strptime(self.daterange[0], '%Y-%m-%d')
                     enddate = datetime.datetime.strptime(self.daterange[1], '%Y-%m-%d')
