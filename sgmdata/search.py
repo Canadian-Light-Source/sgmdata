@@ -37,13 +37,15 @@ class SGMQuery(object):
         if 'daterange' not in kwargs.keys():
             self.daterange = ()
         elif isinstance(self.daterange,tuple) and len(self.daterange) == 2:
-            if not isinstance(self.daterange[0], datetime.date) and not isinstance(self.daterange[1], datetime.date):
+            if not isinstance(self.daterange[0], datetime.date) or not isinstance(self.daterange[1], datetime.date):
                 try:
                     firstdate = datetime.datetime.strptime(self.daterange[0], '%Y-%m-%d')
                     enddate = datetime.datetime.strptime(self.daterange[1], '%Y-%m-%d')
                 except ValueError:
                     raise ValueError("Incorrect data format, should be (YYYY-MM-DD. YYYY-MM-DD), or YYYY-MM-DD")
                 self.daterange = (firstdate, enddate)
+            else:
+                raise ValueError("Incorrect data format, should be (YYYY-MM-DD. YYYY-MM-DD), or YYYY-MM-DD")
         elif isinstance(self.daterange, str):
             try:
                 firstdate = datetime.datetime.strptime(self.daterange, '%Y-%m-%d')
