@@ -8,6 +8,7 @@ import sgmdata
 import h5pyd
 import math
 import numpy as np
+from collections import Counter
 import matplotlib.pyplot as plt
 from dask.distributed import Client
 from .utilities import h5tree, scan_health
@@ -30,6 +31,9 @@ class SGMQuery(object):
             self.user = kwargs.get('user', os.environ['JUPYTERHUB_USER'])
         else:
             self.user = os.environ['JUPYTERHUB_USER']
+
+        if 'processed' not in kwargs.keys():
+            self.processed = False
         self.connection = psycopg2.connect(database=config.get('db_env_db'), user=config.get('db_env_postgres_user'), password=config.get('db_env_secret'),
                                            host=config.get('db_port_5432_tcp_addr'), port=config.get('db_port_5432_tcp_port'))
         self.cursor = self.connection.cursor()
@@ -39,6 +43,7 @@ class SGMQuery(object):
         self.scan_ids = {}
         self.processed_ids = []
         self.domains = []
+        self.avg_id = -1
         self.get_paths()
 
     def get_paths(self):
@@ -64,10 +69,40 @@ class SGMQuery(object):
               )
         self.cursor.execute(SQL)
         domains = self.cursor.fetchmany(500)
-        if self.admin:
-            self.paths = ["/home/jovyan/data/" + d[1].split('.')[1] + "/" + d[1].split('.')[0] + '.nxs' for d in domains]
+        if self.processed:
+            SQL = "SELECT average_id, domain, id FROM lims_xasprocessedscan WHERE xasscan_id IN ("
+            for ID in domains:
+                SQL += "'%d', " % ID[0]
+            SQL = SQL[:-2] + ");"
+
+            self.cursor.execute(SQL)
+            average_ids = self.cursor.fetchmany(500)
+            avg_ids = [i[0] for i in average_ids]
+            procdomains = [i[1] for i in average_ids]
+            self.processed_ids = [i[2] for i in average_ids]
+
+            # Get most common average scan id.
+            f = Counter(avg_ids)
+            self.avg_id = f.most_common()[0][0]
+            SQL = "SELECT domain from lims_xasscanaverage WHERE project_id = %d AND id = %d;" % \
+                  (
+                      self.project_id, self.avg_id[0]
+                  )
+
+            self.cursor.execute(SQL)
+            self.avg_domain = self.cursor.fetchone()[0]
+
+            if self.admin:
+                self.paths = ["/home/jovyan/data/" + d.split('.')[1] + "/" + d.split('.')[0] + '.nxs' for d in
+                              procdomains]
+            else:
+                self.paths = ["/home/jovyan/data/" + d.split('.')[0] + '.nxs' for d in procdomains]
+
         else:
-            self.paths = ["/home/jovyan/data/" + d[1].split('.')[0] + '.nxs' for d in domains]
+            if self.admin:
+                self.paths = ["/home/jovyan/data/" + d[1].split('.')[1] + "/" + d[1].split('.')[0] + '.nxs' for d in domains]
+            else:
+                self.paths = ["/home/jovyan/data/" + d[1].split('.')[0] + '.nxs' for d in domains]
         file_dict = {d[1].split('.')[0]: {} for d in domains}
         for d in domains:
             for k in file_dict.keys():
