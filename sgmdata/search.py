@@ -1,7 +1,7 @@
 import psycopg2
 import os
 from . import config
-import slugify
+from slugify import slugify
 import psycopg2
 import h5py
 import sgmdata
@@ -308,7 +308,8 @@ class SGMQuery(object):
                 pbar1.set_description("Saving")
                 for i, r in enumerate(average[k]):
                     data = r['data']
-                    domain = ".".join([self.sample + f"-{i}", self.user, "vsrv-sgm-hdf5-01.clsi.ca"])
+                    sample = slugify(self.sample)
+                    domain = ".".join([sample + f"-{i}", self.user, "vsrv-sgm-hdf5-01.clsi.ca"])
                     try:
                         self.write(data, domain)
                         domain_list.append(domain)

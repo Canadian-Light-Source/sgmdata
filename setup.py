@@ -30,7 +30,8 @@ setup(
         "bokeh>=1.4.0",
         "numpy>=1.18.1",
         "scipy>=1.4.1",
-        "tqdm"
+        "tqdm",
+        "python-slugify"
     ]
 
 
