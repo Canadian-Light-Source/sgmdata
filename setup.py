@@ -26,7 +26,7 @@ setup(
         "dask[complete]>=2.11.0",
         "pandas>=0.25.3"
         "h5py>=2.10.0",
-        "h5pyd>=0.7.1",
+        "h5pyd",
         "bokeh==1.4.0",
         "numpy>=1.18.1",
         "scipy>=1.4.1",
