@@ -492,7 +492,7 @@ class SGMData(object):
                 if isinstance(node, h5pyd.Dataset) or isinstance(node, h5py.Dataset):
                     if "S" not in str(node.dtype).upper() and node.shape and node.shape[0] > 1:
                         d_name = name.split('/')[-1]
-                        l = [True for axis in indep if axis in d_name]
+                        l = [True for axis in indep if d_name.find(axis) == 0]
                         if any(l) and not other:
                             data.update({d_name: node})
                         elif other and not any(l):
