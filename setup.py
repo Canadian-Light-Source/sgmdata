@@ -27,11 +27,14 @@ setup(
         "pandas>=0.25.3"
         "h5py>=2.10.0",
         "h5pyd>=0.7.1",
-        "bokeh>=1.4.0",
+        "bokeh==1.4.0",
         "numpy>=1.18.1",
         "scipy>=1.4.1",
         "tqdm",
-        "python-slugify"
+        "python-slugify",
+        "beautifulsoup4",
+        "matplotlib",
+        "requests"
     ]
 
 

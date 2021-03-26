@@ -6,3 +6,6 @@ bokeh
 numpy
 scipy
 python-slugify
+beautifulsoup4
+matplotlib
+requests

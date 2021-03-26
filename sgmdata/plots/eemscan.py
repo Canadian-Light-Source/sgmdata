@@ -278,8 +278,8 @@ def plot(**kwargs):
                          value=(0, np.amax(kwargs['sdd1'])), step=20, )
     slider.js_on_change('value', callback_color_range)
 
-    select_palette = Select(title="Colormap Select:", options=['Viridis', 'Spectral', 'Inferno'], value='Spectral',
-                            callback=callback_color_palette)
+    select_palette = Select(title="Colormap Select:", options=['Viridis', 'Spectral', 'Inferno'], value='Spectral')
+    select_palette.js_on_change('value', callback_color_palette)
 
     select = CheckboxButtonGroup(name="Detector Select:", labels=['sdd1', 'sdd2', 'sdd3', 'sdd4'], active=[0])
     select.js_on_change('active', callback, select_callback)
