@@ -35,7 +35,7 @@ setup(
         "beautifulsoup4",
         "matplotlib",
         "requests",
-        "psycopg2"
+        "psycopg2-binary"
     ]
 
 
