@@ -1,6 +1,6 @@
 import os
 import h5py
-import config
+from . import config
 import h5pyd
 from dask import compute, delayed
 import dask.array as da
