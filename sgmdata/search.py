@@ -32,7 +32,8 @@ class SGMQuery(object):
             self.user = kwargs.get('user', os.environ['JUPYTERHUB_USER'])
         else:
             self.user = os.environ['JUPYTERHUB_USER']
-
+        if 'data' not in kwargs.keys():
+            self.data = True
         if 'processed' not in kwargs.keys():
             self.processed = False
         if 'daterange' not in kwargs.keys():
