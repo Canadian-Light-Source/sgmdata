@@ -719,7 +719,8 @@ to the relevant subsection of the report.}
                     sample=sample,
                     user=self.account,
                     processed=True,
-                    daterange=(init, datetime.datetime.utcnow())
+                    daterange=(init, datetime.datetime.utcnow()),
+                    data=False
                 )
                 sgmq.connection.close()
                 if not sgmq.paths and process:
@@ -744,7 +745,8 @@ to the relevant subsection of the report.}
                 sgmq2 = SGMQuery(
                     sample=sample,
                     user=self.account,
-                    daterange=(init, end)
+                    daterange=(init, end),
+                    data=False
                 )
                 sgmq2.connection.close()
                 eems.update({sample: sgmq2})
@@ -775,7 +777,7 @@ to the relevant subsection of the report.}
         self.holder_time_init = {}
         for k, v in holders.items():
             print("Creating report for %s" % k)
-            sgmq = SGMQuery(sample=k, user=self.account)
+            sgmq = SGMQuery(sample=k, user=self.account, data=False)
             paths = [sgmq.paths[0]]
             init = datetime.datetime.strptime(paths[0].split('/')[-1].split('.')[0], "%Y-%m-%dt%H-%M-%S%z")
             self.holder_time_init.update({k: init})
@@ -783,7 +785,7 @@ to the relevant subsection of the report.}
             sample_list = []
             for j, s in enumerate(v):
                 q = [(p, datetime.datetime.strptime(p.split('/')[-1].split('.')[0], "%Y-%m-%dt%H-%M-%S%z") - init)
-                     for p in SGMQuery(sample=s, user=self.account).paths]
+                     for p in SGMQuery(sample=s, user=self.account, data = False).paths]
                 q = sorted(q, key=lambda i: i[1])
                 q = [p for p in q if p[1].total_seconds() > 0]
                 if q:
@@ -792,7 +794,7 @@ to the relevant subsection of the report.}
                 for scanname in [edge for edge in self.holder_scans[k] if s in edge]:
                     q = [(p, datetime.datetime.strptime(p.split('/')[-1].split('.')[0], "%Y-%m-%dt%H-%M-%S%z") - init,
                           scanname)
-                         for p in SGMQuery(sample=scanname, user=self.account).paths]
+                         for p in SGMQuery(sample=scanname, user=self.account, data=False).paths]
                     q = sorted(q, key=lambda i: i[1])
                     q = [p for p in q if p[1].total_seconds() > 0]
                     if q:

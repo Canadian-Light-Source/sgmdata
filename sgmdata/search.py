@@ -24,7 +24,7 @@ class SGMQuery(object):
     def __init__(self, **kwargs):
         self.__dict__.update(kwargs)
         try:
-            self.admin = os.environ['JUPYTERHUB_ADMIN_ACCESS']
+            self.admin = os.environ['JHUB_ADMIN']
         except KeyError:
             raise Exception("SGMQuery can only be run inside sgm-hub.lightsource.ca at the moment.")
         self.admin = int(self.admin)
