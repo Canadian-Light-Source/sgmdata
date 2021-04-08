@@ -1,21 +1,22 @@
-import psycopg2
 import os
 from . import config
 from slugify import slugify
 import psycopg2
-import h5py
 import sgmdata
 import h5pyd
-import math
 import numpy as np
 from collections import Counter
-import matplotlib.pyplot as plt
 from dask.distributed import Client
 from .utilities import h5tree, scan_health
+from .load import SGMData
 import datetime
 import warnings
 from tqdm.notebook import tqdm
-from IPython.display import display, HTML, clear_output
+
+try:
+    from IPython.display import display, HTML, clear_output
+except ImportError:
+    pass
 
 # Get file path list from SGMLive database
 class SGMQuery(object):
@@ -61,6 +62,8 @@ class SGMQuery(object):
         self.domains = []
         self.avg_id = []
         self.get_paths()
+        if self.paths and self.data:
+            self.data = SGMData(self.paths)
 
     def get_paths(self):
         self.cursor.execute("SELECT id, name from lims_project WHERE name IN ('%s');" % self.user)
@@ -393,9 +396,9 @@ def preprocess(sample, **kwargs):
         bs_args = dict(cont=bs_args[0], dump=bs_args[1], sat=bs_args[2], sdd_max=sdd_max)
     resolution = kwargs.get('resolution', 0.1)
     if user:
-        sgmq = SGMQuery(sample=sample, user=user)
+        sgmq = SGMQuery(sample=sample, user=user, data=False)
     else:
-        sgmq = SGMQuery(sample=sample)
+        sgmq = SGMQuery(sample=sample, data=False)
     if not cl:
         cl = Client()
     if len(sgmq.paths):

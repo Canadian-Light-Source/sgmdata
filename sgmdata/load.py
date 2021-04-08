@@ -1,5 +1,6 @@
 import os
 import h5py
+import config
 import h5pyd
 from dask import compute, delayed
 import dask.array as da
@@ -509,17 +510,18 @@ class SGMData(object):
         entries = {}
         # Try to open the file locally or from a url provided.
         file_root = file.split("\\")[-1].split("/")[-1].split(".")[0]
-        try:
-            h5 = h5pyd.File(file, 'r')
-        except Exception as e:
-            if os.path.exists(file):
-                try:
-                    h5 = h5py.File(file, 'r')
-                except Exception as f:
-                    warnings.warn(f"Could not open file, h5py raised: {f}")
-                    return {"ERROR": file_root}
-            else:
-                warnings.warn(f"File does not exist: {file}")
+        if os.path.exists(file):
+            try:
+                h5 = h5py.File(file, 'r')
+            except Exception as f:
+                warnings.warn(f"Could not open file, h5py raised: {f}")
+                return {"ERROR": file_root}
+        else:
+            try:
+                h5 = h5pyd.File(file, "w", config.get("h5endpoint"), username=config.get("h5user"),
+                                password=config.get("h5pass"))
+            except Exception as f:
+                warnings.warn(f"Could not open file, h5pyd raised: {f}")
                 return {"ERROR": file_root}
         # Find the number of scans within the file
         NXentries = [str(x) for x in h5['/'].keys() if 'NXentry' in str(h5[x].attrs.get('NX_class'))]
@@ -586,14 +588,21 @@ class SGMData(object):
                 scan = {}
             if "sample" in h5[entry].keys():
                 if "name" in h5[entry + "/sample"].keys():
-                    if isinstance(h5[entry + "/sample/name"][()], str):
-                        scan.update({"sample": str(h5[entry + "/sample/name"][()])})
+                    sample_string = h5[entry + "/sample/name"][()]
+                    if isinstance(sample_string, str) :
+                        scan.update({"sample": str(sample_string)})
+                    elif isinstance(sample_string, bytes):
+                        scan.update({"sample": sample_string.decode('utf-8')})
                     if "description" in h5[entry + "/sample"].keys():
                         scan.update({"description": str(h5[entry + "/sample/description"][()])})
                 elif "description" in h5[entry + "/sample"].keys():
                     scan.update({"sample": str(h5[entry + "/sample/description"][()], 'utf-8').split('\x00')[0]})
-            scan.update({"independent": indep[i], "signals": signals[i], "other": other_axis[i],
-                         "npartitions": self.npartitions})
+            scan.update({
+                        "independent": indep[i],
+                        "signals": signals[i],
+                        "other": other_axis[i],
+                        "npartitions": self.npartitions
+            })
             if 'sample' in self.__dict__.keys():
                 if 'sample' in scan.keys():
                     if self.sample in scan['sample']:
@@ -601,7 +610,6 @@ class SGMData(object):
             else:
                 entries.update({entry: scan})
         return {file_root: entries}
-
 
     def interpolate(self, **kwargs):
         _interpolate = partial(self._interpolate, **kwargs)
@@ -616,7 +624,9 @@ class SGMData(object):
     def _interpolate(self, entry, **kwargs):
         return entry.interpolate(**kwargs)
 
-    def mean(self, bad_scans=[]):
+    def mean(self, bad_scans=None):
+        if bad_scans is None:
+            bad_scans = []
         sample_scans = {}
         i = 1
         for k, file in self.scans.items():
@@ -657,7 +667,6 @@ class SGMData(object):
                         SGMData.Processed(command=command.split('_'), data=df, signals=v['signals'], sample=key)]})
         self.averaged = average
         return average
-
 
     def __str__(self):
         return f"Scans: {self.scans}"
