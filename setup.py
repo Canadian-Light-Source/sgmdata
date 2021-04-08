@@ -34,7 +34,7 @@ setup(
         "python-slugify",
         "beautifulsoup4",
         "matplotlib",
-        "requests"
+        "requests",
         "psycopg2"
     ]
 
