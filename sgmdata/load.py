@@ -394,7 +394,6 @@ class SGMData(object):
         Class for loading in data from h5py or h5pyd files for raw SGM data.
         To substantiate pass the class pass a single (or list of) system file paths
         (or hsds path).  e.g. data = SGMData('/path/to/my/file.nxs') or SGMData(['1.h5', '2.h5'])
-
         Optional Keywords:  npartitions (type: integer) -- choose how many divisions (threads)
                                                            to split the file data arrays into.
                             scheduler (type: str) -- use dask cluster for operations, e.g. 'dscheduler:8786'
