@@ -471,7 +471,7 @@ class SGMData(object):
         if not hasattr(self, 'threads'):
             self.threads = 4
         files = [os.path.abspath(file) for file in files]
-        self.scans = {k.split('/')[-1].split(".")[0] : [] for k in files}
+        self.scans = {k.split('\\')[-1].split(".")[0] : [] for k in files}
         self.interp_params = {}
         with ThreadPool(self.threads) as pool:
                 L = list(tqdm(pool.imap_unordered(self._load_data, files), total=len(files)))
