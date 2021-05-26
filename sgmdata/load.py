@@ -13,6 +13,7 @@ from functools import partial
 from sgmdata.plots import eemscan, xrfmap
 from sgmdata.xrffit import fit_peaks
 import warnings
+from tabulate import tabulate
 
 try:
     shell = get_ipython().__class__.__name__
@@ -696,6 +697,21 @@ class SGMData(object):
         return "\n".join(table)
 
     def _repr_console_(self):
-        html_table = self._repr_html_()
-        print(str(html_table))
+        """
+        Takes own data and organizes it into a console-friendly table.
+        """
+        table = []
+        temp_list = []
+        for key in self.scans.keys():
+            for subkey in self.scans[key].__dict__:
+                temp_list.append(key)
+                temp_list.append(subkey)
+                temp_list.append(self.scans[key].__dict__[subkey].sample)
+                temp_list.append(self.scans[key].__dict__[subkey].command)
+                temp_list.append(self.scans[key].__dict__[subkey].independent)
+                temp_list.append(self.scans[key].__dict__[subkey].signals)
+                temp_list.append(self.scans[key].__dict__[subkey].other)
+                table.append(temp_list)
+                temp_list = []
+        return tabulate(table, headers=["File", "Entry", "Sample", "Command", "Independent", "Signals", "Other"])
 
