@@ -24,7 +24,6 @@ except NameError:
     from tqdm import tqdm
 
 
-
 class SGMScan(object):
     """
         Data class for storing dask arrays for SGM data files that have been grouped into 'NXentry',
@@ -206,7 +205,6 @@ class SGMScan(object):
                 self['fit'] = {"dataframe": new_df, "emission":emission, "peaks": np.array([emission[p] for p in pks]), "width": wid }
                 return new_df
 
-
         def __repr__(self):
             represent =  ""
             for key in self.keys():
@@ -372,7 +370,6 @@ class DisplayDict(dict):
     def __getattr__(self, name):
         return self[name]
 
-
     def __setattr__(self, name, value):
         self[name] = value
 
@@ -481,7 +478,16 @@ class SGMData(object):
             warnings.warn(f"Some scan files were not loaded: {err}")
             for e in err:
                 del self.scans[e]
-        self.scans.update({k:SGMScan(**v) for d in L for k,v in d.items()})
+        self.scans.update({k: SGMScan(**v) for d in L for k, v in d.items()})
+
+        # Removing any empty scans from dictionary of scans.
+        # keys_to_remove = []
+        # for item in self.scans:
+        #     if str(self.scans[item]) == '[]':
+        #         keys_to_remove.append(item)
+        # for item in keys_to_remove:
+        #     del self.scans[item]
+
         self.entries = self.scans.items
 
     def _find_data(self, node, indep=None, other=False):
@@ -688,3 +694,8 @@ class SGMData(object):
         table.append("</tbody></table>")
 
         return "\n".join(table)
+
+    def _repr_console_(self):
+        html_table = self._repr_html_()
+        print(str(html_table))
+
