@@ -370,6 +370,20 @@ class SGMQuery(object):
 
 
 def badscans(interp, **kwargs):
+    """
+    Description:
+    ----
+    Batch calculation of sgmdata.utilities.scan_health for list of interpolated dataframes.
+
+    Args:
+    ____
+        interp (list) :  list of SGMScan binned dataframes.
+
+    Returns:
+    ____
+        List of indexes for bad scans in interp.
+
+    """
     cont = kwargs.get('cont', 55)
     dump = kwargs.get('dump', 30)
     sat = kwargs.get('sat', 60)
@@ -385,6 +399,26 @@ def badscans(interp, **kwargs):
     return bad_scans
 
 def preprocess(sample, **kwargs):
+    """
+    Description:
+    ----
+    Utility for automating the interpolation and averaging of a sample in the SGMLive website.
+
+    Args:
+    ----
+        sample (str):  The name of the sample in your account that you wish to preprocess.
+        kwargs: resolution - to be passed to interpolation function, this is histogram bin width.
+                start (float) -  start energy to be passed to interpolation function.
+                stop (float) - stop energy to be passed to interpolation function.
+                sdd_max (int) - threshold value to determine saturation in SDDs, to determine scan_health (default
+                                is 105000).
+                bscan_thresh (tuple) - (continuous, dumped, and saturated)  these are the threshold percentages from
+                                    scan_health that will label a scan as 'bad'.
+
+    Returns:
+    ----
+         (HTML) hyperlink for preprocessed data stored in SGMLive
+    """
     user = kwargs.get('user', False)
     cl = kwargs.get('client', False)
     bs_args = kwargs.get('bscan_thresh', dict(cont=55, dump=30, sat=60))
