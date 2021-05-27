@@ -365,7 +365,7 @@ class SGMQuery(object):
                 shape += [s for s in arr.shape[1:]]
                 shape = tuple([s for s in shape if s > 0])
                 arr = np.reshape(arr, shape)
-            nxdata.create_dataset(sig + "_processsed", data=arr, dtype=arr.dtype)
+            nxdata.create_dataset(sig + "_processed", data=arr, dtype=arr.dtype)
         h5.close()
 
 
