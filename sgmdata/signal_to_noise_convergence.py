@@ -25,7 +25,7 @@ ip = get_ipython()
 # GETTING DATA FILES FROM DISK.
 l = []
 # Getting all files (intended to be hdf5 files) that match a specific pattern. Appending them to l.
-for filename in glob.iglob('/Users/roseh/Desktop/Internship/MyCode/h5Files/*Mix2*.hdf5', recursive=True):
+for filename in glob.iglob('/Users/roseh/Desktop/Internship/MyCode/h5Files/*CitricAcid*.hdf5', recursive=True):
     l.append(filename)
 print(l)
 
@@ -33,17 +33,17 @@ print(l)
 # Reports amount of time required to execute command.
 # # ip.run_line_magic('time', 'sgm_data = SGMData(l, sample="Ni-chloride_-_Ni-b9da")') # Runs timer.
 # Creates a new SGMData.
-sgm_data = sgmdata.load.SGMData(l)
+sgm_data = sgmdata.load.SGMData(l, sample='myneni2_CitricAcid')
 
 # Reports amount of time required to execute command.
 # # ip.run_line_magic('time', 'sgm_data')
 # Displays data stored in our sgm_data object on the console.
-# print(sgm_data._repr_console_())
+print(sgm_data._repr_console_())
 
 # Reports amount of time required to execute command.
 # # ip.run_line_magic('time', 'interp_list = sgm_data.interpolate(resolution=0.1)')
 # Interpolates data in our sgm_data object. Puts interpolated data into interp_list.
-interp_list = sgm_data.interpolate(resolution=0.1, sample='Bee2-C')
+interp_list = sgm_data.interpolate(resolution=0.1, sample='myneni2_CitricAcid')
 
 # SCRATCH
 def plot1d(xarr, yarr):
@@ -113,8 +113,8 @@ def examine_graph_data(xarr, yarr):
 
 def lowest_variance(d_list):
     """
-    From a list of variances between each consecutive spot on a graph, calculated which 5 spots have the lowest
-    variance.
+    From a list, calculates the lowest level of variance between 5 of the consecutive values in the list. Returns this
+    level of variance and the index of the values that make up this level.
     Variables:
         d_list: the list of variances between each consecutive spot on a graph.
     """
@@ -122,42 +122,33 @@ def lowest_variance(d_list):
     recent_differences = [(abs(d_list[0] - d_list[1]))]
     differences = []
     recent_vars = []
-    print(d_list)
     for diff in d_list:
         if len(recent_vars) < 4:
             recent_vars.append(diff)
-            print("In if loop. recent_vars:" + str(recent_vars))
         elif len(recent_vars) == 4:
-            print("In elif loop. recent_vars:" + str(recent_vars))
-            pos = 5
+            recent_differences.clear()
+            pos = 4
             recent_vars.append(diff)
             for var in recent_vars:
-                for val in range(5):
-                    recent_differences.append(abs(var - recent_vars[val]))
-                    print("current var: " + str(var) + ". Current index: " + str(val) + ". Value at Index: " +
-                          str(recent_vars[val]))
-            differences.append(max(recent_differences))
-            print("Differences: " + str(differences))
+                recent_differences.append(abs(recent_vars[0] - var))
+            differences.append(np.mean(recent_differences))
         else:
+            recent_differences.clear()
             pos = pos + 1
-            recent_vars.pop(4)
+            recent_vars.pop(0)
             recent_vars.append(diff)
-            print("In else loop. recent_vars:" + str(recent_vars))
             for var in recent_vars:
-                for val in range(5):
-                    recent_differences.append(abs(var - recent_vars[val]))
-                    print("current var: " + str(var) + ". Current index: " + str(val) + ". Eg: " +
-                          str(var - recent_vars[val]))
-            differences.append(max(recent_differences))
-            print("Differences: " + str(differences))
+                recent_differences.append(abs(recent_vars[0] - var))
+            differences.append(np.mean(recent_differences))
+    pos = min(differences)
+    pos = differences.index(pos)
     return "The lowest average variance (of the variance between 2 consecutive variances) between 5 consecutive " \
-           "variances is " + str(min(recent_differences)) + ".\nIt is reached with the variances between the " \
-            "values within the range: " + str(pos - 4) + " through to position: " + str(pos) + ".\n"
+           "variances is " + str(min(differences)) + ".\nIt is reached with the variances between the " \
+            "values within the range: " + str(pos) + " through to position: " + str(pos + 4) + ".\n"
 
 
-my_d_list = [1, 2, 3, 4, 5, 1, 3, 5, 7, 9, 1.1, 1.2, 1.3, 1.4, 1.5]
-
-print(lowest_variance(my_d_list))
+# my_d_list = [1, 2, 3, 4, 1.1, 1.2, 1.3, 1.4, 1.5, 5, 1, 3, 5, 7, 9]
+# print(lowest_variance(my_d_list))
 
 # INTERPOLATING DATA
 sdd_list = []
@@ -202,6 +193,8 @@ for i, arr in enumerate(sdd_list[1:]):
 
 # Turns diff_list into and array, then converts NaN values to 0s and deals with infinity values.
 diff_list = np.nan_to_num(np.array(diff_list))
+print(diff_list)
+print(lowest_variance(diff_list))
 
 
 def noise(idx, amp, shift, ofs):
