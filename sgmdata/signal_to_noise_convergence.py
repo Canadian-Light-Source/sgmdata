@@ -20,32 +20,50 @@ from bokeh.models import HoverTool, CustomJS, BooleanFilter, LinearColorMapper, 
 from bokeh.io import show
 
 ip = get_ipython()
-# ip.run_line_magic('pip', 'install lmfit')
+# # ip.run_line_magic('pip', 'install lmfit')
 
-# GETTING DATA FILES FROM DISK.
+
+# GETTING DATA FILES FROM DISK * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+
+
 l = []
+
+# desired_file = input("Pleas input the absolute path to your hdf5 file: ")
+# for filename in glob.iglob(desired_file, recursive=True):
+#     l.append(filename)
+# if l.isempty():
+#     print("There were no files matching your description found in the specified directory.\n")
+# else:
+#     print("The following files match your input: " + str(l))
+
 # Getting all files (intended to be hdf5 files) that match a specific pattern. Appending them to l.
-for filename in glob.iglob('/Users/roseh/Desktop/Internship/MyCode/h5Files/*CitricAcid*.hdf5', recursive=True):
+for filename in glob.iglob('/Users/roseh/Desktop/Internship/MyCode/h5Files/*Bee*.hdf5', recursive=True):
     l.append(filename)
 print(l)
 
-# LOADING DATA
-# Reports amount of time required to execute command.
-# # ip.run_line_magic('time', 'sgm_data = SGMData(l, sample="Ni-chloride_-_Ni-b9da")') # Runs timer.
-# Creates a new SGMData.
-sgm_data = sgmdata.load.SGMData(l, sample='myneni2_CitricAcid')
+
+# LOADING DATA * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+
 
 # Reports amount of time required to execute command.
-# # ip.run_line_magic('time', 'sgm_data')
+ip.run_line_magic('time', 'sgm_data = SGMData(l, sample="Ni-chloride_-_Ni-b9da")')
+# Creates a new SGMData object.
+sgm_data = sgmdata.load.SGMData(l, sample='Bee2-C')
+
+# Reports amount of time required to execute command.
+ip.run_line_magic('time', 'sgm_data')
 # Displays data stored in our sgm_data object on the console.
-print(sgm_data._repr_console_())
+# print(sgm_data._repr_console_())
 
 # Reports amount of time required to execute command.
-# # ip.run_line_magic('time', 'interp_list = sgm_data.interpolate(resolution=0.1)')
+ip.run_line_magic('time', 'interp_list = sgm_data.interpolate(resolution=0.1)')
 # Interpolates data in our sgm_data object. Puts interpolated data into interp_list.
-interp_list = sgm_data.interpolate(resolution=0.1, sample='myneni2_CitricAcid')
+interp_list = sgm_data.interpolate(resolution=0.1)
 
-# SCRATCH
+
+# FUNCTIONS * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+
+
 def plot1d(xarr, yarr):
     """
     Sets the specifications for a graph, then shows graph. Graph represents the data samples, and the predicted data
@@ -83,20 +101,19 @@ def plot1d(xarr, yarr):
     fig.legend.click_policy = "hide"
     show(fig)
 
+
 def examine_graph_data(xarr, yarr):
     """
-    Takes a set of x and y values, and prints out various information about the x values. Used for testing.
+    Takes a set of x and y values, and prints out various information about the y values. Used for testing.
     Variables:
         xarr: x values. A list of two lists containing the varience between each consecutive spot on a graph.
         yarr: y values. The y offset of the consecutive spots.
     """
     pred = []
     actu = []
-    var = []
-
     current_list = actu
-    for i, x in enumerate(xarr):
-        for val in yarr[i]:
+    for element in enumerate(xarr):
+        for val in element:
             current_list.append(val)
         current_list = pred
     i = 0
@@ -129,77 +146,27 @@ def lowest_variance(d_list):
             recent_differences.clear()
             pos = 4
             recent_vars.append(diff)
+            print(recent_vars)
             for var in recent_vars:
-                recent_differences.append(abs(recent_vars[0] - var))
-            differences.append(np.mean(recent_differences))
+                recent_differences.append(((var - np.mean(recent_vars)) ** 2))
+            differences.append(np.sum(recent_differences) / len(recent_differences))
         else:
             recent_differences.clear()
             pos = pos + 1
             recent_vars.pop(0)
             recent_vars.append(diff)
             for var in recent_vars:
-                recent_differences.append(abs(recent_vars[0] - var))
-            differences.append(np.mean(recent_differences))
-    pos = min(differences)
-    pos = differences.index(pos)
+                recent_differences.append(((var - np.mean(recent_vars)) ** 2))
+            differences.append(np.sum(recent_differences) / len(recent_differences))
+    print(differences)
     return "The lowest average variance (of the variance between 2 consecutive variances) between 5 consecutive " \
            "variances is " + str(min(differences)) + ".\nIt is reached with the variances between the " \
             "values within the range: " + str(pos) + " through to position: " + str(pos + 4) + ".\n"
 
 
-# my_d_list = [1, 2, 3, 4, 1.1, 1.2, 1.3, 1.4, 1.5, 5, 1, 3, 5, 7, 9]
-# print(lowest_variance(my_d_list))
-
-# INTERPOLATING DATA
-sdd_list = []
-
-# Checking for items in interp_list containing the characters 'sdd.' those items are appended to sdd_list.
-for df in interp_list:
-    sdd_list.append(df.filter(regex=("sdd.*"), axis=1).to_numpy())
-
-prev_mean = sdd_list[0]
-avg_list = [sdd_list[0]]
-diff_list = []
-indices = []
-
-for i, arr in enumerate(sdd_list[1:]):
-# *Note that arr is the array of arrays representing the each scan's sdd values and i is the count of the number of
-# times the loop has been cycled through, starting at 0.
-    avg_list.append(arr)
-    cur_mean = np.mean(avg_list, axis=0)
-
-    # * Cur_mean is an array with the mean of all values in the same positions in the in arrays within avg_list. Eg, the
-    # average of the item [0] of each of the lists, then the average of the item[1] of each of the lists, etc.
-
-    # Finding the variance between the last scan and the current scan.
-    diff_list.append(np.var(np.subtract(cur_mean, prev_mean)))
-    if len(diff_list) > 2:
-        if diff_list[-2] - diff_list[-1] < -50:
-            avg_list = avg_list[:-1]
-            diff_list = diff_list[:-1]
-            # If the variance between the difference between our current scan's mean and the mean of the scan before it
-            # is 51 or more than the variance of the difference between the previous scan's mean and the mean of the
-            # scan before it, then don't include the variance of the difference between the current scan's mean and the
-            # previous scan's mean in diff list, or the average of this scan in avg_list.
-        else:
-            indices.append(i)
-            prev_mean = cur_mean
-        # indices.append(i)
-        # prev_mean = cur_mean
-        ###
-    else:
-        indices.append(i)
-        prev_mean = cur_mean
-
-# Turns diff_list into and array, then converts NaN values to 0s and deals with infinity values.
-diff_list = np.nan_to_num(np.array(diff_list))
-print(diff_list)
-print(lowest_variance(diff_list))
-
-
 def noise(idx, amp, shift, ofs):
     """
-    Purpose: Calculates the level of noise in a scan.
+    Purpose: The equation to calculate the predicted level of noise in a scan.
     Variables:
         idx: Independent variable. An array of the indices of the values in sdd_list that were previously deemed to be
         acceptable sdd values.
@@ -211,35 +178,148 @@ def noise(idx, amp, shift, ofs):
     return amp * (idx + shift) ** (-3 / 2) + ofs
 
 
-# Using lmfit to prepare the execute noise, initially without parameters.
-noisemodel = Model(noise)
+def predict(d_list, cur_indices):
+    """
+    Takes predicted noise levels from d_list and inputs them to the noise function to predict the level of noise
+    in the next scan.
+    Variables:
+        d_list: a list of the differences between our first ten scans. As our determine_scan_num function continues
+        it will add values to the d_list.
+        num_indices: a list of the x values of the first 10 scans (1, 2, 3, etc.). As our determine_scan_num function
+        progresses it will add more x values.
+    Return Value: the values for amp, shift and ofs that fit num_indices and diff_list best.
+    """
+    # Using lmfit to prepare the execute noise, initially without parameters.
+    noisemodel = Model(noise)
+    # Creates the parameters for our 'noisemodel' calling of the 'noise' function, but does not assign values to them.
+    params = noisemodel.make_params()
+    # Setting the values of 'amp', 'shift' and 'ofs' for our 'noisemodel' calling of the 'noise' function.
+    params['amp'].set(value=d_list[0], vary=True, min=0.1 * d_list[0], max=2 * d_list[0])
+    params['shift'].set(value=0.1, vary=True, min=-2, max=2)
+    params['ofs'].set(value=0, vary=True, min=-1, max=0)
+    # Fits our 'noisemodel' calling of the 'noise' function with data set to diff_list and idx set to an arrayed
+    # version of indices and the same parameters we previously set.
+    result_noise = noisemodel.fit(d_list, idx=np.array(cur_indices), params=params)
+    chosen_vals = result_noise.best_values
+    # print("\nd_list:\n " + str(d_list) + "\n\nPredicted values: ")
+    return (chosen_vals['amp'] * np.array([(float(ind) - chosen_vals['shift']) ** (-3/2) for ind in
+                                         np.add(cur_indices, 15)]) - chosen_vals['ofs'])
 
-# Creates the parameters for our 'noisemodel' calling of the 'noise' function, but does not assign values to them.
-params = noisemodel.make_params()
-# Setting the values of 'amp', 'shift' and 'ofs' for our 'noisemodel' calling of the 'noise' function.
-params['amp'].set(value=diff_list[0], vary=True, min=0.1 * diff_list[0], max=2 * diff_list[0])
-params['shift'].set(value=0.1, vary=True, min=-2, max=2)
-params['ofs'].set(value=0, vary=True, min=-1, max=0)
 
-# Fits our 'noisemodel' calling of the 'noise' function with data set to diff_list and idx set to an arrayed version of
-# indices and the same parameters we previously set.
-result_noise = noisemodel.fit(diff_list, idx=np.array(indices), params=params)
-values = result_noise.best_values
-# *Calling the plot1d function with yarr equal to a list containing the list of indices, twice. xarr is set to diff_list
-# and the results of the following pseudocode:
-# for every element in indices + 1
-#   element = (element - shift) to the power of -3/2
-#   put element into an array
-# return (array * amp) - ofs
-# plot1d([indices, indices], [
-#     diff_list,
-#     values['amp'] * np.array([(float(ind) - values['shift']) ** (-3 / 2) for ind in np.add(indices, 1)]) - values[
-#         'ofs']])
-#
-# examine_graph_data([indices, indices], [
-#     diff_list,
-#     values['amp'] * np.array([(float(ind) - values['shift']) ** (-3 / 2) for ind in np.add(indices, 1)]) - values[
-#         'ofs']])
+def determine_num_scans(d_list, desired_difference=0.6400111799776529):
+    """
+    Takes a string of variations in noise levels and a desired noise level, and returns the number of additional
+    variations (ie, scans) required to reach the desired noise level.
+    Variables:
+        d_list: a list of the differences between our first ten scans. As our determine_scan_num function continues
+        it will add values to the d_list.
+        desired_noise: the variance between 5 consecutive scans the user would like to achieve, ie, we'll need to
+        continue scans until this level of variance is reached. Default is the highest variance among sample scans.
+    Return value: the number of scans required to reach the desired level of variance.
+    """
+    num_predictions = 9
+    keep_predicting = True
+
+    recent_differences = [(abs(d_list[0] - d_list[1]))]
+    differences = []
+    recent_vars = d_list[5:]
+    ###
+    # print(d_list)
+    ###
+
+    for element in d_list:
+        if len(recent_vars) < 4:
+            recent_vars.append(element)
+        elif len(recent_vars) == 4:
+            recent_vars.append(element)
+            for var in recent_vars:
+                recent_differences.append(((var - np.mean(recent_vars)) ** 2))
+            differences.append(np.sum(recent_differences) / len(recent_differences))
+        else:
+            recent_differences.clear()
+            recent_vars.pop(0)
+            recent_vars.append(element)
+            for var in recent_vars:
+                recent_differences.append(((var - np.mean(recent_vars)) ** 2))
+            differences.append(np.sum(recent_differences) / len(recent_differences))
+        # if element <= desired_noise:
+        #     return "Desired noise level already reached."
+    while keep_predicting:
+        x_vals = []
+        for num in range(num_predictions + 1):
+            x_vals.append(num)
+        predicted_level = predict(d_list, x_vals)
+        num_predictions = num_predictions + 1
+        d_list = np.append(d_list, predicted_level[-1])
+        ###
+        # recent_differences.clear()
+        # pos = pos + 1
+        recent_vars.pop(0)
+        recent_vars.append(predicted_level)
+        for var in recent_vars:
+            recent_differences.append(((var - np.mean(recent_vars)) ** 2))
+        differences.append(np.sum(recent_differences) / len(recent_differences))
+        if differences[-1] <= desired_difference:
+            keep_predicting = False
+    # print(d_list)
+    ###
+    # Adding plus one because, since we're working with variances, and a variance comes from 2 values,
+    # to get any number of variances you'll need that number of variances plus 1 scans
+    return num_predictions + 1
+
+
+# INTERPOLATING DATA * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+def interpolating_data(interp_list_param):
+    """Takes the data returned from interpolate and collects the sdd values. Sorts through these sdd values and removes
+     unfit values. Keeps a separate list of the indices of the fit values. Deals with nan and infinity values in the
+     list of sdd values and returns it to caller as a numpy array."""
+    sdd_list = []
+    # Checking for items in interp_list containing the characters 'sdd.' those items are appended to sdd_list.
+    for df in interp_list_param:
+        sdd_list.append(df.filter(regex=("sdd.*"), axis=1).to_numpy())
+    prev_mean = sdd_list[0]
+    avg_list = [sdd_list[0]]
+    diff_list = []
+    indices = []
+    for i, arr in enumerate(sdd_list[1:]):
+        # *Note that arr is the array of arrays representing the each scan's sdd values and i is the count of the number of
+        # times the loop has been cycled through, starting at 0.
+        avg_list.append(arr)
+        cur_mean = np.mean(avg_list, axis=0)
+        # * Cur_mean is an array with the mean of all values in the same positions in the in arrays within avg_list. Eg, the
+        # average of the item [0] of each of the lists, then the average of the item[1] of each of the lists, etc.
+        # Finding the variance between the last scan and the current scan.
+        diff_list.append(np.var(np.subtract(cur_mean, prev_mean)))
+        if len(diff_list) > 2:
+            if diff_list[-2] - diff_list[-1] < -50:
+                avg_list = avg_list[:-1]
+                diff_list = diff_list[:-1]
+                # If the variance between the difference between our current scan's mean and the mean of the scan before it
+                # is 51 or more than the variance of the difference between the previous scan's mean and the mean of the
+                # scan before it, then don't include the variance of the difference between the current scan's mean and the
+                # previous scan's mean in diff list, or the average of this scan in avg_list.
+            else:
+                indices.append(i)
+                prev_mean = cur_mean
+        else:
+            indices.append(i)
+            prev_mean = cur_mean
+    # Turns diff_list into and array, then converts NaN values to 0s and deals with infinity values.
+    diff_list = np.nan_to_num(np.array(diff_list))
+    return diff_list
+
+
+# * * * * * * * * * * * * * * CALLING/ TESTING ZONE * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+
+
+# Below, diff_list stops at 8 because that'll give us 9 variances, and if we have 9 variances we'll have taken
+# 10 scans to get them.
+
+returned_diff_list = interpolating_data(interp_list)
+# print(determine_num_scans(diff_list[:10], 1.0))
+my_d_list = [5, 4, 3, 2, 1, 10, 20, 30, 40, 50, 1.1, 1.2, 1.3, 1.4, 1.5]
+print(lowest_variance(returned_diff_list))
+
 
 # AVERAGING DATA
 # # get_ipython().run_line_magic('time', 'averaged = sgm_data.mean()')
