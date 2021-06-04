@@ -37,7 +37,7 @@ l = []
 #     print("The following files match your input: " + str(l))
 
 # Getting all files (intended to be hdf5 files) that match a specific pattern. Appending them to l.
-for filename in glob.iglob('/Users/roseh/Desktop/Internship/MyCode/h5Files/*Bee*.hdf5', recursive=True):
+for filename in glob.iglob('/Users/roseh/Desktop/Internship/MyCode/h5Files/*nitrate*.hdf5', recursive=True):
     l.append(filename)
 print(l)
 
@@ -46,9 +46,9 @@ print(l)
 
 
 # Reports amount of time required to execute command.
-ip.run_line_magic('time', 'sgm_data = SGMData(l, sample="Ni-chloride_-_Ni-b9da")')
+ip.run_line_magic('time', 'sgm_data = SGMData(l, sample="Feb21-32 - C")')
 # Creates a new SGMData object.
-sgm_data = sgmdata.load.SGMData(l, sample='Bee2-C')
+sgm_data = sgmdata.load.SGMData(l, sample='Co-nitrate - N')
 
 # Reports amount of time required to execute command.
 ip.run_line_magic('time', 'sgm_data')
@@ -135,8 +135,9 @@ def lowest_variance(d_list):
     Variables:
         d_list: the list of variances between each consecutive spot on a graph.
     """
+    print("\nd_list: \n" + str(d_list))
     pos = 0
-    recent_differences = [(abs(d_list[0] - d_list[1]))]
+    recent_differences = []
     differences = []
     recent_vars = []
     for diff in d_list:
@@ -146,7 +147,6 @@ def lowest_variance(d_list):
             recent_differences.clear()
             pos = 4
             recent_vars.append(diff)
-            print(recent_vars)
             for var in recent_vars:
                 recent_differences.append(((var - np.mean(recent_vars)) ** 2))
             differences.append(np.sum(recent_differences) / len(recent_differences))
@@ -158,10 +158,14 @@ def lowest_variance(d_list):
             for var in recent_vars:
                 recent_differences.append(((var - np.mean(recent_vars)) ** 2))
             differences.append(np.sum(recent_differences) / len(recent_differences))
-    print(differences)
+    # print("difference: \n" + str(differences))
+    i = 0
+    for boop in differences:
+        print(str(i) + "-" + str(i + 4) + " difference is: " + str(boop))
+        i += 1
     return "The lowest average variance (of the variance between 2 consecutive variances) between 5 consecutive " \
            "variances is " + str(min(differences)) + ".\nIt is reached with the variances between the " \
-            "values within the range: " + str(pos) + " through to position: " + str(pos + 4) + ".\n"
+            "values within the range: " + str(pos - 4) + " through to position: " + str(pos) + ".\n"
 
 
 def noise(idx, amp, shift, ofs):
@@ -219,52 +223,56 @@ def determine_num_scans(d_list, desired_difference=0.6400111799776529):
     """
     num_predictions = 9
     keep_predicting = True
-
-    recent_differences = [(abs(d_list[0] - d_list[1]))]
-    differences = []
-    recent_vars = d_list[5:]
-    ###
-    # print(d_list)
-    ###
-
+    recent_differences = d_list[5:]
+    variances = []
+    recent_vars = []
+    # Checking if the desired level of variance has already been reached in the first 10 scans.
     for element in d_list:
-        if len(recent_vars) < 4:
-            recent_vars.append(element)
-        elif len(recent_vars) == 4:
-            recent_vars.append(element)
-            for var in recent_vars:
-                recent_differences.append(((var - np.mean(recent_vars)) ** 2))
-            differences.append(np.sum(recent_differences) / len(recent_differences))
+        if len(recent_differences) < 4:
+            recent_differences.append(element)
+        elif len(recent_differences) == 4:
+            recent_differences.append(element)
+            for var in recent_differences:
+                recent_vars.append(((var - np.mean(recent_differences)) ** 2))
+            variances.append(np.sum(recent_vars) / len(recent_vars))
+            if variances[-1] <= desired_difference:
+                return "Desired level of variance already reached within first 10 scans. No additional scans needed."
         else:
-            recent_differences.clear()
-            recent_vars.pop(0)
-            recent_vars.append(element)
-            for var in recent_vars:
-                recent_differences.append(((var - np.mean(recent_vars)) ** 2))
-            differences.append(np.sum(recent_differences) / len(recent_differences))
-        # if element <= desired_noise:
-        #     return "Desired noise level already reached."
+            recent_vars.clear()
+            recent_differences.pop(0)
+            recent_differences.append(element)
+            for var in recent_differences:
+                recent_vars.append(((var - np.mean(recent_differences)) ** 2))
+            variances.append(np.sum(recent_vars) / len(recent_vars))
+            if variances[-1] <= desired_difference:
+                return "Desired level of variance already reached within first 10 scans. No additional scans needed."
+    # Predicting variances until we predict the desires level of variance.
     while keep_predicting:
         x_vals = []
+        # Making a list of indices for the graph.
+        # **** Should we import indices list here? Probably ****
         for num in range(num_predictions + 1):
             x_vals.append(num)
+        # Predicting the next difference.
         predicted_level = predict(d_list, x_vals)
         num_predictions = num_predictions + 1
+        # Adding the newly predicted differance to our list of variances.
         d_list = np.append(d_list, predicted_level[-1])
-        ###
-        # recent_differences.clear()
-        # pos = pos + 1
-        recent_vars.pop(0)
-        recent_vars.append(predicted_level)
-        for var in recent_vars:
-            recent_differences.append(((var - np.mean(recent_vars)) ** 2))
-        differences.append(np.sum(recent_differences) / len(recent_differences))
-        if differences[-1] <= desired_difference:
+        # Calculating the variance of the newest differences.
+        recent_vars.clear()
+        recent_differences.pop(0)
+        recent_differences.append(predicted_level[-1])
+        for var in recent_differences:
+            recent_vars.append(((var - np.mean(recent_differences)) ** 2))
+        variances.append((np.sum(recent_vars)) / len(recent_vars))
+        # Stopping the predicting of indices if the desired level of variance has already been reached.
+        if variances[-1] <= desired_difference:
             keep_predicting = False
-    # print(d_list)
-    ###
     # Adding plus one because, since we're working with variances, and a variance comes from 2 values,
     # to get any number of variances you'll need that number of variances plus 1 scans
+    ###
+    print("d_list: " + str(d_list) + "\ndifferences: " + str(variances))
+    ###
     return num_predictions + 1
 
 
@@ -316,9 +324,39 @@ def interpolating_data(interp_list_param):
 # 10 scans to get them.
 
 returned_diff_list = interpolating_data(interp_list)
-# print(determine_num_scans(diff_list[:10], 1.0))
-my_d_list = [5, 4, 3, 2, 1, 10, 20, 30, 40, 50, 1.1, 1.2, 1.3, 1.4, 1.5]
-print(lowest_variance(returned_diff_list))
+# print(determine_num_scans([:10], 1.0))
+# my_d_list = [1024, 512, 256, 128, 64, 32, 16, 8, 4, 2]
+returned_diff_list_listed = []
+for item in returned_diff_list:
+    returned_diff_list_listed.append(item)
+
+i = 0
+for item in returned_diff_list_listed:
+    print(str(i) + ". " + str(item))
+    i += 1
+
+print(lowest_variance(returned_diff_list_listed))
+# print(determine_num_scans(returned_diff_list_listed[:10], 1.0))
+# print(determine_num_scans(my_d_list[:10], 1.0))
+
+# # Using lmfit to prepare the execute noise, initially without parameters.
+# noisemodel = Model(noise)
+# # Creates the parameters for our 'noisemodel' calling of the 'noise' function, but does not assign values to them.
+# params = noisemodel.make_params()
+# # Setting the values of 'amp', 'shift' and 'ofs' for our 'noisemodel' calling of the 'noise' function.
+# params['amp'].set(value=returned_diff_list[0], vary=True, min=0.1 * returned_diff_list[0], max=2 * returned_diff_list[0])
+# params['shift'].set(value=0.1, vary=True, min=-2, max=2)
+# params['ofs'].set(value=0, vary=True, min=-1, max=0)
+# # Fits our 'noisemodel' calling of the 'noise' function with data set to diff_list and idx set to an arrayed
+# # version of indices and the same parameters we previously set.
+# result_noise = noisemodel.fit(returned_diff_list, idx=np.array(cur_indices), params=params)
+# chosen_vals = result_noise.best_values
+#
+# plot1d([returned_indices, returned_indices], [returned_diff_list,
+#                                               (chosen_vals['amp'] * np.array(
+#                                                   [(float(ind) - chosen_vals['shift']) ** (-3 / 2) for ind in
+#                                                    np.add(cur_indices, 15)]) - chosen_vals['ofs'])
+#                                               ])
 
 
 # AVERAGING DATA
