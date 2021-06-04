@@ -14,6 +14,7 @@ from sgmdata.plots import eemscan, xrfmap
 from sgmdata.xrffit import fit_peaks
 import warnings
 from tabulate import tabulate
+from collections import OrderedDict
 
 try:
     shell = get_ipython().__class__.__name__
@@ -469,7 +470,10 @@ class SGMData(object):
         if not hasattr(self, 'threads'):
             self.threads = 4
         files = [os.path.abspath(file) for file in files]
-        self.scans = {k.split('\\')[-1].split(".")[0] : [] for k in files}
+        self.scans = OrderedDict()
+        for k in files:
+            new_key = k.split('/')[-1].split(".")[0]
+            self.scans[new_key]: {}
         self.interp_params = {}
         with ThreadPool(self.threads) as pool:
                 L = list(tqdm(pool.imap_unordered(self._load_data, files), total=len(files)))
