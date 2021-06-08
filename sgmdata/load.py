@@ -341,9 +341,30 @@ class SGMScan(object):
                     xrfmap.plot(**data)
 
     def __init__(self, **kwargs):
-        self.__dict__.update(kwargs)
-        for key, value in kwargs.items():
-            self.__dict__[key] = SGMScan.DataDict(value)
+        self.__dict__ = OrderedDict()
+        keys = list(kwargs.keys())
+        if len(keys) > 0:
+            shortest = len(keys[0])
+            longest = len(keys[0])
+            for key, value in kwargs.items():
+                if len(key) < shortest:
+                    shortest = len(key)
+                elif len(key) > longest:
+                    longest = len(key)
+            temp = []
+            cur_len = shortest
+            while cur_len <= longest:
+                for entry in keys:
+                    if len(entry) == cur_len:
+                        temp.append(entry)
+                temp.sort()
+                for key, value in kwargs.items():
+                    if key in temp:
+                        self.__dict__[key] = SGMScan.DataDict(value)
+                temp.clear()
+                cur_len += 1
+            for key, value in self.__dict__.items():
+                print("Key: " + str(key)) # + "\t\t\tValue: " + str(value))
 
     def __repr__(self):
         represent = ""
@@ -470,10 +491,7 @@ class SGMData(object):
         if not hasattr(self, 'threads'):
             self.threads = 4
         files = [os.path.abspath(file) for file in files]
-        self.scans = OrderedDict()
-        for k in files:
-            new_key = k.split('/')[-1].split(".")[0]
-            self.scans[new_key]: {}
+        self.scans = {k.split('\\')[-1].split(".")[0]: [] for k in files}
         self.interp_params = {}
         with ThreadPool(self.threads) as pool:
                 L = list(tqdm(pool.imap_unordered(self._load_data, files), total=len(files)))
@@ -484,15 +502,6 @@ class SGMData(object):
             for e in err:
                 del self.scans[e]
         self.scans.update({k: SGMScan(**v) for d in L for k, v in d.items()})
-
-        # Removing any empty scans from dictionary of scans.
-        # keys_to_remove = []
-        # for item in self.scans:
-        #     if str(self.scans[item]) == '[]':
-        #         keys_to_remove.append(item)
-        # for item in keys_to_remove:
-        #     del self.scans[item]
-
         self.entries = self.scans.items
 
     def _find_data(self, node, indep=None, other=False):
