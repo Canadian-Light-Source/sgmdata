@@ -363,8 +363,6 @@ class SGMScan(object):
                         self.__dict__[key] = SGMScan.DataDict(value)
                 temp.clear()
                 cur_len += 1
-            for key, value in self.__dict__.items():
-                print("Key: " + str(key)) # + "\t\t\tValue: " + str(value))
 
     def __repr__(self):
         represent = ""
@@ -501,7 +499,11 @@ class SGMData(object):
             warnings.warn(f"Some scan files were not loaded: {err}")
             for e in err:
                 del self.scans[e]
+        # passing the name of the sample
         self.scans.update({k: SGMScan(**v) for d in L for k, v in d.items()})
+        # for d in L:
+        #     for k, v in d.items():
+        #         self.scans.update({k: SGMScan(**v)})
         self.entries = self.scans.items
 
     def _find_data(self, node, indep=None, other=False):
@@ -637,7 +639,7 @@ class SGMData(object):
             for key, entry in val.__dict__.items():
                 entries.append(entry)
         with ThreadPool(self.threads) as pool:
-            results = list(tqdm(pool.imap_unordered(_interpolate, entries), total=len(entries)))
+            results = list(tqdm(pool.imap(_interpolate, entries), total=len(entries)))
         return results
 
     def _interpolate(self, entry, **kwargs):
