@@ -499,11 +499,7 @@ class SGMData(object):
             warnings.warn(f"Some scan files were not loaded: {err}")
             for e in err:
                 del self.scans[e]
-        # passing the name of the sample
         self.scans.update({k: SGMScan(**v) for d in L for k, v in d.items()})
-        # for d in L:
-        #     for k, v in d.items():
-        #         self.scans.update({k: SGMScan(**v)})
         self.entries = self.scans.items
 
     def _find_data(self, node, indep=None, other=False):
