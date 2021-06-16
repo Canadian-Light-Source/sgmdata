@@ -1,6 +1,8 @@
 import h5py
 import h5pyd
 import numpy as np
+from bokeh.io import show
+from bokeh.plotting import figure
 
 
 
@@ -32,10 +34,22 @@ def printTree(name, node):
     print('{:5.120}'.format(BOLD + sep + END + UNDERLINE + str(mne) + END + typ))
 
 def h5tree(h5):
+    """
+    Description:
+    -----
+    A function to output the data-tree from an hdf5 file object.
+
+    Args:
+    -----
+        h5 - Any H5File object, from h5py.
+
+    returns None
+
+    """
     h5.visititems(printTree)
     
     
-    #Scan health functions (from Habib)
+#Scan health functions (from Habib)
 
 def get_moving_average(data, window_size=4):
     """ 
@@ -317,23 +331,20 @@ def test_beam_dump(detector, indep):
 
 
 def scan_health(df, verbose=False, sdd_max=105000):
-    #---------- Edit these variables to test the code ----------
-    # Full path of the input data
-    #file_path = "/Users/habib/Desktop/SoftwareDevs/Repositories/SGMScansBining/beam-dump-test-data/MK_section1_C_scan4-015d.hdf5"
-    #file_path = "/Users/habib/Desktop/SoftwareDevs/Repositories/SGMScansBining/beam-dump-test-data/AG_BF_1B_9_10-5020.hdf5"
-    #file_path = "/Users/habib/Desktop/SoftwareDevs/Repositories/SGMScansBining/beam-dump-test-data/bug_wing_N-XAS-grid-b074.hdf5"
-    #file_path = "/Users/habib/Desktop/SoftwareDevs/Repositories/SGMScansBining/beam-dump-test-data/MVS_CC1_2502K_MID-5569.hdf5"
-    #file_path = "/Users/habib/Desktop/SoftwareDevs/Repositories/SGMScansBining/beam-dump-test-data/gideon_nitrogen_30-4a50.hdf5"
-    
-    #file_path = "/Users/habib/Desktop/SoftwareDevs/Repositories/SGMScansBining/beam-dump-test-data/Ce_sample2-a0d3.hdf5"
-    #file_path = "/Users/habib/Desktop/SoftwareDevs/Repositories/SGMScansBining/beam-dump-test-data/holder1-S1-core13-a2-CXAS-grid-b23b.hdf5"
-    #file_path = "/Users/habib/Desktop/SoftwareDevs/Repositories/SGMScansBining/beam-dump-test-data/myneni2_MS_Ca_Dil-c1f9.hdf5"
-    
-    # Scan entry to test
-    #-----------------------------------------------------------
-    
-    
-  
+    """
+    Description:
+    -----
+    Function takes in a interpolated scan (a pandas DataFrame), and returns the overall health.
+
+    Args:
+    -----
+        df :  pandas dataframe from SGMScan.binned.
+        verbose: Explain the returned output in plain text.
+
+
+    returns (tuple):  (Discontiunty %,  Beam-dump %,  Saturation %)
+    """
+
     EN = df.index.to_numpy()
 
     IO_R = df.filter(regex=("i0.*"), axis=1).to_numpy()
@@ -366,7 +377,44 @@ def scan_health(df, verbose=False, sdd_max=105000):
         print("----------------------------------------\n")
     
     return dump, abrupt, rate
-    
-      
 
+def plot1d(xarr,yarr, title="Plot", labels=[]):
+    """
+    Description:
+    -----
+    Convenience function for plotting a bokeh lineplot, assumes Bokeh is already loaded.
 
+    Args:
+    -----
+        xarr:  Independent array-like object, or list of array-like objects.
+        yarr: Dependent array-like object, or list of array-like objects, same shape as xarr
+        title: Plot title (str)
+        labels:  Legend labels for multiple objects, defaults to Curve0, Curve1, etc.
+
+    returns None
+    """
+    TOOLS = 'pan, hover,box_zoom,box_select,crosshair,reset,save'
+
+    fig = figure(
+            tools=TOOLS,
+            title=title,
+            background_fill_color="white",
+            background_fill_alpha=1,
+            x_axis_label = "x",
+            y_axis_label = "y",
+    )
+    colors = []
+    for i in range(np.floor(len(yarr)/6).astype(int)+1):
+        colors += ['purple', 'firebrick', 'red', 'orange', 'black', 'navy']
+    colors = iter(colors)
+    if not isinstance(xarr, list):
+        xarr = [xarr]
+    if not len(xarr) == len(yarr):
+        yarr = [yarr]
+    if not any(labels):
+        labels = ["Curve" + str(i) for i,_ in enumerate(xarr)]
+    for i,x in enumerate(xarr):
+        fig.line(x=x, y=yarr[i], color=next(colors), legend_label=labels[i])
+    fig.legend.location = "top_left"
+    fig.legend.click_policy="hide"
+    show(fig)
