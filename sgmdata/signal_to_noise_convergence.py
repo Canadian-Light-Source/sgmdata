@@ -33,6 +33,16 @@ def file_retrieval(path):
     Returns:
         list_of_files(list): a list of the files that match the given pattern.
     """
+    if type(path) != str:
+        if type(path) == int or type(path) == float or type(path) == bool:
+            raise TypeError("Argument must be a path to an hdf5 file, in string form. Cannot take data of type " +
+                            str(type(path)) + ". Please try again with a path to an hdf5 file in string form.")
+        else:
+            raise TypeError("Argument must be a single hdf5 file. Function cannot take compound data type containing "
+                            "hdf5 files. Please try again with a single hdf5 file.")
+    if ".hdf5" not in path[-6:]:
+        raise ValueError("Argument must be an hdf5 file. An hdf5 file was not passed in. Please try again with an hdf5"
+                         " file.")
     list_of_files = []
     for filename in glob.iglob(path, recursive=True):
         list_of_files.append(filename)
@@ -52,6 +62,9 @@ def loading_data(list_of_files):
         specified in list_of_files.
     """
     sgm_data = sgmdata.load.SGMData(list_of_files)
+
+    # print(type(sgm_data.__dict__['scans']['Ammonium_Sulfate-Bottom10'].__getitem__('entry1').__getattr__('signals')))
+
     # print(sgm_data._repr_console_())
     interp_list = sgm_data.interpolate(resolution=0.1)#, sample='Co-nitrate - N')
     return interp_list
@@ -74,11 +87,28 @@ def lowest_variance(d_list):
     for diff in d_list:
         if len(recent_vals) < 4:
             recent_vals.append(diff)
+        # elif len(recent_vals) == 4:
+        #     recent_vals.append(diff)
+        #     for var in recent_vals:
+        #         recent_variances.append(((var - np.mean(recent_vals)) ** 2))
+        #     variances.append(np.sum(recent_variances) / len(recent_variances))
+        # else:
+        #     recent_variances.clear()
+        #     recent_vals.pop(0)
+        #     recent_vals.append(diff)
+        #     for var in recent_vals:
+        #         recent_variances.append(((var - np.mean(recent_vals)) ** 2))
+        #     variances.append(np.sum(recent_variances) / len(recent_variances))
         elif len(recent_vals) == 4:
             recent_vals.append(diff)
             for var in recent_vals:
                 recent_variances.append(((var - np.mean(recent_vals)) ** 2))
             variances.append(np.sum(recent_variances) / len(recent_variances))
+            print(variances[-1])
+            if variances[-1] <= .1796195:
+                pos = (variances.index(variances[-1]))
+                return ".1796 reached by scans:\t" + str(pos) + " - " + str(pos + 5) + "\nvalue is:\t" + \
+                       str(variances[-1])
         else:
             recent_variances.clear()
             recent_vals.pop(0)
@@ -86,10 +116,16 @@ def lowest_variance(d_list):
             for var in recent_vals:
                 recent_variances.append(((var - np.mean(recent_vals)) ** 2))
             variances.append(np.sum(recent_variances) / len(recent_variances))
-    pos = (variances.index(min(variances)) + 4)
-    return "\tThe lowest average variance (of the variance between 2 consecutive variances) between 5 consecutive " \
-           "variances is " + str(min(variances)) + ".\nIt is reached with the variances between the " \
-            "values within the range: " + str(pos - 5) + " through to position: " + str(pos) + ".\n"
+
+            print(variances[-1])
+            if variances[-1] <= .1796195:
+                pos = (variances.index(variances[-1]))
+                return ".1796 reached by scans:\t" + str(pos) + " - " + str(pos + 5) + "\nvalue is:\t" + \
+                       str(variances[-1])
+    # pos = (variances.index(min(variances)) + 4)
+    # return "\tThe lowest average variance (of the variance between 2 consecutive variances) between 5 consecutive " \
+    #        "variances is " + str(min(variances)) + ".\nIt is reached with the variances between the " \
+    #         "values within the range: " + str(pos - 5) + " through to position: " + str(pos) + ".\n"
 
 
 def noise(idx, amp, shift, ofs):
@@ -128,6 +164,7 @@ def predict(d_list, cur_indices):
     chosen_vals = result_noise.best_values
     return (chosen_vals['amp'] * np.array([(float(ind) - chosen_vals['shift']) ** (-3/2) for ind in
                                            np.add(cur_indices, 15)]) - chosen_vals['ofs'])
+# result_noise is the predicted noise level (I think?) Does the equation change it back to a difference?
 
 
 def determine_num_scans(d_list, indices, desired_difference=0.17961943):
@@ -151,7 +188,7 @@ def determine_num_scans(d_list, indices, desired_difference=0.17961943):
     recent_differences = d_list[:5]
     variances = []
     recent_variances = []
-    if len(d_list) < 10:
+    if len(d_list) < 9:
         raise ValueError("Insufficient number of scans. Prediction can only be made on scan sets with 10 or more "
                          "scans.")
     # Checking if the desired level of variance has already been reached in the first 10 scans.
@@ -163,7 +200,8 @@ def determine_num_scans(d_list, indices, desired_difference=0.17961943):
             for var in recent_differences:
                 recent_variances.append(((var - np.mean(recent_differences)) ** 2))
             if (np.sum(recent_variances) / len(recent_variances)) <= desired_difference:
-                return 0
+                # return 0
+                return d_list, copied_indices
         else:
             recent_variances.clear()
             recent_differences.pop(0)
@@ -171,7 +209,8 @@ def determine_num_scans(d_list, indices, desired_difference=0.17961943):
             for var in recent_differences:
                 recent_variances.append(((var - np.mean(recent_differences)) ** 2))
             if (np.sum(recent_variances) / len(recent_variances)) <= desired_difference:
-                return 0
+                # return 0
+                return d_list, copied_indices
     # Predicting variances until we predict a variance that's at or below the desired level of variance.
     while keep_predicting:
         # Predicting the next difference.
@@ -197,9 +236,9 @@ def determine_num_scans(d_list, indices, desired_difference=0.17961943):
             else:
                 raise ValueError("Desired level of variance cannot be reached.")
     # # # for plot1D:
-    # return d_list, copied_indices
+    return d_list, copied_indices
     # # #
-    return num_predictions
+    # return num_predictions
 
 
 def interpolating_data(interp_list_param):
@@ -243,6 +282,31 @@ def interpolating_data(interp_list_param):
     return diff_list, indices
 
 
+def plot1d(xarr, yarr, title="Plot", labels=[]):
+    TOOLS = 'pan, hover,box_zoom,box_select,crosshair,reset,save'
+    fig = figure(
+            tools=TOOLS,
+            title=title,
+            background_fill_color="white",
+            background_fill_alpha=1,
+            x_axis_label = "x",
+            y_axis_label = "y",
+    )
+    colors = []
+    for i in range(np.floor(len(yarr)/6).astype(int)+1):
+        colors += ['purple', 'orange', 'firebrick', 'red', 'navy', 'black']
+    colors = iter(colors)
+    if not isinstance(xarr, list):
+        xarr = [xarr]
+    if not len(xarr) == len(yarr):
+        yarr = [yarr]
+    for i,x in enumerate(xarr):
+        fig.circle(x=x, y=yarr[i], color=next(colors), legend_label=labels[i])
+    fig.legend.location = "top_left"
+    fig.legend.click_policy="hide"
+    show(fig)
+
+
 def run_all(files):
     """
     Purpose: Puts together function calls to previously created functions so that desired results can be received from
@@ -264,7 +328,29 @@ def run_all(files):
     returned_indices_listed = []
     for item in returned_indices:
         returned_indices_listed.append(item)
-    return determine_num_scans(returned_diff_list_listed[:10], returned_indices_listed[:10])
+    print("\tActual:")
+    print(lowest_variance(returned_diff_list_listed))
+    # print(lowest_variance(returned_diff_list_listed[:10]))
+    # i = 0
+    # while i < len(returned_diff_list_listed):
+    #     print(returned_diff_list_listed[i])
+    #     i += 1
+    # results = determine_num_scans(returned_diff_list_listed[:10], returned_indices_listed[:10], 0.6716435)
+    # a = 0
+    # print("\tPredicted:")
+    # while a < len(results[0]):
+    #     print(results[0][a])
+    #     a += 1
+    # predicted = results[0]
+    # indices = results[1]
+    ###
+    # returned_diff_list_listed.append(350)
+    # returned_indices_listed.append(returned_diff_list_listed[-1] + 1)
+    # plot1d([returned_indices_listed], [returned_diff_list_listed],
+    #        "Sample Fe2O3", ["Actual Values", "Predicted Value"])
+    # plot1d([returned_indices_listed[:10], indices[10:]], [returned_diff_list_listed[:10], predicted[10:]],
+    #        "Sample Medge", ["Actual Values", "Predicted Value"])
+    # return len(determine_num_scans(returned_diff_list_listed[:10], returned_indices_listed[:10])[0]) - 1
 
 
 def testing():
@@ -401,8 +487,9 @@ def testing():
               " but got " + str(result))
 
 
-testing()
-print(run_all('C:/Users/roseh/Desktop/Internship/MyCode/h5Files/*GoldScatter*.hdf5'))
+# testing()
+print("\tNumber of additional scans needed:\t" +
+      str(run_all('C:/Users/roseh/Desktop/Internship/MyCode/h5Files/NotPrimary/*C60*.hdf5')))
 
 
 
