@@ -62,8 +62,23 @@ def loading_data(list_of_files):
         specified in list_of_files.
     """
     sgm_data = sgmdata.load.SGMData(list_of_files)
-
-    # print(type(sgm_data.__dict__['scans']['Ammonium_Sulfate-Bottom10'].__getitem__('entry1').__getattr__('signals')))
+    if len(sgm_data.__dict__['scans']) == 0:
+        raise ValueError("hdf5 file must contain scans to be able to predict the number of scans required. The hdf5 "
+                         "file you have provided does not contain any scans. PLease try again with an hdf5 file that"
+                         " does contain scans.")
+    has_sdd = False
+    for element in sgm_data.__dict__['scans']:
+        i = 0
+        signals = list(sgm_data.__dict__['scans'][element].__getitem__('entry1').__getattr__('signals').keys())
+        while i < len(signals) and not has_sdd:
+            if "sdd" in signals[i]:
+                has_sdd = True
+            else:
+                i += 1
+        if not has_sdd:
+            raise ValueError("Scans must have sdd values to be able to predict the number of scans required. One or "
+                             "more of the scans you have provided do not have sdd values. Please try again using "
+                             "scans with sdd values. ")
 
     # print(sgm_data._repr_console_())
     interp_list = sgm_data.interpolate(resolution=0.1)#, sample='Co-nitrate - N')
@@ -257,9 +272,6 @@ def interpolating_data(interp_list_param):
     sdd_list = []
     for df in interp_list_param:
         sdd_list.append(df.filter(regex=("sdd.*"), axis=1).to_numpy())
-    if len(sdd_list) < 1:
-        raise ValueError("There are no sdd values for the provided scans. Prediction can only be made if initial scans "
-                         "have sdd values.")
     prev_mean = sdd_list[0]
     avg_list = [sdd_list[0]]
     diff_list = []
@@ -328,8 +340,9 @@ def run_all(files):
     returned_indices_listed = []
     for item in returned_indices:
         returned_indices_listed.append(item)
-    print("\tActual:")
-    print(lowest_variance(returned_diff_list_listed))
+    # print("\tActual:")
+    # print(lowest_variance(returned_diff_list_listed))
+
     # print(lowest_variance(returned_diff_list_listed[:10]))
     # i = 0
     # while i < len(returned_diff_list_listed):
@@ -350,7 +363,7 @@ def run_all(files):
     #        "Sample Fe2O3", ["Actual Values", "Predicted Value"])
     # plot1d([returned_indices_listed[:10], indices[10:]], [returned_diff_list_listed[:10], predicted[10:]],
     #        "Sample Medge", ["Actual Values", "Predicted Value"])
-    # return len(determine_num_scans(returned_diff_list_listed[:10], returned_indices_listed[:10])[0]) - 1
+    return len(determine_num_scans(returned_diff_list_listed[:10], returned_indices_listed[:10])[0]) - 1
 
 
 def testing():
@@ -489,7 +502,9 @@ def testing():
 
 # testing()
 print("\tNumber of additional scans needed:\t" +
-      str(run_all('C:/Users/roseh/Desktop/Internship/MyCode/h5Files/NotPrimary/*C60*.hdf5')))
+      str(run_all('C:/Users/roseh/Desktop/Internship/MyCode/h5Files/NotPrimary/*S2-7*.hdf5')))
+# print("\tNumber of additional scans needed:\t" +
+      # str(run_all('C:/Users/roseh/Desktop/Internship/MyCode/h5Files/*Amm*.hdf5')))
 
 
 

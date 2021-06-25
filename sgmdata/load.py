@@ -636,6 +636,19 @@ class SGMData(object):
                 entries.append(entry)
         with ThreadPool(self.threads) as pool:
             results = list(tqdm(pool.imap(_interpolate, entries), total=len(entries)))
+        i = 1
+        while i < len(results):
+            if len(results[i]) != len(results[0]):
+                raise ValueError("Pandas Dataframes in each scan's signals dictionary must be the same length. The "
+                                 "Pandas Dataframes in each scan's signals dictionary you have provided are not the "
+                                 "same length. Please try again with Pandas Dataframes in each scan's signals "
+                                 "dictionary in scan's signals of the same length.")
+            elif len(results[i].columns) != len(results[0].columns):
+                raise ValueError("Pandas Dataframes in each scan's signals dictionary must be the same width. Pandas "
+                                 "Dataframes in each scan's signals dictionary you have provided are not the same "
+                                 "length. Please try again with Pandas Dataframes in each scan's signals dictionary of"
+                                 " the same length.")
+            i += 1
         return results
 
     def _interpolate(self, entry, **kwargs):
