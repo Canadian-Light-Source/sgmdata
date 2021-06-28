@@ -47,7 +47,7 @@ def file_retrieval(path):
     for filename in glob.iglob(path, recursive=True):
         list_of_files.append(filename)
     if len(list_of_files) == 0:
-        raise ValueError("There are no files that match the given pattern.")
+        raise ValueError("There are no files that match the given pattern. Please try again with a different pattern.")
     return list_of_files
 
 
@@ -62,14 +62,17 @@ def loading_data(list_of_files):
         specified in list_of_files.
     """
     sgm_data = sgmdata.load.SGMData(list_of_files)
+
     if len(sgm_data.__dict__['scans']) == 0:
         raise ValueError("hdf5 file must contain scans to be able to predict the number of scans required. The hdf5 "
                          "file you have provided does not contain any scans. PLease try again with an hdf5 file that"
                          " does contain scans.")
+    sample_name = []
     has_sdd = False
     for element in sgm_data.__dict__['scans']:
         i = 0
         signals = list(sgm_data.__dict__['scans'][element].__getitem__('entry1').__getattr__('signals').keys())
+        sample_name.append(str(sgm_data.__dict__['scans'][element].__getitem__('entry1').sample))
         while i < len(signals) and not has_sdd:
             if "sdd" in signals[i]:
                 has_sdd = True
@@ -81,7 +84,7 @@ def loading_data(list_of_files):
                              "scans with sdd values. ")
 
     # print(sgm_data._repr_console_())
-    interp_list = sgm_data.interpolate(resolution=0.1)#, sample='Co-nitrate - N')
+    interp_list = sgm_data.interpolate(resolution=0.1, sample=sample_name)
     return interp_list
 
 
@@ -95,35 +98,27 @@ def lowest_variance(d_list):
         (str): the lowest variance value and the index of the list differences that make up this variance value.
     """
     if len(d_list) < 5:
-        raise ValueError("lowest_variance function can only be used on scan sets with 6 or more scans.")
+        raise ValueError("lowest_variance function can only be used on hdf5 file containing 6 or more scans. The hdf5"
+                         " file passed does not contain 6 or more scans. Please try again with an hdf5 file containing"
+                         " 6 or more files")
     recent_variances = []
     variances = []
     recent_vals = []
     for diff in d_list:
         if len(recent_vals) < 4:
             recent_vals.append(diff)
-        # elif len(recent_vals) == 4:
-        #     recent_vals.append(diff)
-        #     for var in recent_vals:
-        #         recent_variances.append(((var - np.mean(recent_vals)) ** 2))
-        #     variances.append(np.sum(recent_variances) / len(recent_variances))
-        # else:
-        #     recent_variances.clear()
-        #     recent_vals.pop(0)
-        #     recent_vals.append(diff)
-        #     for var in recent_vals:
-        #         recent_variances.append(((var - np.mean(recent_vals)) ** 2))
-        #     variances.append(np.sum(recent_variances) / len(recent_variances))
         elif len(recent_vals) == 4:
             recent_vals.append(diff)
             for var in recent_vals:
                 recent_variances.append(((var - np.mean(recent_vals)) ** 2))
             variances.append(np.sum(recent_variances) / len(recent_variances))
+            # # # Temporary, for testing only.
             print(variances[-1])
             if variances[-1] <= .1796195:
                 pos = (variances.index(variances[-1]))
                 return ".1796 reached by scans:\t" + str(pos) + " - " + str(pos + 5) + "\nvalue is:\t" + \
                        str(variances[-1])
+            # # #
         else:
             recent_variances.clear()
             recent_vals.pop(0)
@@ -131,16 +126,19 @@ def lowest_variance(d_list):
             for var in recent_vals:
                 recent_variances.append(((var - np.mean(recent_vals)) ** 2))
             variances.append(np.sum(recent_variances) / len(recent_variances))
-
+            # # # Temporary, for testing only.
             print(variances[-1])
             if variances[-1] <= .1796195:
                 pos = (variances.index(variances[-1]))
                 return ".1796 reached by scans:\t" + str(pos) + " - " + str(pos + 5) + "\nvalue is:\t" + \
                        str(variances[-1])
+            # # #
+    # # # For final code.
     # pos = (variances.index(min(variances)) + 4)
     # return "\tThe lowest average variance (of the variance between 2 consecutive variances) between 5 consecutive " \
     #        "variances is " + str(min(variances)) + ".\nIt is reached with the variances between the " \
     #         "values within the range: " + str(pos - 5) + " through to position: " + str(pos) + ".\n"
+    # # #
 
 
 def noise(idx, amp, shift, ofs):
@@ -179,7 +177,6 @@ def predict(d_list, cur_indices):
     chosen_vals = result_noise.best_values
     return (chosen_vals['amp'] * np.array([(float(ind) - chosen_vals['shift']) ** (-3/2) for ind in
                                            np.add(cur_indices, 15)]) - chosen_vals['ofs'])
-# result_noise is the predicted noise level (I think?) Does the equation change it back to a difference?
 
 
 def determine_num_scans(d_list, indices, desired_difference=0.17961943):
@@ -204,8 +201,8 @@ def determine_num_scans(d_list, indices, desired_difference=0.17961943):
     variances = []
     recent_variances = []
     if len(d_list) < 9:
-        raise ValueError("Insufficient number of scans. Prediction can only be made on scan sets with 10 or more "
-                         "scans.")
+        raise ValueError("Prediction can only be made with hdf5 file containing 10 or more scans. Less than 10 scans"
+                         " in the hdf5 file passed in. Please try again with an hdf5 file containing 10 or more scans.")
     # Checking if the desired level of variance has already been reached in the first 10 scans.
     for element in d_list:
         if len(recent_differences) < 4:
@@ -215,8 +212,11 @@ def determine_num_scans(d_list, indices, desired_difference=0.17961943):
             for var in recent_differences:
                 recent_variances.append(((var - np.mean(recent_differences)) ** 2))
             if (np.sum(recent_variances) / len(recent_variances)) <= desired_difference:
+                # # # For final code.
                 # return 0
+                # # # Temporary, for testing only.
                 return d_list, copied_indices
+                # # #
         else:
             recent_variances.clear()
             recent_differences.pop(0)
@@ -224,8 +224,11 @@ def determine_num_scans(d_list, indices, desired_difference=0.17961943):
             for var in recent_differences:
                 recent_variances.append(((var - np.mean(recent_differences)) ** 2))
             if (np.sum(recent_variances) / len(recent_variances)) <= desired_difference:
+                # # # For final code.
                 # return 0
+                # # # Temporary, for testing only.
                 return d_list, copied_indices
+                # # #
     # Predicting variances until we predict a variance that's at or below the desired level of variance.
     while keep_predicting:
         # Predicting the next difference.
@@ -244,16 +247,16 @@ def determine_num_scans(d_list, indices, desired_difference=0.17961943):
         # Stopping the predictions if the desired level of variance has already been reached.
         if variances[-1] <= desired_difference:
             keep_predicting = False
-        if num_predictions > 100:
+        if num_predictions > 60:
             # If the desired_difference was the default value, not input by user.
             if desired_difference == 0.17961943:
                 raise RuntimeError("Sufficiently accurate prediction cannot be made.")
             else:
                 raise ValueError("Desired level of variance cannot be reached.")
-    # # # for plot1D:
-    return d_list, copied_indices
-    # # #
+    # # # For final code.
     # return num_predictions
+    # # # Temporary, for testing only.
+    return d_list, copied_indices
 
 
 def interpolating_data(interp_list_param):
@@ -340,9 +343,10 @@ def run_all(files):
     returned_indices_listed = []
     for item in returned_indices:
         returned_indices_listed.append(item)
+
+    # # # Temporary, for testing only.
     # print("\tActual:")
     # print(lowest_variance(returned_diff_list_listed))
-
     # print(lowest_variance(returned_diff_list_listed[:10]))
     # i = 0
     # while i < len(returned_diff_list_listed):
@@ -356,14 +360,21 @@ def run_all(files):
     #     a += 1
     # predicted = results[0]
     # indices = results[1]
-    ###
+    # # #
+    # # # Temporary, for testing with graph only/
     # returned_diff_list_listed.append(350)
     # returned_indices_listed.append(returned_diff_list_listed[-1] + 1)
     # plot1d([returned_indices_listed], [returned_diff_list_listed],
     #        "Sample Fe2O3", ["Actual Values", "Predicted Value"])
     # plot1d([returned_indices_listed[:10], indices[10:]], [returned_diff_list_listed[:10], predicted[10:]],
     #        "Sample Medge", ["Actual Values", "Predicted Value"])
+    # # #
+    # # # Temporary, for testing only.
     return len(determine_num_scans(returned_diff_list_listed[:10], returned_indices_listed[:10])[0]) - 1
+    # # #
+    # # # For final code.
+    # return determine_num_scans(returned_diff_list_listed[:10], returned_indices_listed[:10])
+    # # #
 
 
 def testing():
@@ -379,132 +390,132 @@ def testing():
     if str(result) != expected_result:
         print("Error with " + str(func) + " when using on " + str(situ) + ". Expected " + str(expected_result) +
               " but got " + str(result))
-    # lowest_variance(): testing on a list of all 0s.
-    situ = "list of all 0s"
-    expected_result = 'The lowest average variance (of the variance between 2 consecutive variances) between 5 ' \
-                      'consecutive variances is 0.0.\nIt is reached with the variances between the values within the ' \
-                      'range: 7 through to position: 11.\n'
-    test_list = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
-    result = lowest_variance(test_list)
-    if str(result) != expected_result:
-        print("Error with " + str(func) + " when using on " + str(situ) + ". Expected " + str(expected_result) +
-              " but got " + str(result))
-    # lowest_variance(): testing on a list containing ints and floats.
-    situ = "list containing ints and floats "
-    expected_result = 'The lowest average variance (of the variance between 2 consecutive variances) between 5' \
-                      ' consecutive variances is 0.01999999999999999.\nIt is reached with the variances between the' \
-                      ' values within the range: 10 through to position: 14.\n'
-    test_list = [.5, .1, 1.5, 2.0, 2.5, 1, 2, 3, 4, 5, 1.1, 1.2, 1.3, 1.4, 1.5]
-    result = lowest_variance(test_list)
-    if str(result) != expected_result:
-        print("Error with " + str(func) + " when using on " + str(situ) + ". Expected " + str(expected_result) +
-              " but got " + str(result))
+    # # lowest_variance(): testing on a list of all 0s.
+    # situ = "list of all 0s"
+    # expected_result = 'The lowest average variance (of the variance between 2 consecutive variances) between 5 ' \
+    #                   'consecutive variances is 0.0.\nIt is reached with the variances between the values within the ' \
+    #                   'range: 7 through to position: 11.\n'
+    # test_list = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+    # result = lowest_variance(test_list)
+    # if str(result) != expected_result:
+    #     print("Error with " + str(func) + " when using on " + str(situ) + ". Expected " + str(expected_result) +
+    #           " but got " + str(result))
+    # # lowest_variance(): testing on a list containing ints and floats.
+    # situ = "list containing ints and floats "
+    # expected_result = 'The lowest average variance (of the variance between 2 consecutive variances) between 5' \
+    #                   ' consecutive variances is 0.01999999999999999.\nIt is reached with the variances between the' \
+    #                   ' values within the range: 10 through to position: 14.\n'
+    # test_list = [.5, .1, 1.5, 2.0, 2.5, 1, 2, 3, 4, 5, 1.1, 1.2, 1.3, 1.4, 1.5]
+    # result = lowest_variance(test_list)
+    # if str(result) != expected_result:
+    #     print("Error with " + str(func) + " when using on " + str(situ) + ". Expected " + str(expected_result) +
+    #           " but got " + str(result))
+    #
+    # # predict()
+    # func = "predict()"
+    # # predict(): regular lists passed for both variables
+    # situ = "regular lists passed for both variables"
+    # expected_result = np.array([12.28664511, 11.19761088, 10.26045971, 9.44710632, 8.73580685, 8.10949264, 7.55459775,
+    #                             7.06021877, 6.61750288, 6.21919547, 5.85930105, 5.53282617])
+    # test_list1 = [500, 200, 100, 75, 65, 60, 56, 52, 50, 49, 48, 47]
+    # test_list2 = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
+    # result = predict(test_list1, test_list2)
+    # same = True
+    # i = 0
+    # while i < len(expected_result):
+    #     if round(expected_result[i], 5) != round(result[i], 5):
+    #         same = False
+    #     i += 1
+    # if not same:
+    #     print("Error with " + str(func) + " when using on " + str(situ) + ". Expected\n" + str(expected_result) +
+    #           " but got \n" + str(result))
+    # # predict(): list of both ints and floats for d_list
+    # situ = "list of both ints and floats for d_list"
+    # expected_result = np.array([4.547589, 4.1427363, 3.79458128, 3.49259853, 3.22864805, 2.99634627, 2.79062404, 2.60741038,
+    #                            2.44340228, 2.29589481, 2.16265387, 2.04181978, 1.9318333])
+    # test_list1 = [140, 120, 100, 90, 80, 75, 70, 67.5, 65, 63.5, 62, 61.5, 60]
+    # test_list2 = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13]
+    # result = predict(test_list1, test_list2)
+    # same = True
+    # i = 0
+    # while i < len(expected_result):
+    #     if round(expected_result[i], 5) != round(result[i], 5):
+    #         same = False
+    #     i += 1
+    # if not same:
+    #     print("Error with " + str(func) + " when using on " + str(situ) + ". Expected\n" + str(expected_result) +
+    #           " but got \n" + str(result))
+    # # predict(): random list for indices
+    # situ = "list of both ints and floats for d_list"
+    # expected_result = np.array([0.30573543, 0.14051718, 0.01636123, 0.23149906, 0.02215948, 0.27704, 0.19719866, 0.0404422,
+    #                             0.01406676, 0.21320443, 0.10660011, 0.00481277, 0.10660011])
+    # test_list1 = [140, 120, 100, 90, 80, 75, 70, 67.5, 65, 63.5, 62, 61.5, 60]
+    # test_list2 = [0, 10, 89, 3, 70, 1, 5, 42, 100, 4, 15, 220, 15]
+    # result = predict(test_list1, test_list2)
+    # same = True
+    # i = 0
+    # while i < len(expected_result):
+    #     if round(expected_result[i], 5) != round(result[i], 5):
+    #         same = False
+    #     i += 1
+    # if not same:
+    #     print("Error with " + str(func) + " when using on " + str(situ) + ". Expected\n" + str(expected_result) +
+    #           " but got \n" + str(result))
+    #
+    # # determine_num_scans():
+    # func = "determine_num_scans()"
+    # # determine_num_scans(): regular values input for d_list and indices.
+    # situ = "regular values input for d_list and indices"
+    # expected_result = 15
+    # test_list1 = [140, 120, 100, 90, 80, 75, 70, 67.5, 65, 63.5]
+    # test_list2 = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+    # result = determine_num_scans(test_list1, test_list2)
+    # if result != expected_result:
+    #     print("Error with " + str(func) + " when using on " + str(situ) + ". Expected " + str(expected_result) +
+    #           " but got " + str(result))
+    # # determine_num_scans(): d_list too small.
+    # situ = "d_list too small"
+    # expected_result = 1
+    # test_list1 = [140, 120, 100]
+    # test_list2 = [0, 1, 2]
+    # result = determine_num_scans(test_list1, test_list2)
+    # if result != expected_result:
+    #     print("Error with " + str(func) + " when using on " + str(situ) + ". Expected " + str(expected_result) +
+    #           " but got " + str(result))
+    # # determine_num_scans(): d_list where desired level of noise already reached.
+    # situ = "desired level of noise already reached"
+    # expected_result = 0
+    # test_list1 = [100, 200, 0.1, 0.11, 0.111, 0.1111, 0.11111, 300, 500, 20]
+    # test_list2 = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+    # result = determine_num_scans(test_list1, test_list2)
+    # if result != expected_result:
+    #     print("Error with " + str(func) + " when using on " + str(situ) + ". Expected " + str(expected_result) +
+    #           " but got " + str(result))
+    # # determine_num_scans(): normal d_list, random ints in indices.
+    # situ = "normal d_list, random ints in indices"
+    # expected_result = 15
+    # test_list1 = [100, 90, 80, 70, 60, 50, 40, 30, 20, 10]
+    # test_list2 = [0, 10, 4, 88, 90, 4, 67, 12, 100, 43]
+    # result = determine_num_scans(test_list1, test_list2)
+    # if result != expected_result:
+    #     print("Error with " + str(func) + " when using on " + str(situ) + ". Expected " + str(expected_result) +
+    #           " but got " + str(result))
+    # # determine_num_scans(): very low desired noise level.
+    # situ = "very low desired noise level"
+    # expected_result = 583
+    # test_list1 = [140, 120, 100, 90, 80, 75, 70, 67.5, 65, 63.5]
+    # test_list2 = [0, 10, 4, 88, 90, 4, 67, 12, 100, 43]
+    # result = determine_num_scans(test_list1, test_list2, 0.00001)
+    # if result != expected_result:
+    #     print("Error with " + str(func) + " when using on " + str(situ) + ". Expected " + str(expected_result) +
+    #           " but got " + str(result))
 
-    # predict()
-    func = "predict()"
-    # predict(): regular lists passed for both variables
-    situ = "regular lists passed for both variables"
-    expected_result = np.array([12.28664511, 11.19761088, 10.26045971, 9.44710632, 8.73580685, 8.10949264, 7.55459775,
-                                7.06021877, 6.61750288, 6.21919547, 5.85930105, 5.53282617])
-    test_list1 = [500, 200, 100, 75, 65, 60, 56, 52, 50, 49, 48, 47]
-    test_list2 = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
-    result = predict(test_list1, test_list2)
-    same = True
-    i = 0
-    while i < len(expected_result):
-        if round(expected_result[i], 5) != round(result[i], 5):
-            same = False
-        i += 1
-    if not same:
-        print("Error with " + str(func) + " when using on " + str(situ) + ". Expected\n" + str(expected_result) +
-              " but got \n" + str(result))
-    # predict(): list of both ints and floats for d_list
-    situ = "list of both ints and floats for d_list"
-    expected_result = np.array([4.547589, 4.1427363, 3.79458128, 3.49259853, 3.22864805, 2.99634627, 2.79062404, 2.60741038,
-                               2.44340228, 2.29589481, 2.16265387, 2.04181978, 1.9318333])
-    test_list1 = [140, 120, 100, 90, 80, 75, 70, 67.5, 65, 63.5, 62, 61.5, 60]
-    test_list2 = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13]
-    result = predict(test_list1, test_list2)
-    same = True
-    i = 0
-    while i < len(expected_result):
-        if round(expected_result[i], 5) != round(result[i], 5):
-            same = False
-        i += 1
-    if not same:
-        print("Error with " + str(func) + " when using on " + str(situ) + ". Expected\n" + str(expected_result) +
-              " but got \n" + str(result))
-    # predict(): random list for indices
-    situ = "list of both ints and floats for d_list"
-    expected_result = np.array([0.30573543, 0.14051718, 0.01636123, 0.23149906, 0.02215948, 0.27704, 0.19719866, 0.0404422,
-                                0.01406676, 0.21320443, 0.10660011, 0.00481277, 0.10660011])
-    test_list1 = [140, 120, 100, 90, 80, 75, 70, 67.5, 65, 63.5, 62, 61.5, 60]
-    test_list2 = [0, 10, 89, 3, 70, 1, 5, 42, 100, 4, 15, 220, 15]
-    result = predict(test_list1, test_list2)
-    same = True
-    i = 0
-    while i < len(expected_result):
-        if round(expected_result[i], 5) != round(result[i], 5):
-            same = False
-        i += 1
-    if not same:
-        print("Error with " + str(func) + " when using on " + str(situ) + ". Expected\n" + str(expected_result) +
-              " but got \n" + str(result))
 
-    # determine_num_scans():
-    func = "determine_num_scans()"
-    # determine_num_scans(): regular values input for d_list and indices.
-    situ = "regular values input for d_list and indices"
-    expected_result = 15
-    test_list1 = [140, 120, 100, 90, 80, 75, 70, 67.5, 65, 63.5]
-    test_list2 = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
-    result = determine_num_scans(test_list1, test_list2)
-    if result != expected_result:
-        print("Error with " + str(func) + " when using on " + str(situ) + ". Expected " + str(expected_result) +
-              " but got " + str(result))
-    # determine_num_scans(): d_list too small.
-    situ = "d_list too small"
-    expected_result = 1
-    test_list1 = [140, 120, 100]
-    test_list2 = [0, 1, 2]
-    result = determine_num_scans(test_list1, test_list2)
-    if result != expected_result:
-        print("Error with " + str(func) + " when using on " + str(situ) + ". Expected " + str(expected_result) +
-              " but got " + str(result))
-    # determine_num_scans(): d_list where desired level of noise already reached.
-    situ = "desired level of noise already reached"
-    expected_result = 0
-    test_list1 = [100, 200, 0.1, 0.11, 0.111, 0.1111, 0.11111, 300, 500, 20]
-    test_list2 = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
-    result = determine_num_scans(test_list1, test_list2)
-    if result != expected_result:
-        print("Error with " + str(func) + " when using on " + str(situ) + ". Expected " + str(expected_result) +
-              " but got " + str(result))
-    # determine_num_scans(): normal d_list, random ints in indices.
-    situ = "normal d_list, random ints in indices"
-    expected_result = 15
-    test_list1 = [100, 90, 80, 70, 60, 50, 40, 30, 20, 10]
-    test_list2 = [0, 10, 4, 88, 90, 4, 67, 12, 100, 43]
-    result = determine_num_scans(test_list1, test_list2)
-    if result != expected_result:
-        print("Error with " + str(func) + " when using on " + str(situ) + ". Expected " + str(expected_result) +
-              " but got " + str(result))
-    # determine_num_scans(): very low desired noise level.
-    situ = "very low desired noise level"
-    expected_result = 583
-    test_list1 = [140, 120, 100, 90, 80, 75, 70, 67.5, 65, 63.5]
-    test_list2 = [0, 10, 4, 88, 90, 4, 67, 12, 100, 43]
-    result = determine_num_scans(test_list1, test_list2, 0.00001)
-    if result != expected_result:
-        print("Error with " + str(func) + " when using on " + str(situ) + ". Expected " + str(expected_result) +
-              " but got " + str(result))
-
-
-# testing()
-print("\tNumber of additional scans needed:\t" +
-      str(run_all('C:/Users/roseh/Desktop/Internship/MyCode/h5Files/NotPrimary/*S2-7*.hdf5')))
+testing()
 # print("\tNumber of additional scans needed:\t" +
-      # str(run_all('C:/Users/roseh/Desktop/Internship/MyCode/h5Files/*Amm*.hdf5')))
+#       str(run_all('C:/Users/roseh/Desktop/Internship/MyCode/h5Files/*Bee2*.hdf5')))
+# print("\tNumber of additional scans needed:\t" +
+#       str(run_all('C:/Users/roseh/Desktop/Internship/MyCode/h5Files/NotPrimary/*GoldScatter*.hdf5')))
 
 
 
