@@ -813,11 +813,15 @@ to the relevant subsection of the report.}
 
                 image = [entry for k1, scan in data.scans.items() for k2, entry in scan.__dict__.items() if
                          entry['sample'] == k][0]
-
-                df = image.interpolate(resolution=0.1)
+                command = image['command']
+                xrange = (float(command[2]), float(command[3]))
+                yrange = (float(command[6]), float(command[7]))
+                dx = abs(xrange[0] - xrange[1])/(int(command[4])* 20)
+                dy = abs(yrange[0] - yrange[1])/50
+                df = image.interpolate(resolution=[dx, dy], start=[min(xrange),min(yrange)], stop=[max(xrange), max(yrange)])
                 img_data = self.make_data(df)
                 self.make_plot(img_data, positions, k, iter(sample_list))
-                del img_data, data, image
+                del img_data, data, image, df
             self.sample_lists.update({k: sample_list})
         self.make_scan_figures(*self.get_or_process_data(process=process, key=key), plots=plots)
         self.make_holder_table()

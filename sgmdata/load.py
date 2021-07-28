@@ -100,7 +100,7 @@ class SGMScan(object):
                     if 'scan' in command[0]:
                         start = [round(float(command[2]))]
                     elif 'mesh' in command[0]:
-                        start = [round(float(command[2])), round(float(command[6]))]
+                        start = [float(command[2]), float(command[6])]
                 else:
                     start = [round(v.min()) for k, v in axis.items()]
             else:
@@ -111,7 +111,7 @@ class SGMScan(object):
                     if 'scan' in command[0]:
                         stop = [round(float(command[3]))]
                     elif 'mesh' in command[0]:
-                        stop = [round(float(command[3])), round(float(command[7]))]
+                        stop = [float(command[3]), float(command[7])]
                 else:
                     stop = [round(v.max()) + 1 for k, v in axis.items()]
             else:
@@ -554,6 +554,9 @@ class SGMData(object):
             for i, entry in enumerate(NXentries):
                 independent.append(tuple(self.axes))
         if not independent:
+            warnings.warn(
+                "No independent axis was identified, you can supply your own axes name using the keyword \"axes\" (list)"
+            )
             return {"ERROR": file_root}
         indep = [self._find_data(h5[entry], independent[i]) for i, entry in enumerate(NXentries)]
         # search for data that is not an array mentioned in the command
