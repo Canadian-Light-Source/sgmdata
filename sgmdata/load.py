@@ -61,7 +61,7 @@ class SGMScan(object):
 
         def make_df(self, labels=None):
             c = [k for k, v in self['independent'].items()]
-            signal_columns = [dd.from_delayed(labels)]
+            signal_columns = [labels]
             for k, v in self['signals'].items():
                 if len(v.shape) == 2:
                     columns = [k + "-" + str(i) for i in range(v.shape[1])]
