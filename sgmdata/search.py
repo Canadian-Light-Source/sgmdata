@@ -64,7 +64,7 @@ class SGMQuery(object):
         self.avg_id = []
         self.get_paths()
         if self.paths and self.data:
-            self.data = SGMData(self.paths, kwargs)
+            self.data = SGMData(self.paths, **kwargs)
 
     def get_paths(self):
         self.cursor.execute("SELECT id, name from lims_project WHERE name IN ('%s');" % self.user)
