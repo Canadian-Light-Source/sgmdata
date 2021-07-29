@@ -57,7 +57,7 @@ class SGMScan(object):
             axes = np.vstack([v for k, v in bin_labels.items()]).T
             bin_l_dask = da.from_array(axes, chunks='auto')
             columns = [k for k, v in bin_labels.items()]
-            return dd.from_dask_array(bin_l_dask, columns=columns, npartitions=npartitions)
+            return dd.from_dask_array(bin_l_dask, columns=columns)
 
         def make_df(self, labels=None):
             c = [k for k, v in self['independent'].items()]
