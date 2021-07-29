@@ -57,7 +57,7 @@ class SGMScan(object):
             axes = np.vstack([v for k, v in bin_labels.items()]).T
             bin_l_dask = da.from_array(axes, chunks='auto')
             columns = [k for k, v in bin_labels.items()]
-            return dd.from_dask_array(bin_l_dask, columns=columns)
+            return dd.from_dask_array(bin_l_dask, columns=columns, npartitions=npartitions)
 
         def make_df(self, labels=None):
             c = [k for k, v in self['independent'].items()]
@@ -160,7 +160,7 @@ class SGMScan(object):
             bin_edges = [np.linspace(start[i] - offset[i], stop[i] + offset[i], bin_num[i] + 1, endpoint=True) for i in
                          range(len(bin_num))]
             self.__setattr__("new_axes", {"values": bins, "edges": bin_edges})
-            labels = delayed(self.label_bins)(bins, bin_edges, self['independent'], self.npartitions)
+            labels = self.label_bins(bins, bin_edges, self['independent'], self.npartitions)
             df = self.make_df(labels=labels)
             if compute:
                 nm = [k for k, v in self['independent'].items()]
