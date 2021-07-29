@@ -70,9 +70,10 @@ class SGMScan(object):
                 else:
                     continue
                 signal_columns.append(dd.from_dask_array(v, columns=columns))
-            df = reduce(lambda left, right: dd.merge(left, right), signal_columns)
+            df = reduce(lambda left, right: dd.merge(left, right, left_index=True, right_index=False,
+                                                     how='outer'), signal_columns)
 
-            self.__setattr__('dataframe', {"binned": df})
+            self.__setattr__('dataframe', {"binned": df.groupby(c).mean()})
             return df.groupby(c).mean()
 
         def interpolate(self, **kwargs):
