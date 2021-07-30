@@ -1,16 +1,19 @@
 from bokeh.layouts import column, row, gridplot
 from bokeh.palettes import all_palettes
-from bokeh.models import CustomJS, ColumnDataSource, Select, RangeSlider, ColorBar, LinearColorMapper, Rect, Dropdown
+from bokeh.models import CustomJS, ColumnDataSource, Select, RangeSlider, ColorBar, LinearColorMapper, Rect, Dropdown, Range1d
 from bokeh.plotting import Figure, output_notebook, output_file, show
 from bokeh.embed import json_item
 from bokeh import events
+import matplotlib.colors as colour
+import matplotlib.cm as cmx
+import pandas as pd
 from sgmdata.xrffit import gaussians
 import numpy as np
 
 required = ['image', 'sdd1', 'sdd2', 'sdd3', 'sdd4', 'tey', 'xp', 'yp', 'emission']
 
 
-def make_data(df, keys):
+def make_data(df, keys, sgm_data):
     data = {k: df.filter(regex=("%s.*" % k), axis=1).to_numpy() for k in keys}
     data.update({k: np.reshape(v, (len(df.index.levels[0]), len(df.index.levels[1]), v.shape[-1])) if len(
         v.shape) == 2 else np.reshape(v, (len(df.index.levels[0]), len(df.index.levels[1]))) for k, v in data.items()})
@@ -98,7 +101,7 @@ def plot(**kwargs):
     x_delta = max(kwargs['xp']) - min(kwargs['xp'])
     y_delta = max(kwargs['yp']) - min(kwargs['yp'])
     plot = Figure(plot_width=600, plot_height=600, tools="box_select,save,box_zoom, wheel_zoom,hover,pan,reset")
-    color_mapper = LinearColorMapper(palette="Spectral11", low=1, high=np.amax(im1))
+    color_mapper = LinearColorMapper(palette="Spectral11", low=0, high=np.amax(im1))
     im = plot.image(image='image', y=min(kwargs['yp']), x=min(kwargs['xp']), dh=y_delta, dw=x_delta, source=img_source,
                     palette="Spectral11")
 
@@ -237,6 +240,80 @@ def plot(**kwargs):
         options = column(det_select, intensity_slider, palette_select, xrf)
 
     layout = gridplot([[plot, options]])
+    if kwargs.get('json', False):
+        return json_item(layout)
+    show(layout)
+
+
+def color_mapper(sdd, key=""):
+    l = [["#%02x%02x%02x" % (int(r), int(g), int(b))
+          for r, g, b, _ in 255 * cmx.viridis(colour.Normalize()(sdd[:, i]))] for i in range(0, 256)]
+    nm = [key + "-" + str(i) for i in range(0, 256)]
+    return l, nm
+
+
+def plot_raw(shift=False, **kwargs):
+    # Verify the data in kwargs
+    if 'x' in kwargs.keys() and 'y' in kwargs.keys():
+        x = kwargs['x']
+        y = kwargs['y']
+    else:
+        raise (Exception, "Improper data passed to plot function. Need x & y axes")
+    if 'sdd1' in kwargs.keys():
+        sdd1 = kwargs['sdd1']
+        sdd2 = kwargs['sdd2']
+        sdd3 = kwargs['sdd3']
+        sdd4 = kwargs['sdd4']
+    else:
+        raise (Exception, "Improper data passed to plot function. Need sdd signal")
+    if 'command' in kwargs.keys():
+        command = kwargs['command'].split()
+    else:
+        raise (Exception, "Improper data passed to plot function. Need spec command argument")
+
+    colors1, n1 = color_mapper(sdd1, key='sdd1')
+    colors2, n2 = color_mapper(sdd2, key='sdd2')
+    colors3, n3 = color_mapper(sdd3, key='sdd3')
+    colors4, n4 = color_mapper(sdd4, key='sdd4')
+
+    xdelta = abs(float(command[2]) - float(command[3]))
+    ydelta = abs(float(command[6]) - float(command[7]))
+    height = ydelta / float(command[8])
+    width = xdelta / (sdd3.shape[0] / float(command[8]))
+
+    # Shift the X data to line up the rows at center.
+    # Pre-process the x values. The data needs to be shifted due to how they were collected
+    if shift:
+        shift = 0.5
+        shifted_data = np.zeros(len(x))
+        shifted_data[0] = x[0]
+        for i in range(1, len(x)):
+            shifted_data[i] = x[i] + shift * (x[i] - x[i - 1])
+        x = shifted_data
+
+    # Set the y and x axes range from actual data.
+    yr = Range1d(start=max(y), end=min(y))
+    xr = Range1d(start=max(x), end=min(x))
+
+    data = [x, y, *colors1, *colors2, *colors3, *colors4]
+    names = ['x', 'y', *n1, *n2, *n3, *n4]
+
+    df = pd.DataFrame(data, columns=names)
+    source = ColumnDataSource(df)
+    plot = Figure(plot_width=600,
+                  plot_height=600,
+                  tools="box_select,save,box_zoom,wheel_zoom,hover,pan,crosshair,reset",
+                  x_range=xr,
+                  y_range=yr,
+                  background_fill_color="black",
+                  background_fill_alpha=1,
+                  )
+
+    plot.xgrid.grid_line_color = None
+    plot.ygrid.grid_line_color = None
+    plot.rect(x='x', y='y', color='sdd3-50', width=width, height=height, source=source)
+
+    layout = gridplot([[plot, ]])
     if kwargs.get('json', False):
         return json_item(layout)
     show(layout)

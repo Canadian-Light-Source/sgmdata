@@ -540,7 +540,7 @@ class SGMData(object):
                 else:
                     commands = [
                         str(h5[entry + '/command'][()]).split() if isinstance(h5[entry + '/command'][()], str) else str(
-                            h5[entry + '/command'][()], 'utf-8').split()[:-1] for entry in NXentries]
+                            h5[entry + '/command'][()], 'utf-8').split() for entry in NXentries]
             except:
                 warnings.warn(
                     "Scan entry didn't have a 'command' string saved. Command load can be skipped by providing a list of independent axis names")
