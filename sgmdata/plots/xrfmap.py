@@ -1,12 +1,10 @@
 from bokeh.layouts import column, row, gridplot
 from bokeh.palettes import all_palettes
-from bokeh.models import CustomJS, ColumnDataSource, Select, RangeSlider, ColorBar, LinearColorMapper, Rect, Dropdown, Range1d
-from bokeh.plotting import Figure, output_notebook, output_file, show
+from bokeh.models import CustomJS, ColumnDataSource, Select, RangeSlider, ColorBar, LinearColorMapper, Rect, Slider, \
+    Range1d
+from bokeh.plotting import Figure, show
 from bokeh.embed import json_item
-from bokeh import events
-import matplotlib.colors as colour
-import matplotlib.cm as cmx
-import pandas as pd
+
 from sgmdata.xrffit import gaussians
 import numpy as np
 
@@ -326,7 +324,7 @@ def plot_xyz(shift=False, **kwargs):
                    source=source, name="xrf-plot")
     color_mapper.js_on_change
 
-    ##add image plot annotations
+    # add image plot annotations
     color_bar = ColorBar(color_mapper=color_mapper, border_line_color=None, location=(0, 0))
     plot.xaxis.axis_label = 'X (mm)'
     plot.yaxis.axis_label = 'Y (mm)'
