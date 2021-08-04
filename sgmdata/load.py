@@ -12,6 +12,8 @@ from multiprocessing.pool import ThreadPool
 from functools import partial
 from sgmdata.plots import eemscan, xrfmap
 from sgmdata.xrffit import fit_peaks
+from functools import reduce
+
 import warnings
 
 try:
@@ -22,7 +24,6 @@ try:
         from tqdm import tqdm  # Other type (?)
 except NameError:
     from tqdm import tqdm
-
 
 
 class SGMScan(object):
@@ -56,11 +57,11 @@ class SGMScan(object):
             axes = np.vstack([v for k, v in bin_labels.items()]).T
             bin_l_dask = da.from_array(axes, chunks='auto')
             columns = [k for k, v in bin_labels.items()]
-            return dd.from_dask_array(bin_l_dask, columns=columns).compute()
+            return dd.from_dask_array(bin_l_dask, columns=columns)
 
         def make_df(self, labels=None):
-            df = dd.from_delayed(labels)
             c = [k for k, v in self['independent'].items()]
+            signal_columns = [labels]
             for k, v in self['signals'].items():
                 if len(v.shape) == 2:
                     columns = [k + "-" + str(i) for i in range(v.shape[1])]
@@ -68,8 +69,10 @@ class SGMScan(object):
                     columns = [k]
                 else:
                     continue
-                df = df.merge(dd.from_dask_array(v, columns=columns))
-
+                signal_columns.append(dd.from_dask_array(v, columns=columns))
+            #df = reduce(lambda left, right: dd.merge(left, right, left_index=True, right_index=False,
+            #                                         how='outer'), signal_columns)
+            df = dd.multi.concat(signal_columns, axis=1)
             self.__setattr__('dataframe', {"binned": df.groupby(c).mean()})
             return df.groupby(c).mean()
 
@@ -138,7 +141,7 @@ class SGMScan(object):
                     if l < bin_num[i]:
                         warnings.warn(
                             "Resolution setting can't be higher than experimental resolution, setting resolution for axis %s to %f" % (
-                            i, abs(stop[i] - start[i]) / l), UserWarning)
+                                i, abs(stop[i] - start[i]) / l), UserWarning)
                         bin_num[i] = l
                 offset = [item / 2 for item in resolution]
                 bins = [np.linspace(start[i], stop[i], bin_num[i], endpoint=True) for i in range(len(bin_num))]
@@ -157,8 +160,8 @@ class SGMScan(object):
             bin_edges = [np.linspace(start[i] - offset[i], stop[i] + offset[i], bin_num[i] + 1, endpoint=True) for i in
                          range(len(bin_num))]
             self.__setattr__("new_axes", {"values": bins, "edges": bin_edges})
-            labels = delayed(self.label_bins)(bins, bin_edges, self['independent'], self.npartitions)
-            df = self.make_df(labels)
+            labels = self.label_bins(bins, bin_edges, self['independent'], self.npartitions)
+            df = self.make_df(labels=labels)
             if compute:
                 nm = [k for k, v in self['independent'].items()]
                 if len(nm) == 1:
@@ -171,7 +174,7 @@ class SGMScan(object):
                     _x = np.array([[bins[0][j] for i in range(len(bins[1]))] for j in range(len(bins[0]))]).flatten()
                     array = [_x, _y]
                     idx = pd.MultiIndex.from_tuples(list(zip(*array)), names=nm)
-                    #This method works for now, but can take a fair amount of time.
+                    # This method works for now, but can take a fair amount of time.
                     df = df.compute().unstack().interpolate(method=method).fillna(0).stack().reindex(idx)
                     binned = {"dataframe": df}
                     self.__setattr__('binned', binned)
@@ -184,13 +187,13 @@ class SGMScan(object):
 
         def fit_mcas(self, detectors=[], emission=[]):
             if not len(detectors):
-                detectors = [k for k,v in self['signals'].items() if 'sdd' in k or 'ge' in k]
+                detectors = [k for k, v in self['signals'].items() if 'sdd' in k or 'ge' in k]
             if not len(emission):
                 if 'emission' in self['other']:
                     emission = self['other']['emission'].compute()
                 else:
                     sig = self['signals'][detectors[0]]
-                    emission = np.linspace(0, sig.shape[1]*10, sig.shape[1])
+                    emission = np.linspace(0, sig.shape[1] * 10, sig.shape[1])
             if 'binned' in self.keys():
                 df = self['binned']['dataframe']
                 roi_cols = df.filter(regex="sdd[1-4]_[0-2].*").columns
@@ -203,12 +206,12 @@ class SGMScan(object):
                     data.append(df.filter(regex=rgx, axis=1))
                 fit_df, pks, wid = fit_peaks(emission, data)
                 new_df = pd.concat([scaler_df, fit_df], axis=1, sort=False)
-                self['fit'] = {"dataframe": new_df, "emission":emission, "peaks": np.array([emission[p] for p in pks]), "width": wid }
+                self['fit'] = {"dataframe": new_df, "emission": emission, "peaks": np.array([emission[p] for p in pks]),
+                               "width": wid}
                 return new_df
 
-
         def __repr__(self):
-            represent =  ""
+            represent = ""
             for key in self.keys():
                 represent += f"\t {key}:\n\t\t\t"
                 val = self[key]
@@ -261,10 +264,11 @@ class SGMScan(object):
                 if 'dataframe' in self['binned'].keys():
                     df = self['binned']['dataframe']
                     h5 = h5py.File(filename, "w")
-                    NXentries = [int(str(x).split("entry")[1]) for x in h5['/'].keys() if 'NXentry' in str(h5[x].attrs.get('NX_class'))]
+                    NXentries = [int(str(x).split("entry")[1]) for x in h5['/'].keys() if
+                                 'NXentry' in str(h5[x].attrs.get('NX_class'))]
                     if NXentries:
                         NXentries.sort()
-                        entry = 'entry' + str(NXentries[-1]+1)
+                        entry = 'entry' + str(NXentries[-1] + 1)
                     else:
                         entry = 'entry1'
                     axes = [nm for nm in df.index.names]
@@ -285,7 +289,7 @@ class SGMScan(object):
                     for sig in self.signals:
                         arr = df.filter(regex="%s.*" % sig.split('_')[0]).to_numpy()
                         if len(df.index.names) > 1:
-                            shape = [len(df.index.levels[0]),len(df.index.levels[1])]
+                            shape = [len(df.index.levels[0]), len(df.index.levels[1])]
                             shape += [s for s in arr.shape[1:]]
                             arr = np.reshape(arr, tuple(shape))
                         nxdata.create_dataset(sig, arr.shape, data=arr)
@@ -293,7 +297,7 @@ class SGMScan(object):
             else:
                 raise AttributeError("no interpolated data found to write")
 
-        def plot(self, json_out = False):
+        def plot(self, json_out=False):
             """
             Determines the appropriate plot based on independent axis number and name
             """
@@ -307,7 +311,7 @@ class SGMScan(object):
                         roi_cols = df.filter(regex="sdd[1-4]_[0-2].*").columns
                         df.drop(columns=roi_cols, inplace=True)
                         data = {k: df.filter(regex=("%s.*" % k), axis=1).to_numpy() for k in keys}
-                        data = {k: v for k,v in data.items() if v.size}
+                        data = {k: v for k, v in data.items() if v.size}
                         data.update({df.index.name: np.array(df.index), 'emission': np.linspace(0, 2560, 256)})
                         if 'image' in keys:
                             data.update({'image': data['sdd1'], 'filename': str(self.sample)})
@@ -316,13 +320,14 @@ class SGMScan(object):
                 else:
                     print("Plotting Raw Data")
                     ds = int(self.independent['en'].shape[0] / 1000) + 1
-                    data = {k: self.signals[s][::ds].compute() for s in self.signals.keys() for k in keys if k in s }
+                    data = {k: self.signals[s][::ds].compute() for s in self.signals.keys() for k in keys if k in s}
                     data.update(
-                        {k: self.independent[s][::ds].compute() for s in self.independent.keys() for k in keys if k in s })
-                    data.update({k: self.other[s].compute() for s in self.other.keys() for k in keys if s in k })
+                        {k: self.independent[s][::ds].compute() for s in self.independent.keys() for k in keys if
+                         k in s})
+                    data.update({k: self.other[s].compute() for s in self.other.keys() for k in keys if s in k})
                     if 'image' in keys:
                         data.update({'image': self.signals['sdd1'][::ds].compute(), 'filename': str(self.sample)})
-                    data.update({'json':json_out})
+                    data.update({'json': json_out})
                     return eemscan.plot(**data)
             elif dim == 2:
                 keys = xrfmap.required
@@ -331,10 +336,14 @@ class SGMScan(object):
                     emission = self['fit']['emission']
                     peaks = self['fit']['peaks']
                     width = self['fit']['width']
-                    data = {k: df.filter(regex=("%s.*" % k), axis=1).to_numpy() for k in keys if any(k in mystring for mystring in self.signals.keys())}
-                    data.update({k:np.reshape(v, (len(df.index.levels[0]),len(df.index.levels[1]),v.shape[-1])) if len(v.shape) == 2 else np.reshape(v,(len(df.index.levels[0]),len(df.index.levels[1]))) for k,v in data.items()})
-                    data.update({n:df.index.levels[i] for i,n in enumerate(list(df.index.names))})
-                    data.update({'emission': emission, 'peaks':peaks, 'width': width})
+                    data = {k: df.filter(regex=("%s.*" % k), axis=1).to_numpy() for k in keys if
+                            any(k in mystring for mystring in self.signals.keys())}
+                    data.update({k: np.reshape(v,
+                                               (len(df.index.levels[0]), len(df.index.levels[1]), v.shape[-1])) if len(
+                        v.shape) == 2 else np.reshape(v, (len(df.index.levels[0]), len(df.index.levels[1]))) for k, v in
+                                 data.items()})
+                    data.update({n: df.index.levels[i] for i, n in enumerate(list(df.index.names))})
+                    data.update({'emission': emission, 'peaks': peaks, 'width': width})
                     if 'image' in keys:
                         data.update({"image": data['sdd1']})
                     data.update({'json': json_out})
@@ -378,10 +387,10 @@ class SGMScan(object):
     def __getitem__(self, item):
         return self.__dict__[item]
 
+
 class DisplayDict(dict):
     def __getattr__(self, name):
         return self[name]
-
 
     def __setattr__(self, name, value):
         self[name] = value
@@ -398,6 +407,7 @@ class DisplayDict(dict):
             table.append(f"<tr><th> {key}</th><th>{value}</th></tr>")
         table.append("</tbody></table>")
         return "\n".join(table)
+
 
 class SGMData(object):
     """
@@ -428,10 +438,11 @@ class SGMData(object):
             if not filename:
                 filename = self.sample + ".nxs"
             h5 = h5py.File(filename, "a")
-            NXentries = [int(str(x).split("entry")[1]) for x in h5['/'].keys() if 'NXentry' in str(h5[x].attrs.get('NX_class'))]
+            NXentries = [int(str(x).split("entry")[1]) for x in h5['/'].keys() if
+                         'NXentry' in str(h5[x].attrs.get('NX_class'))]
             if NXentries:
                 NXentries.sort()
-                entry = 'entry' + str(NXentries[-1]+1)
+                entry = 'entry' + str(NXentries[-1] + 1)
             else:
                 entry = 'entry1'
             axes = [nm for nm in self.data.index.names]
@@ -451,7 +462,7 @@ class SGMData(object):
             for sig in self.signals:
                 arr = self.data.filter(regex="%s." % sig.split('_')[0]).to_numpy()
                 if len(self.data.index.names) > 1:
-                    shape = [len(self.data.index.levels[0]),len(self.data.index.levels[1])]
+                    shape = [len(self.data.index.levels[0]), len(self.data.index.levels[1])]
                     shape += [s for s in arr.shape[1:]]
                     arr = np.reshape(arr, tuple(shape))
                 nxdata.create_dataset(sig, arr.shape, data=arr, dtype=arr.dtype)
@@ -465,10 +476,10 @@ class SGMData(object):
                     keys = eemscan.required
                     df = self.data
                     roi_cols = df.filter(regex="sdd[1-4]_[0-2].*").columns
-                    df.drop(columns = roi_cols, inplace=True)
+                    df.drop(columns=roi_cols, inplace=True)
                     data = {k: df.filter(regex=("%s.*" % k), axis=1).to_numpy() for k in keys}
-                    data.update({df.index.name: np.array(df.index), 'emission': np.linspace(0,2560,256)})
-                    data.update({'image':data['sdd1'], 'json':json_out})
+                    data.update({df.index.name: np.array(df.index), 'emission': np.linspace(0, 2560, 256)})
+                    data.update({'image': data['sdd1'], 'json': json_out})
                     return eemscan.plot(**data)
                 elif 'mesh' in self.command[0]:
                     pass
@@ -482,17 +493,17 @@ class SGMData(object):
         if not hasattr(self, 'threads'):
             self.threads = 4
         files = [os.path.abspath(file) for file in files]
-        self.scans = {k.split('/')[-1].split(".")[0] : [] for k in files}
+        self.scans = {k.split('/')[-1].split(".")[0]: [] for k in files}
         self.interp_params = {}
         with ThreadPool(self.threads) as pool:
-                L = list(tqdm(pool.imap_unordered(self._load_data, files), total=len(files)))
+            L = list(tqdm(pool.imap_unordered(self._load_data, files), total=len(files)))
         err = [l['ERROR'] for l in L if 'ERROR' in l.keys()]
         L = [l for l in L if 'ERROR' not in l.keys()]
         if len(err):
             warnings.warn(f"Some scan files were not loaded: {err}")
             for e in err:
                 del self.scans[e]
-        self.scans.update({k:SGMScan(**v) for d in L for k,v in d.items()})
+        self.scans.update({k: SGMScan(**v) for d in L for k, v in d.items()})
         self.entries = self.scans.items
 
     def _find_data(self, node, indep=None, other=False):
@@ -575,21 +586,23 @@ class SGMData(object):
         try:
             signals = [{k: da.from_array(v, chunks=tuple(
                 [np.int(np.divide(dim, self.npartitions)) for dim in v.shape])).astype('f4') for k, v in d.items() if
-                    np.abs(v.shape[0] - list(indep[i].values())[0].shape[0]) < 2} for i, d in enumerate(data)]
+                        np.abs(v.shape[0] - list(indep[i].values())[0].shape[0]) < 2} for i, d in enumerate(data)]
         except IndexError:
             return {"ERROR": file_root}
         # group all remaining arrays
         try:
             other_axis = [
-                {k: da.from_array(v, chunks=tuple([np.int(np.divide(dim, 2)) for dim in v.shape])) for k, v in d.items() if
-                     np.abs(v.shape[0] - list(indep[i].values())[0].shape[0]) > 2} for i, d in enumerate(data)]
+                {k: da.from_array(v, chunks=tuple([np.int(np.divide(dim, 2)) for dim in v.shape])) for k, v in d.items()
+                 if
+                 np.abs(v.shape[0] - list(indep[i].values())[0].shape[0]) > 2} for i, d in enumerate(data)]
         except:
             return {"ERROR": file_root}
         # Reload independent axis data as dataarray
         try:
             indep = [{k: da.from_array(v,
-                                   chunks=tuple([np.int(np.divide(dim, self.npartitions)) for dim in v.shape])).astype(
-                                    'f4') for k, v in d.items()} for d in indep]
+                                       chunks=tuple(
+                                           [np.int(np.divide(dim, self.npartitions)) for dim in v.shape])).astype(
+                'f4') for k, v in d.items()} for d in indep]
         except:
             return {"ERROR": file_root}
 
@@ -602,7 +615,7 @@ class SGMData(object):
             if "sample" in h5[entry].keys():
                 if "name" in h5[entry + "/sample"].keys():
                     sample_string = h5[entry + "/sample/name"][()]
-                    if isinstance(sample_string, str) :
+                    if isinstance(sample_string, str):
                         scan.update({"sample": str(sample_string)})
                     elif isinstance(sample_string, bytes):
                         scan.update({"sample": sample_string.decode('utf-8')})
@@ -611,10 +624,10 @@ class SGMData(object):
                 elif "description" in h5[entry + "/sample"].keys():
                     scan.update({"sample": str(h5[entry + "/sample/description"][()], 'utf-8').split('\x00')[0]})
             scan.update({
-                        "independent": indep[i],
-                        "signals": signals[i],
-                        "other": other_axis[i],
-                        "npartitions": self.npartitions
+                "independent": indep[i],
+                "signals": signals[i],
+                "other": other_axis[i],
+                "npartitions": self.npartitions
             })
             if 'sample' in self.__dict__.keys():
                 if 'sample' in scan.keys():
