@@ -1,10 +1,12 @@
 from bokeh.layouts import column, row, gridplot
 from bokeh.palettes import all_palettes
 from bokeh.models import CustomJS, ColumnDataSource, Select, RangeSlider, ColorBar, LinearColorMapper, Rect, Slider, \
-    Range1d
+    Range1d, DataTable, TableColumn, Button, TextAreaInput, SelectEditor, CellEditor, IntEditor
 from bokeh.plotting import Figure, show
 from bokeh.embed import json_item
+from bokeh import events
 
+from sgmdata.utilities.lib import scan_lib, elements
 from sgmdata.xrffit import gaussians
 import numpy as np
 
@@ -243,11 +245,12 @@ def plot(**kwargs):
     show(layout)
 
 
-def plot_xyz(shift=False, **kwargs):
+def plot_xyz(shift=False, table=False, **kwargs):
     """
     Function to plot interactive XRF maps from raw or interpolated sgm data.
         Keywords:
             shift (bool):  False (default) - compensates for cmesh x-variance if required.
+            table (bool):  False (default) - displays helper tool / datatable for macro generation at SGM.
             **kwargs (dict):  DataDict from plot function.
     """
     # Verify the data in kwargs
@@ -307,10 +310,150 @@ def plot_xyz(shift=False, **kwargs):
     data.update({'tey': np.nanmax(data['sdd3-15']) * (tey / np.nanmax(tey))})
     source = ColumnDataSource(data)
 
-    # Create XRF plot
+    # XRF Coordinates to Clipboard.
+    if table:
+        # Create clipboard data source
+        data = {'sample': [], 'coords': [], 'edges': [], 'nscans': [], 'type': []}
+        clipboard_source = ColumnDataSource(data)
+        columns = [
+            TableColumn(field="sample", title="Sample ID"),
+            TableColumn(field="type", title="Type", editor=SelectEditor(options=["sample", "reference"])),
+            TableColumn(field="coords", title="Position (x,y)", editor=CellEditor()),
+            TableColumn(field="edges", title="Edges", editor=SelectEditor(options=elements, )),
+            TableColumn(field="nscans", title="Number of Scans (#)", editor=IntEditor(step=10)),
+        ]
+        data_table = DataTable(source=clipboard_source, columns=columns, editable=True, width=600, height=300,
+                               name="macro-table")
+        table_macro = Button(label="Make Macro", button_type="success")
+        text_area = TextAreaInput(value="", rows=10)
+
+        table_delete = Button(label="Delete Row", button_type="danger")
+
+        # Create dictionary to pass to Spec Jupyter Client.
+        macro_callback = CustomJS(args=dict(clip=clipboard_source, lib=scan_lib, tx=text_area, tbl=data_table), code="""
+            var text = tx.value;
+            var samples = clip.data['sample'];
+            var edges = clip.data['edges'];
+            var nscans = clip.data['nscans'];
+            var pos = clip.data['coords'];
+            var type = clip.data['type'];
+            var scan;
+            var ncols;
+            var typenum = 1;
+
+            text = "plate = [\\n";
+            for (i = 0; i < pos.length; i++) {
+                scan = lib[edges[i]]
+                if (type[i] == "reference"){
+                    typenum = 2;
+                }
+                if (edges[i] == "EEMs"){
+                    text += "{'sample': [" + samples[i] + "]";
+                    text += ", 'type': " + typenum.toString();
+                    text += ", 'scan': " + scan ;
+                    text += ", 'coords': " + pos[i] + "}\\n";          
+                }
+                else{
+                    ncols = Math.ceil(nscans[i] / 10);
+                    scan = scan.replace('col', ncols.toString());
+                    text += "{'sample': [" + samples[i] + " - " + edges[i] + "]";
+                    text += ", 'type': " + typenum.toString();
+                    text += ", 'scan': " + scan ;
+                    text += ", 'coords': " + pos[i] + "},\\n";
+                }
+            }
+            text += "]";
+            tx.value = text;
+
+        """)
+
+        # Callback to delete row of datatable
+        delete_callback = CustomJS(args=dict(clip=clipboard_source), code="""
+            var sel = clip.selected.indices[0];
+            var co = clip.data['coords'];
+            var sam = clip.data['sample'];
+            var edge = clip.data['edges'];
+            var nscans = clip.data['nscans'];
+            var type = clip.data['type'];
+
+            function isDefined(x) {
+                var undefined;
+                return x !== undefined;
+            }
+
+            console.log(sel);
+            if(isDefined(sel)){
+                co.splice(sel, 1);
+                sam.splice(sel, 1);
+                edge.splice(sel, 1);
+                nscans.splice(sel, 1);
+                type.splice(sel, 1);
+                clip.change.emit();
+            }
+        """)
+
+        table_delete.js_on_event(events.ButtonClick, delete_callback)
+        table_macro.js_on_event(events.ButtonClick, macro_callback)
+
+        # Callback to collect x,y position on tap and push to clipboard & datatable
+        clipboard_callback = CustomJS(args=dict(clip=clipboard_source), code="""
+            var x = cb_obj.x;
+            var y = cb_obj.y;
+            var co = clip.data['coords'];
+            var sam = clip.data['sample'];
+            var edge = clip.data['edges'];
+            var nscans = clip.data['nscans'];
+            var type = clip.data['type'];
+
+            co.push("(" + x.toString() + ", " + y.toString() + ")");
+            sam.push("Sample " + sam.length.toString());
+            edge.push("C");
+            nscans.push(10);
+            type.push("sample");
+            clip.change.emit();
+
+            function fallbackCopyTextToClipboard(text) {
+              var textArea = document.createElement("textarea");
+              textArea.value = text;
+
+              // Avoid scrolling to bottom
+              textArea.style.top = "0";
+              textArea.style.left = "0";
+              textArea.style.position = "fixed";
+
+              document.body.appendChild(textArea);
+              textArea.focus();
+              textArea.select();
+
+              try {
+                var successful = document.execCommand('copy');
+                var msg = successful ? 'successful' : 'unsuccessful';
+                console.log('Fallback: Copying text command was ' + msg);
+              } catch (err) {
+                console.error('Fallback: Oops, unable to copy', err);
+              }
+
+              document.body.removeChild(textArea);
+            }
+            function copyTextToClipboard(text) {
+              if (!navigator.clipboard) {
+                fallbackCopyTextToClipboard(text);
+                return;
+              }
+              navigator.clipboard.writeText(text).then(function() {
+                console.log('Async: Copying to clipboard was successful!');
+              }, function(err) {
+                console.error('Async: Could not copy text: ', err);
+              });
+            }
+
+            copyTextToClipboard(co[co.length -1])
+        """)
+
+    # Create XRF Map plot
     plot = Figure(plot_width=600,
                   plot_height=600,
-                  tools="box_select,save,box_zoom,wheel_zoom,hover,pan,crosshair,reset",
+                  tools="box_select,save,box_zoom,wheel_zoom,hover,pan,reset",
                   x_range=xr,
                   y_range=yr,
                   background_fill_color="black",
@@ -320,9 +463,10 @@ def plot_xyz(shift=False, **kwargs):
 
     plot.xgrid.grid_line_color = None
     plot.ygrid.grid_line_color = None
+    if table:
+        plot.js_on_event('tap', clipboard_callback)
     im = plot.rect(x='x', y='y', color={'field': 'z', 'transform': color_mapper}, width=width, height=height,
                    source=source, name="xrf-plot")
-    color_mapper.js_on_change
 
     # add image plot annotations
     color_bar = ColorBar(color_mapper=color_mapper, border_line_color=None, location=(0, 0))
@@ -362,10 +506,10 @@ def plot_xyz(shift=False, **kwargs):
     xrf.legend.background_fill_alpha = 0.6
 
     slider = Slider(start=0, end=2560, step=51, value=765,
-                    title="Fluorescent Line Peak (Width: 50eV)")
+                    title="Fluorescent Line: ")
     det_select = Select(title="Detector Select:", options=['sdd1', 'sdd2', 'sdd3', 'sdd4', 'tey'], value='sdd3')
 
-    ##Change Detector Source for image
+    # Change Detector Source for image
     det_callback = CustomJS(args=dict(source=source, sl=slider, im=im, det=det_select, rect=rect_source), code="""
             var fluo = sl.value; 
             var idx = fluo / 51;
@@ -397,7 +541,7 @@ def plot_xyz(shift=False, **kwargs):
     spectral = all_palettes['Spectral'][11]
     colorblind = all_palettes['Colorblind'][4]
 
-    ##Color Palette Change
+    # Color Palette Change
     callback_color_palette = CustomJS(args=dict(im=im, cl=color_bar), code="""
             var p = "Inferno11";
             var f = cb_obj.value;
@@ -419,7 +563,7 @@ def plot_xyz(shift=False, **kwargs):
             }
     """ % (viridis, viridis, spectral, spectral, inferno, inferno, colorblind, colorblind))
 
-    ##Color Intensity Change Callback
+    # Color Intensity Change Callback
     callback_color_range = CustomJS(args=dict(im=im, cl=color_bar), code="""
             var o_min = cb_obj.value[0];
             var o_max = cb_obj.value[1];
@@ -429,19 +573,22 @@ def plot_xyz(shift=False, **kwargs):
             cl.color_mapper.high = o_max;
     """)
 
-    ##Change Pallette Selectbox
+    # Change Pallette Selectbox
     palette_select = Select(title="Colormap Select:", options=['Viridis', 'Spectral', 'Inferno'], value='Viridis',
                             callback=callback_color_palette)
 
-    ##Change Color Intensity Slider
+    # Change Color Intensity Slider
     color_max = np.max([np.amax(x, axis=1) for x in [sdd1, sdd2, sdd3, sdd4]])
     intensity_slider = RangeSlider(title="Color Scale:", start=0, end=2 * color_max,
                                    value=(0, np.amax(z)), step=20, )
     intensity_slider.js_on_change('value', callback_color_range)
 
     options = column(det_select, intensity_slider, palette_select, xrf, slider)
-
-    layout = gridplot([[plot, options]])
+    if table:
+        layout = gridplot([[plot, options],
+                           [data_table, column(table_macro, table_delete, text_area)]])
+    else:
+        layout = gridplot([[plot, options]])
     if kwargs.get('json', False):
         return json_item(layout)
     show(layout)

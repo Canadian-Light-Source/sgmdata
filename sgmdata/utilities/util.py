@@ -340,6 +340,7 @@ def scan_health(df, verbose=False, sdd_max=105000):
     -----
         df :  pandas dataframe from SGMScan.binned.
         verbose: Explain the returned output in plain text.
+        sdd_max (int): 105000 (default) - saturation value for total SDD counts/s
 
 
     returns (tuple):  (Discontiunty %,  Beam-dump %,  Saturation %)
@@ -418,3 +419,5 @@ def plot1d(xarr,yarr, title="Plot", labels=[]):
     fig.legend.location = "top_left"
     fig.legend.click_policy="hide"
     show(fig)
+
+
