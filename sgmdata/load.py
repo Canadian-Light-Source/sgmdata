@@ -348,6 +348,16 @@ class SGMScan(object):
                         data.update({"image": data['sdd1']})
                     data.update({'json': json_out})
                     xrfmap.plot(**data)
+                else:
+                    print("Plotting Raw Data")
+                    ds = int(self.independent['xp'].shape[0] / 10000) + 1
+                    data = {k: self.signals[s][::ds].compute() for s in self.signals.keys() for k in keys if k in s}
+                    data.update({'command': self.command})
+                    data.update(
+                        {k: self.independent[s][::ds].compute() for s in self.independent.keys() for k in keys if
+                         k in s})
+                    data.update({k: self.other[s].compute() for s in self.other.keys() for k in keys if s in k})
+                    xrfmap.plot_xyz(**data)
 
     def __init__(self, **kwargs):
         self.__dict__.update(kwargs)
@@ -551,7 +561,7 @@ class SGMData(object):
                 else:
                     commands = [
                         str(h5[entry + '/command'][()]).split() if isinstance(h5[entry + '/command'][()], str) else str(
-                            h5[entry + '/command'][()], 'utf-8').split()[:-1] for entry in NXentries]
+                            h5[entry + '/command'][()], 'utf-8').split() for entry in NXentries]
             except:
                 warnings.warn(
                     "Scan entry didn't have a 'command' string saved. Command load can be skipped by providing a list of independent axis names")
