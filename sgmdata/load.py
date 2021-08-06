@@ -639,15 +639,13 @@ class SGMData(object):
         i = 1
         while i < len(results):
             if len(results[i]) != len(results[0]):
-                raise ValueError("Pandas Dataframes in each scan's signals dictionary must be the same length. The "
-                                 "Pandas Dataframes in each scan's signals dictionary you have provided are not the "
-                                 "same length. Please try again with Pandas Dataframes in each scan's signals "
-                                 "dictionary in scan's signals of the same length.")
+                raise ValueError("All of the signals for the scans must be the same length. The signals for the scans "
+                                 "in the hdf5 file you provided are not the same length. This issue can be fixed by "
+                                 "decreasing the motor scan range. Please decrease the motor scan range and try again.")
             elif len(results[i].columns) != len(results[0].columns):
-                raise ValueError("Pandas Dataframes in each scan's signals dictionary must be the same width. Pandas "
-                                 "Dataframes in each scan's signals dictionary you have provided are not the same "
-                                 "length. Please try again with Pandas Dataframes in each scan's signals dictionary of"
-                                 " the same length.")
+                raise ValueError("** All of the signals for the scans must be the same length. The signals for the scans "
+                                 "in the hdf5 file you provided are not the same length. This issue can be fixed by "
+                                 "decreasing the motor scan range. Please decrease the motor scan range and try again.")
             i += 1
         return results
 
