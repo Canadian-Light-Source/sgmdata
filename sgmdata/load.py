@@ -1,5 +1,7 @@
 import os
 import h5py
+from tqdm.autonotebook import get_ipython
+
 from . import config
 import h5pyd
 from dask import compute, delayed
@@ -297,7 +299,7 @@ class SGMScan(object):
             else:
                 raise AttributeError("no interpolated data found to write")
 
-        def plot(self, json_out=False):
+        def plot(self, **kwargs):
             """
             Determines the appropriate plot based on independent axis number and name
             """
@@ -315,7 +317,6 @@ class SGMScan(object):
                         data.update({df.index.name: np.array(df.index), 'emission': np.linspace(0, 2560, 256)})
                         if 'image' in keys:
                             data.update({'image': data['sdd1'], 'filename': str(self.sample)})
-                        data.update({'json': json_out})
                         return eemscan.plot(**data)
                 else:
                     print("Plotting Raw Data")
@@ -327,8 +328,8 @@ class SGMScan(object):
                     data.update({k: self.other[s].compute() for s in self.other.keys() for k in keys if s in k})
                     if 'image' in keys:
                         data.update({'image': self.signals['sdd1'][::ds].compute(), 'filename': str(self.sample)})
-                    data.update({'json': json_out})
-                    return eemscan.plot(**data)
+                    kwargs.update(data)
+                    return eemscan.plot(kwargs)
             elif dim == 2:
                 keys = xrfmap.required
                 if 'fit' in self.keys():
@@ -346,8 +347,8 @@ class SGMScan(object):
                     data.update({'emission': emission, 'peaks': peaks, 'width': width})
                     if 'image' in keys:
                         data.update({"image": data['sdd1']})
-                    data.update({'json': json_out})
-                    xrfmap.plot(**data)
+                    kwargs.update(data)
+                    xrfmap.plot(**kwargs)
                 else:
                     print("Plotting Raw Data")
                     ds = int(self.independent['xp'].shape[0] / 10000) + 1
@@ -357,7 +358,8 @@ class SGMScan(object):
                         {k: self.independent[s][::ds].compute() for s in self.independent.keys() for k in keys if
                          k in s})
                     data.update({k: self.other[s].compute() for s in self.other.keys() for k in keys if s in k})
-                    xrfmap.plot_xyz(**data)
+                    kwargs.update(data)
+                    xrfmap.plot_xyz(**kwargs)
 
     def __init__(self, **kwargs):
         self.__dict__.update(kwargs)
@@ -468,7 +470,7 @@ class SGMData(object):
                 nxdata.create_dataset(sig, arr.shape, data=arr, dtype=arr.dtype)
             h5.close()
 
-        def plot(self, json_out=False):
+        def plot(self, **kwargs):
             if 'type' in self.__dict__.keys():
                 pass
             else:
@@ -479,7 +481,8 @@ class SGMData(object):
                     df.drop(columns=roi_cols, inplace=True)
                     data = {k: df.filter(regex=("%s.*" % k), axis=1).to_numpy() for k in keys}
                     data.update({df.index.name: np.array(df.index), 'emission': np.linspace(0, 2560, 256)})
-                    data.update({'image': data['sdd1'], 'json': json_out})
+                    data.update({'image': data['sdd1']})
+                    kwargs.update(data)
                     return eemscan.plot(**data)
                 elif 'mesh' in self.command[0]:
                     pass
