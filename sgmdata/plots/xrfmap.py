@@ -347,18 +347,21 @@ def plot_xyz(shift=False, table=False, **kwargs):
                 if (type[i] == "reference"){
                     typenum = 2;
                 }
+                else{
+                    typenum = 1;
+                }
                 if (edges[i] == "EEMs"){
-                    text += "{'sample': [" + samples[i] + "]";
+                    text += "{'sample': '" + samples[i] + "'";
                     text += ", 'type': " + typenum.toString();
-                    text += ", 'scan': " + scan ;
+                    text += ", 'scan': '" + scan + "'";
                     text += ", 'coords': " + pos[i] + "}\\n";          
                 }
                 else{
                     ncols = Math.ceil(nscans[i] / 10);
                     scan = scan.replace('col', ncols.toString());
-                    text += "{'sample': [" + samples[i] + " - " + edges[i] + "]";
+                    text += "{'sample': '" + samples[i] + " - " + edges[i] + "'";
                     text += ", 'type': " + typenum.toString();
-                    text += ", 'scan': " + scan ;
+                    text += ", 'scan': '" + scan + "'";
                     text += ", 'coords': " + pos[i] + "},\\n";
                 }
             }
