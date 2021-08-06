@@ -1,6 +1,5 @@
 import os
 import h5py
-from tqdm.autonotebook import get_ipython
 
 from . import config
 import h5pyd
