@@ -354,7 +354,7 @@ def plot_xyz(shift=False, table=False, **kwargs):
                     text += "{'sample': '" + samples[i] + "'";
                     text += ", 'type': " + typenum.toString();
                     text += ", 'scan': '" + scan + "'";
-                    text += ", 'coords': " + pos[i] + "}\\n";          
+                    text += ", 'coords': " + pos[i] + "},\\n";          
                 }
                 else{
                     ncols = Math.ceil(nscans[i] / 10);
