@@ -442,20 +442,19 @@ def preprocess(sample, **kwargs):
     if isinstance(bs_args, tuple):
         bs_args = dict(cont=bs_args[0], dump=bs_args[1], sat=bs_args[2], sdd_max=sdd_max)
     resolution = kwargs.get('resolution', 0.1)
+    kwargs.update({'resolution':resolution})
     if user:
         sgmq = SGMQuery(sample=sample, user=user, data=False)
     else:
         sgmq = SGMQuery(sample=sample, data=False)
     if not cl:
         cl = Client()
+        kwargs.update({'client':cl})
     if len(sgmq.paths):
         print("Found %d scans matching sample: %s, for user: %s" % (len(sgmq.paths), sample, user))
-        sgm_data = sgmdata.SGMData(sgmq.paths, client=cl, **kwargs)
+        sgm_data = sgmdata.SGMData(sgmq.paths, **kwargs)
         print("Interpolating...", end=" ")
-        if start and stop:
-            interp = sgm_data.interpolate(resolution=resolution, start=start, stop=stop)
-        else:
-            interp = sgm_data.interpolate(resolution=resolution)
+        interp = sgm_data.interpolate(**kwargs)
         sgmq.write_proc(sgm_data.scans)
         bscans = badscans(interp, **bs_args)
         if len(bscans) != len(sgm_data.scans):
