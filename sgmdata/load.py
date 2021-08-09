@@ -646,7 +646,7 @@ class SGMData(object):
         for file, val in self.entries():
             for key, entry in val.__dict__.items():
                 entries.append(entry)
-        if compute:
+        if not compute:
             with ThreadPool(self.threads) as pool:
                 results = list(tqdm(pool.imap_unordered(_interpolate, entries), total=len(entries)))
         else:
