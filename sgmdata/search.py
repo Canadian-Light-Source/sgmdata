@@ -63,6 +63,12 @@ class SGMQuery(object):
         self.domains = []
         self.avg_id = []
         self.get_paths()
+        if os.path.exists("/".join(self.paths[0].split('/')[:-1]).replace('/home/jovyan', ".")):
+            local_paths = [p.replace('/home/jovyan', '.') for p in self.paths]
+            self.paths = local_paths
+        elif os.path.exists("/".join(self.paths[0].split('/')[:-1]).replace('/home/jovyan', "/SpecData")):
+            local_paths = [p.replace('/home/jovyan', '/SpecData') for p in self.paths]
+            self.paths = local_paths
         if self.paths and self.data:
             self.data = SGMData(self.paths, **kwargs)
 
@@ -443,12 +449,6 @@ def preprocess(sample, **kwargs):
         cl = Client()
     if len(sgmq.paths):
         print("Found %d scans matching sample: %s, for user: %s" % (len(sgmq.paths), sample, user))
-        if os.path.exists("/".join(sgmq.paths[0].split('/')[:-1]).replace('/home/jovyan', ".")):
-            local_paths = [p.replace('/home/jovyan', '.') for p in sgmq.paths]
-            sgmq.paths = local_paths
-        elif os.path.exists("/".join(sgmq.paths[0].split('/')[:-1]).replace('/home/jovyan', "/SpecData")):
-            local_paths = [p.replace('/home/jovyan', '/SpecData') for p in sgmq.paths]
-            sgmq.paths = local_paths
         sgm_data = sgmdata.SGMData(sgmq.paths, client=cl, **kwargs)
         print("Interpolating...", end=" ")
         if start and stop:
