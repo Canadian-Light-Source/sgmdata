@@ -642,11 +642,15 @@ class SGMData(object):
     def interpolate(self, **kwargs):
         _interpolate = partial(self._interpolate, **kwargs)
         entries = []
+        compute = kwargs.get('compute', False)
         for file, val in self.entries():
             for key, entry in val.__dict__.items():
                 entries.append(entry)
-        with ThreadPool(self.threads) as pool:
-            results = list(tqdm(pool.imap_unordered(_interpolate, entries), total=len(entries)))
+        if compute:
+            with ThreadPool(self.threads) as pool:
+                results = list(tqdm(pool.imap_unordered(_interpolate, entries), total=len(entries)))
+        else:
+            results = [_interpolate(e) for e in entries]
         return results
 
     def _interpolate(self, entry, **kwargs):

@@ -24,7 +24,7 @@ def printTree(name, node):
         sep += "->"
     if isinstance(node, h5py.Dataset) or isinstance(node, h5pyd.Dataset):
         sep = ""
-        typ = " <Dataset> type:%s shape:%s attrs:{" % (node.dtype, node.shape)
+        typ = " <Dataset> type:%s shape:%s attrs:{" % (node.dtype, str(node.shape))
         for key, val in node.attrs.items():
             typ += "%s:%s," % (key, str(val))
         typ += "}"
