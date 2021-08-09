@@ -449,7 +449,7 @@ def preprocess(sample, **kwargs):
         elif os.path.exists("/".join(sgmq.paths[0].split('/')[:-1]).replace('/home/jovyan', "/SpecData")):
             local_paths = [p.replace('/home/jovyan', '/SpecData') for p in sgmq.paths]
             sgmq.paths = local_paths
-        sgm_data = sgmdata.SGMData(sgmq.paths, client=cl)
+        sgm_data = sgmdata.SGMData(sgmq.paths, client=cl, **kwargs)
         print("Interpolating...", end=" ")
         if start and stop:
             interp = sgm_data.interpolate(resolution=resolution, start=start, stop=stop)

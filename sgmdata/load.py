@@ -162,7 +162,7 @@ class SGMScan(object):
                          range(len(bin_num))]
             self.__setattr__("new_axes", {"values": bins, "edges": bin_edges})
             labels = self.label_bins(bins, bin_edges, self['independent'], self.npartitions)
-            df = self.make_df(labels=labels)
+            df = delayed(self.make_df(labels=labels))
             if compute:
                 nm = [k for k, v in self['independent'].items()]
                 if len(nm) == 1:
@@ -642,11 +642,11 @@ class SGMData(object):
     def interpolate(self, **kwargs):
         _interpolate = partial(self._interpolate, **kwargs)
         entries = []
-        compute = kwargs.get('compute', False)
+        compute = kwargs.get('compute', True)
         for file, val in self.entries():
             for key, entry in val.__dict__.items():
                 entries.append(entry)
-        if not compute:
+        if compute:
             with ThreadPool(self.threads) as pool:
                 results = list(tqdm(pool.imap_unordered(_interpolate, entries), total=len(entries)))
         else:
