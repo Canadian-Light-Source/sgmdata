@@ -336,7 +336,11 @@ class SGMQuery(object):
             detectors = kwargs['detectors']
         else:
             detectors = list(set([d.split('-')[0] for d in data.columns]))
-        h5 = h5pyd.File(domain, "w", config.get("h5endpoint"), username=config.get("h5user"), password=config.get("h5pass"))
+        try:
+            h5 = h5pyd.File(domain, "w", config.get("h5endpoint"), username=config.get("h5user"), password=config.get("h5pass"))
+        except:
+            h5 = h5pyd.File(domain, "a", config.get("h5endpoint"), username=config.get("h5user"), password=config.get("h5pass"))
+
         NXentries = [int(str(x).split("entry")[1]) for x in h5['/'].keys() if
                      'NXentry' in str(h5[x].attrs.get('NX_class'))]
         if NXentries:
