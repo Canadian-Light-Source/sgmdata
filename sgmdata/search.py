@@ -63,13 +63,14 @@ class SGMQuery(object):
         self.domains = []
         self.avg_id = []
         self.get_paths()
-        if os.path.exists("/".join(self.paths[0].split('/')[:-1]).replace('/home/jovyan', ".")):
-            local_paths = [p.replace('/home/jovyan', '.') for p in self.paths]
-            self.paths = local_paths
-        elif os.path.exists("/".join(self.paths[0].split('/')[:-1]).replace('/home/jovyan', "/SpecData")):
-            local_paths = [p.replace('/home/jovyan', '/SpecData') for p in self.paths]
-            self.paths = local_paths
-        if self.paths and self.data:
+        if self.paths:
+            if os.path.exists("/".join(self.paths[0].split('/')[:-1]).replace('/home/jovyan', ".")):
+                local_paths = [p.replace('/home/jovyan', '.') for p in self.paths]
+                self.paths = local_paths
+            elif os.path.exists("/".join(self.paths[0].split('/')[:-1]).replace('/home/jovyan', "/SpecData")):
+                local_paths = [p.replace('/home/jovyan', '/SpecData') for p in self.paths]
+                self.paths = local_paths
+        if self.data:
             self.data = SGMData(self.paths, **kwargs)
 
     def get_paths(self):
