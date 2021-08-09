@@ -438,6 +438,12 @@ def preprocess(sample, **kwargs):
         cl = Client()
     if len(sgmq.paths):
         print("Found %d scans matching sample: %s, for user: %s" % (len(sgmq.paths), sample, user))
+        if os.path.exists("/".join(sgmq.paths[0].split('/')[:-1]).replace('/home/jovyan', ".")):
+            local_paths = [p.replace('/home/jovyan', '.') for p in sgmq.paths]
+            sgmq.paths = local_paths
+        elif os.path.exists("/".join(sgmq.paths[0].split('/')[:-1]).replace('/home/jovyan', "/SpecData")):
+            local_paths = [p.replace('/home/jovyan', '/SpecData') for p in sgmq.paths]
+            sgmq.paths = local_paths
         sgm_data = sgmdata.SGMData(sgmq.paths, client=cl)
         print("Interpolating...", end=" ")
         if start and stop:
