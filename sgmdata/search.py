@@ -288,8 +288,8 @@ class SGMQuery(object):
                     self.write(data, domain)
                     domain_list.append(domain)
                 except Exception as e:
-                    print("Error: %s" % e)
-                    return domain_list
+                    print("Error: %s \n %s" % (e, domain))
+                    continue
                 resolution = data.index[1] - data.index[0]
                 rng = f"{data.index[0]} {data.index[-1]}"
                 xasscan = self.scan_ids[k][entry]
@@ -407,7 +407,8 @@ def preprocess(sample, **kwargs):
     Args:
     ----
         sample (str):  The name of the sample in your account that you wish to preprocess.
-        kwargs: resolution - to be passed to interpolation function, this is histogram bin width.
+        kwargs: user (str) - name of user account to limit search to (for use by staff).
+                resolution - to be passed to interpolation function, this is histogram bin width.
                 start (float) -  start energy to be passed to interpolation function.
                 stop (float) - stop energy to be passed to interpolation function.
                 sdd_max (int) - threshold value to determine saturation in SDDs, to determine scan_health (default
