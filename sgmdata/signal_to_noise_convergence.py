@@ -172,10 +172,10 @@ def predict(d_list, cur_indices):
                                            np.add(cur_indices, 15)]) - chosen_vals['ofs'])
 
 
-def predict_cut_off(d_list):
+def predict_cut_off(d_list, percent_of_log=0.4):
     first_ten_average_variance = sum(d_list) / len(d_list)
     log_of_ftav = math.log(first_ten_average_variance, 10)
-    log_cut_off = log_of_ftav * 0.4
+    log_cut_off = log_of_ftav * percent_of_log
     # # # Testing purposes only: print avg of first 10, log of avg of first 10, and cut-ff point, based on log of avg of
     # first 10
     print(" *** Messages starting with \" ***\" are messages printing for testing purposes only, will not be in final "
@@ -672,22 +672,22 @@ def run_all(files):
     list_of_files = file_retrieval(files)
     interp_list = loading_data(list_of_files)
     returned_data = interpolating_data(interp_list)
-    # Organizing data returned from functions to set up data.
-    returned_indices = returned_data[1]
-    returned_diff_list = returned_data[0]
-    returned_diff_list_listed = []
-    for item in returned_diff_list:
-        # print(item)
-        returned_diff_list_listed.append(item)
-    returned_indices_listed = []
-    for item in returned_indices:
-        returned_indices_listed.append(item)
-    # Printing info from new functions (Aug 6 2021)
-    cut_off_point = predict_cut_off(returned_diff_list_listed[:9])
-    # # # using imported plot1D
-    # boop=["hello"]
-    # plot1d(returned_diff_list, returned_indices, "Si-Phenyl", boop)
-    return find_cut_off(returned_diff_list_listed[:10], cut_off_point) - 10
+    # # Organizing data returned from functions to set up data.
+    # returned_indices = returned_data[1]
+    # returned_diff_list = returned_data[0]
+    # returned_diff_list_listed = []
+    # for item in returned_diff_list:
+    #     # print(item)
+    #     returned_diff_list_listed.append(item)
+    # returned_indices_listed = []
+    # for item in returned_indices:
+    #     returned_indices_listed.append(item)
+    # # Printing info from new functions (Aug 6 2021)
+    # cut_off_point = predict_cut_off(returned_diff_list_listed[:9])
+    # # # # using imported plot1D
+    # # boop=["hello"]
+    # # plot1d(returned_diff_list, returned_indices, "Si-Phenyl", boop)
+    # return find_cut_off(returned_diff_list_listed[:10], cut_off_point) - 10
 
 
 print("Number of additional scans needed:\t" +
