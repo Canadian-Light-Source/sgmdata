@@ -614,8 +614,14 @@ to the relevant subsection of the report.}
                                                 'res': 0.1
                                                 }})
                     continue
-                with h5py.File(avg_path, 'r') as h5:
+                if os.path.exists(avg_path):
+                    fpath = avg_path
+                elif os.path.exists(avg_path.replace('/home/jovyan/', '.')):
+                    fpath = avg_path.replace('/home/jovyan/', '.')
+                else:
+                    raise OSError(1, "No such file for sample average")
 
+                with h5py.File(fpath, 'r') as h5:
                     NXentries = [str(x) for x in h5['/'].keys() if 'NXentry' in str(h5[x].attrs.get('NX_class'))]
                     if not NXentries:
                         NXentries = ['entry1']
