@@ -13,9 +13,10 @@ from functools import partial
 from sgmdata.plots import eemscan, xrfmap
 from sgmdata.xrffit import fit_peaks
 import warnings
-from tabulate import tabulate
 from collections import OrderedDict
 
+if os.name == 'nt':
+    from tabulate import tabulate
 try:
     shell = get_ipython().__class__.__name__
     if shell == 'ZMQInteractiveShell':
@@ -363,6 +364,7 @@ class SGMScan(object):
                         self.__dict__[key] = SGMScan.DataDict(value)
                 temp.clear()
                 cur_len += 1
+            temp = None
 
     def __repr__(self):
         represent = ""

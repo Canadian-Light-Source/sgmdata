@@ -52,7 +52,7 @@ def file_retrieval(path):
     return list_of_files
 
 
-def loading_data(list_of_files):
+def check_sample_fitness(list_of_files):
     """
     Purpose: Create an SGMData object from hdf5 files. Interpolate the data in the SGMData object. Return this
     interpolated data.
@@ -149,7 +149,7 @@ def noise(idx, amp, shift, ofs):
     return amp * (idx + shift) ** (-3 / 2)
 
 
-def predict(d_list, cur_indices):
+def predict_next_scan(d_list, cur_indices):
     """
     Purpose: Takes predicted differences from d_list and inputs them to the noise function. This predicts the level of
     noise in the next scan.
@@ -173,23 +173,57 @@ def predict(d_list, cur_indices):
 
 
 def predict_cut_off(d_list, percent_of_log=0.4):
+    '''
+    Purpose: Takes the variance between the values in d_list and finds the log value of their average. Multiplies log
+    value by the percent_of_log to get the value at which scanning should stop.
+    Variables:
+        d_list(list): the values from which the user would like the end point to be based on. Expected, but not
+        required, to be the variance between the noise levels in the first 10 scans of a sample.
+        percent_of_log(float): the value by which the log of the average of the d_list values is multiplied to get the value
+        where scanning should stop. Set to 0.4 by default, because this is the most likely to be accurate.
+    Returns:
+        first_ten_average_variance(float): the average of the values in d_list.
+        log_of_ftav(float): the log value of first_ten_average_variance.
+        log_cut_off(float): the ideal value of the log of the average of the variance between the last 10 scans.
+    '''
     first_ten_average_variance = sum(d_list) / len(d_list)
     log_of_ftav = math.log(first_ten_average_variance, 10)
     log_cut_off = log_of_ftav * percent_of_log
-    # # # Testing purposes only: print avg of first 10, log of avg of first 10, and cut-ff point, based on log of avg of
-    # first 10
-    print(" *** Messages starting with \" ***\" are messages printing for testing purposes only, will not be in final "
-          "code.")
-    print(" *** Average of initial 10 values: " + str(first_ten_average_variance))
-    print(" *** Log of average of inital 10 values: " + str(log_of_ftav))
-    print(" *** Cut off val, based on log of average of initial 10 values: " + str(log_cut_off) + "\n")
-    # # #
-    return log_cut_off
+    return first_ten_average_variance, log_of_ftav, log_cut_off
 
 
 def find_cut_off(d_list, cut_off_point):
+    '''
+    Purpose: uses a list of variances between scans to predict the values that would be associated with the next scan.
+    Checks if the log of the average of the variance between the most recently predicted scan and preceding scan, and
+    the variances between the 9 scans before it is less than or equal to cut_off_point. If it isn't then the values
+    that would be associated with the next scan are predicted. If it is then predictions stop, and the number of
+    predictions it took to get to that point is returned to the user, indicating that that many additional scans should
+    be taken of the sample from which d_list originates.
+    Variables:
+        d_list(list): the variance between the initial scans of a sample, expected, but not required, to be the variance
+        between the initial 10 scans of a sample.
+        cut_off_point(float): the ideal value of the log of the average of the variance between the last 10 scans.
+    Returns:
+        current_point: The number of scans that had to be predicted for the log of the average of the variance between
+        last 10 scans to be equal to or smaller than cut_off_point. Indicative of number of additional scans that
+        should be taken of the sample the function is being preformed on.
+        log_of_avg_of_ten: the first log of the average of the last 10 scans that is smaller than or equal to
+        cut_off_point.
+    '''
     keep_predicting = True
-    i = 9
+    i = len(d_list)
+    # If d_list is smaller than 9, predict and add elements to d_list until it isn't.
+    while len(d_list) < 9:
+        j = 0
+        indices = []
+        while j < i:
+            indices.append(j)
+            j += 1
+        predicted_level = predict_next_scan(d_list, indices)
+        d_list = np.append(d_list, predicted_level[-1])
+        i += 1
+    # Check info of most recent 9 variances
     while keep_predicting:
         avg_of_ten = (sum(d_list[i - 9:i]) / 9)
         log_of_avg_of_ten = math.log(avg_of_ten, 10)
@@ -197,22 +231,18 @@ def find_cut_off(d_list, cut_off_point):
         # of the average of the previous nine scan values.
         # print(" *** " + str(i-8) + ".      " + str(avg_of_ten) + "\t\t\t" + str(log_of_avg_of_ten))
         # # #
+        # End loop if most recent 9 variances <= cut_off_point
         if log_of_avg_of_ten <= cut_off_point:
             current_point = i + 1
-            # # # Testing purposes only: print what number of scans were needed to get to cut-off val or less, and the
-            # val that is less than or equal to the cut-off val or less
-            print(" *** Cut-off at scan number: " + str(current_point))
-            print(" *** Value at scan " + str(current_point) + "(scans at which cut-off point is reached): "
-                  + str(log_of_avg_of_ten) + "\n\n")
-            # # #
-            return current_point
+            return current_point, log_of_avg_of_ten
+        # Predict variance between most recent scan and scan after it.
         else:
             j = 0
             indices = []
-            while j <= i:
+            while j < i:
                 indices.append(j)
                 j += 1
-            predicted_level = predict(d_list, indices)
+            predicted_level = predict_next_scan(d_list, indices)
             d_list = np.append(d_list, predicted_level[-1])
             # # # Testing purposes only: print the list of values (predicted and actual) in our list of scan values,
             # after our most recent prediction.
@@ -307,7 +337,7 @@ def determine_num_scans(d_list, indices, desired_difference=0.17961943):
     return num_predictions
 
 
-def interpolating_data(interp_list_param):
+def extracting_data(interp_list_param):
     """
     Purpose: Takes the results returned by SGMData's "interpolate" function and collects the sdd values within it. Sorts
     through these sdd values and removes unfit values. Keeps a separate list of the indices of the fit values. Deals
@@ -668,29 +698,44 @@ def testing():
 # # # TEMPORARY
 
 
-def run_all(files):
+def predict_num_scans(files, verbose=False):
     list_of_files = file_retrieval(files)
-    interp_list = loading_data(list_of_files)
-    returned_data = interpolating_data(interp_list)
-    # # Organizing data returned from functions to set up data.
-    # returned_indices = returned_data[1]
-    # returned_diff_list = returned_data[0]
-    # returned_diff_list_listed = []
-    # for item in returned_diff_list:
-    #     # print(item)
-    #     returned_diff_list_listed.append(item)
-    # returned_indices_listed = []
-    # for item in returned_indices:
-    #     returned_indices_listed.append(item)
-    # # Printing info from new functions (Aug 6 2021)
-    # cut_off_point = predict_cut_off(returned_diff_list_listed[:9])
-    # # # # using imported plot1D
-    # # boop=["hello"]
-    # # plot1d(returned_diff_list, returned_indices, "Si-Phenyl", boop)
-    # return find_cut_off(returned_diff_list_listed[:10], cut_off_point) - 10
-
+    interp_list = check_sample_fitness(list_of_files)
+    returned_data = extracting_data(interp_list)
+    # Organizing data returned from functions to set up data.
+    returned_indices = returned_data[1]
+    returned_diff_list = returned_data[0]
+    returned_diff_list_listed = []
+    for item in returned_diff_list:
+        # print(item)
+        returned_diff_list_listed.append(item)
+    returned_indices_listed = []
+    for item in returned_indices:
+        returned_indices_listed.append(item)
+    cut_off_point_info = predict_cut_off(returned_diff_list_listed[:9])
+    cut_off_point = cut_off_point_info[2]
+    number_of_scans = find_cut_off(returned_diff_list_listed[:9], cut_off_point)
+    # If user has specified they want additional information about the process to find the number of additional scans
+    # required, providing them with that information.
+    if verbose:
+        first_ten_average_variance = cut_off_point_info[0]
+        log_of_ftav = cut_off_point_info[1]
+        print(
+            " *** Messages starting with \" ***\" are messages containing additional data, other than the number of "
+            "additional scans needed.")
+        print(" *** Average of initial 10 values: " + str(first_ten_average_variance))
+        print(" *** Log of average of inital 10 values: " + str(log_of_ftav))
+        print(" *** Cut off val, based on log of average of initial 10 values: " + str(cut_off_point))
+        print(" *** Cut-off at scan number: " + str(number_of_scans[0]))
+        print(" *** Value at scan " + str(number_of_scans[0]) + "(scans at which cut-off point is reached): "
+              + str(number_of_scans[1]))
+    # # # using imported plot1D
+    # boop=["hello"]
+    # plot1d(returned_diff_list, returned_indices, "Si-Phenyl", boop)
+    return number_of_scans[0] - 10
 
 print("Number of additional scans needed:\t" +
-      str(run_all('C:/Users/roseh/Desktop/Internship/MyCode/h5Files/*fe2o3*.hdf5')))
+      str(predict_num_scans('C:/Users/roseh/Desktop/Internship/MyCode/h5Files/*phenyl*.hdf5', True)))
+
 
 
