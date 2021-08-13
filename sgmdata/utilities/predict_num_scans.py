@@ -17,9 +17,8 @@ from bokeh.io import show
 import os
 import sys
 import inspect
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))))
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe()))))))
 ### JUST FOR MY COMP DONE
-# from ..signal_to_noise_convergence import sgmdata
 import sgmdata
 from sgmdata.load import SGMData
 import math
@@ -89,7 +88,8 @@ def check_sample_fitness(list_of_files):
             if sgm_data.__dict__['scans'][indiv_file].__getitem__(scan)['sample'] != sample_type:
                 raise ValueError("In order to predict, the scans in the hdf5 file passed in by user must all be from"
                                  " the same sample. The scans in the hdf5 file passed in by the user are not all from"
-                                 " the same sample. Please try again with an hdf5 file only containing scans from the"
+                                 " the same sample. Please "
+                                 "try again with an hdf5 file only containing scans from the"
                                  " same sample. ")
     interp_list = sgm_data.interpolate(resolution=0.1)
     return interp_list
@@ -698,7 +698,19 @@ def testing():
 # # # TEMPORARY
 
 
-def predict_num_scans(files, verbose=False):
+def predict_num_scans(files, verbose=False, percent_of_log=0.4):
+    """
+    Purpose: Takes the name of of a sample, and the username of the individual who took the sample. Uses a combination
+    of other function to predict how many additional scans should be taken of that sample.
+    Variables:
+        Sample(string): The name of the sample the user would like to know how many additional scans to take of.
+        User(string): The username of the individual who took the sample the user would like to know how many
+        additional scans to take of.
+        verbose(Boolean, optional): Default value is False. If set to True, gives user additional data on how the
+         additional number of scans needed was calculated.
+    Returns:
+        (int): The number of additional scans that should be taken of a sample.
+    """
     list_of_files = file_retrieval(files)
     interp_list = check_sample_fitness(list_of_files)
     returned_data = extracting_data(interp_list)
@@ -712,7 +724,7 @@ def predict_num_scans(files, verbose=False):
     returned_indices_listed = []
     for item in returned_indices:
         returned_indices_listed.append(item)
-    cut_off_point_info = predict_cut_off(returned_diff_list_listed[:9])
+    cut_off_point_info = predict_cut_off(returned_diff_list_listed[:9], percent_of_log)
     cut_off_point = cut_off_point_info[2]
     number_of_scans = find_cut_off(returned_diff_list_listed[:9], cut_off_point)
     # If user has specified they want additional information about the process to find the number of additional scans
@@ -729,13 +741,10 @@ def predict_num_scans(files, verbose=False):
         print(" *** Cut-off at scan number: " + str(number_of_scans[0]))
         print(" *** Value at scan " + str(number_of_scans[0]) + "(scans at which cut-off point is reached): "
               + str(number_of_scans[1]))
-    # # # using imported plot1D
-    # boop=["hello"]
-    # plot1d(returned_diff_list, returned_indices, "Si-Phenyl", boop)
     return number_of_scans[0] - 10
 
-print("Number of additional scans needed:\t" +
-      str(predict_num_scans('C:/Users/roseh/Desktop/Internship/MyCode/h5Files/*phenyl*.hdf5', True)))
 
+print("Number of additional scans needed:\t" +
+      str(predict_num_scans('C:/Users/roseh/Desktop/Internship/MyCode/h5Files/*feb21-32*.hdf5', True)))
 
 

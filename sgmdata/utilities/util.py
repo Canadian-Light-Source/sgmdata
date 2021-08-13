@@ -4,8 +4,6 @@ import numpy as np
 from bokeh.io import show
 from bokeh.plotting import figure
 
-
-
 #Utility for visualizing HDF5 layout.
 def printTree(name, node):
     BOLD = '\033[1m'
