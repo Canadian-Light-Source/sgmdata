@@ -70,7 +70,7 @@ class SGMScan(object):
                     columns = [k]
                 else:
                     continue
-                labels.merge(dd.from_dask_array(v, columns=columns), left_index=True, how='outer')
+                labels.merge(dd.from_dask_array(v, columns=columns), left_index=True, how='left')
             # df = dd.multi.concat(signal_columns, axis=1)
             df = labels.groupby(c).mean()
             self.__setattr__('binned', {"dataframe": df})
