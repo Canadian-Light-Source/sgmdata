@@ -72,7 +72,7 @@ class SGMScan(object):
                 else:
                     continue
                 signal_columns.append(dd.from_dask_array(v, columns=columns))
-            left = labels.set_index('id').persist()
+            left = labels.set_index('en').persist()
             df = reduce(lambda right: left.merge(right, left_index=True, right_index=False,
                                                  how='outer'), signal_columns)
             # df = dd.multi.concat(signal_columns, axis=1)
