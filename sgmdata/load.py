@@ -14,7 +14,6 @@ from functools import partial
 from sgmdata.plots import eemscan, xrfmap
 from sgmdata.xrffit import fit_peaks
 from dask.diagnostics import ProgressBar
-from functools import reduce
 import warnings
 
 try:
@@ -72,9 +71,8 @@ class SGMScan(object):
                 else:
                     continue
                 signal_columns.append(dd.from_dask_array(v, columns=columns))
-            left = labels.set_index('en').persist()
-            df = reduce(lambda right: left.merge(right, left_index=True, right_index=False,
-                                                 how='outer'), signal_columns)
+            part_left = partial(labels.merge, left_index=True, how='outer')
+            df = map(part_left, signal_columns)
             # df = dd.multi.concat(signal_columns, axis=1)
             df = df.groupby(c).mean()
             self.__setattr__('binned', {"dataframe": df})
