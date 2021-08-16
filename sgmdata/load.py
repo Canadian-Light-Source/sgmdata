@@ -658,7 +658,7 @@ class SGMData(object):
         if compute:
             return entry.interpolate(**kwargs)
         else:
-            return delayed(entry.interpolate, **kwargs)
+            return delayed(entry.interpolate)(**kwargs)
 
     def mean(self, bad_scans=None):
         if bad_scans is None:
