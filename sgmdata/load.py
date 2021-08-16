@@ -649,16 +649,16 @@ class SGMData(object):
         for file, val in self.entries():
             for key, entry in val.__dict__.items():
                 entries.append(entry)
-        compute = kwargs.get('compute', True)
-        if compute:
-            with ThreadPool(self.threads) as pool:
-                results = list(tqdm(pool.imap_unordered(_interpolate, entries), total=len(entries)))
-        else:
-            results = list(tqdm(map(lambda x: delayed(_interpolate, x), entries), total=len(entries)))
+        with ThreadPool(self.threads) as pool:
+            results = list(tqdm(pool.imap_unordered(_interpolate, entries), total=len(entries)))
         return results
 
     def _interpolate(self, entry, **kwargs):
-        return entry.interpolate(**kwargs)
+        compute = kwargs.get('compute', False)
+        if compute:
+            return entry.interpolate(**kwargs)
+        else:
+            return delayed(entry.interpolate, **kwargs)
 
     def mean(self, bad_scans=None):
         if bad_scans is None:
