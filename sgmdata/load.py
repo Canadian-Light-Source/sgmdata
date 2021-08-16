@@ -62,17 +62,15 @@ class SGMScan(object):
 
         def make_df(self, labels=None):
             c = [k for k, v in self['independent'].items()]
-            signal_columns = []
+            columns = {}
             for k, v in self['signals'].items():
                 if len(v.shape) == 2:
-                    columns = [k + "-" + str(i) for i in range(v.shape[1])]
+                    columns.update({k + "-" + str(i): dd.Series(v[:,i]) for i in range(v.shape[1])})
                 elif len(v.shape) == 1:
-                    columns = [k]
+                    columns.update({k : dd.Series(v)})
                 else:
                     continue
-                labels.merge(dd.from_dask_array(v, columns=columns), left_index=True, how='left')
-            # df = dd.multi.concat(signal_columns, axis=1)
-            df = labels.groupby(c).mean()
+            df = labels.assign(**columns).groupby(c).mean()
             self.__setattr__('binned', {"dataframe": df})
             return df
 
