@@ -57,6 +57,7 @@ class SGMScan(object):
                         np.logical_and(indep_value >= bin_edges[i][j], indep_value <= bin_edges[i][j + 1]))] = b
             axes = np.vstack([v for k, v in bin_labels.items()]).T
             chunks = tuple([np.int(np.divide(dim, npartitions)) for dim in axes.shape])
+            print(chunks)
             bin_l_dask = da.from_array(axes, chunks=chunks)
             columns = [k for k, v in bin_labels.items()]
             return dd.from_dask_array(bin_l_dask, columns=columns)
