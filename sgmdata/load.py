@@ -16,6 +16,7 @@ from sgmdata.xrffit import fit_peaks
 from functools import reduce
 
 import warnings
+from collections import OrderedDict
 
 try:
     shell = get_ipython().__class__.__name__
@@ -361,9 +362,28 @@ class SGMScan(object):
                     xrfmap.plot_xyz(**kwargs)
 
     def __init__(self, **kwargs):
-        self.__dict__.update(kwargs)
-        for key, value in kwargs.items():
-            self.__dict__[key] = SGMScan.DataDict(value)
+        self.__dict__ = {}
+        keys = list(kwargs.keys())
+        if len(keys) > 0:
+            shortest = len(keys[0])
+            longest = len(keys[0])
+            for key, value in kwargs.items():
+                if len(key) < shortest:
+                    shortest = len(key)
+                elif len(key) > longest:
+                    longest = len(key)
+            temp = []
+            cur_len = shortest
+            while cur_len <= longest:
+                for entry in keys:
+                    if len(entry) == cur_len:
+                        temp.append(entry)
+                temp.sort()
+                for key, value in kwargs.items():
+                    if key in temp:
+                        self.__dict__[key] = SGMScan.DataDict(value)
+                temp.clear()
+                cur_len += 1
 
     def __repr__(self):
         represent = ""
@@ -494,18 +514,18 @@ class SGMData(object):
             self.npartitions = 3
         if not hasattr(self, 'threads'):
             self.threads = 4
-        files = [os.path.abspath(file) for file in files]
-        self.scans = {k.split('/')[-1].split(".")[0]: [] for k in files}
+        files = sorted([os.path.abspath(file) for file in files])
+        self.scans = OrderedDict((k.split('\\')[-1].split(".")[0], OrderedDict) for k in files)
         self.interp_params = {}
         with ThreadPool(self.threads) as pool:
-            L = list(tqdm(pool.imap_unordered(self._load_data, files), total=len(files)))
+                L = list(tqdm(pool.imap_unordered(self._load_data, files), total=len(files)))
         err = [l['ERROR'] for l in L if 'ERROR' in l.keys()]
         L = [l for l in L if 'ERROR' not in l.keys()]
         if len(err):
             warnings.warn(f"Some scan files were not loaded: {err}")
             for e in err:
                 del self.scans[e]
-        self.scans.update({k: SGMScan(**v) for d in L for k, v in d.items()})
+        self.scans.update(OrderedDict((k, SGMScan(**v)) for d in L for k, v in d.items()))
         self.entries = self.scans.items
 
     def _find_data(self, node, indep=None, other=False):
@@ -646,11 +666,19 @@ class SGMData(object):
         for file, val in self.entries():
             for key, entry in val.__dict__.items():
                 entries.append(entry)
-        if not compute:
-            with ThreadPool(self.threads) as pool:
-                results = list(tqdm(pool.imap_unordered(_interpolate, entries), total=len(entries)))
-        else:
-            results = [_interpolate(e) for e in entries]
+        with ThreadPool(self.threads) as pool:
+            results = list(tqdm(pool.imap(_interpolate, entries), total=len(entries)))
+        i = 1
+        while i < len(results):
+            if len(results[i]) != len(results[0]):
+                raise ValueError("All of the signals for the scans must be the same length. The signals for the scans "
+                                 "in the hdf5 file you provided are not the same length. This issue can be fixed by "
+                                 "decreasing the motor scan range. Please decrease the motor scan range and try again.")
+            elif len(results[i].columns) != len(results[0].columns):
+                raise ValueError("** All of the signals for the scans must be the same length. The signals for the scans "
+                                 "in the hdf5 file you provided are not the same length. This issue can be fixed by "
+                                 "decreasing the motor scan range. Please decrease the motor scan range and try again.")
+            i += 1
         return results
 
     def _interpolate(self, entry, **kwargs):
@@ -721,3 +749,23 @@ class SGMData(object):
         table.append("</tbody></table>")
 
         return "\n".join(table)
+
+    def _repr_console_(self):
+        """
+        Takes own data and organizes it into a console-friendly table.
+        """
+        table = []
+        temp_list = []
+        for key in self.scans.keys():
+            for subkey in self.scans[key].__dict__:
+                temp_list.append(key)
+                temp_list.append(subkey)
+                temp_list.append(self.scans[key].__dict__[subkey].sample)
+                temp_list.append(self.scans[key].__dict__[subkey].command)
+                temp_list.append(self.scans[key].__dict__[subkey].independent)
+                temp_list.append(self.scans[key].__dict__[subkey].signals)
+                temp_list.append(self.scans[key].__dict__[subkey].other)
+                table.append(temp_list)
+                temp_list = []
+        return tabulate(table, headers=["File", "Entry", "Sample", "Command", "Independent", "Signals", "Other"])
+
