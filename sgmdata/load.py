@@ -70,11 +70,9 @@ class SGMScan(object):
                     columns = [k]
                 else:
                     continue
-                signal_columns.append(dd.from_dask_array(v, columns=columns))
-            part_left = partial(labels.merge, left_index=True, how='outer')
-            df = map(part_left, signal_columns)
+                labels.merge(dd.from_dask_array(v, columns=columns), left_index=True, how='outer')
             # df = dd.multi.concat(signal_columns, axis=1)
-            df = df.groupby(c).mean()
+            df = labels.groupby(c).mean()
             self.__setattr__('binned', {"dataframe": df})
             return df
 
