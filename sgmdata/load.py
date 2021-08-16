@@ -65,9 +65,9 @@ class SGMScan(object):
             columns = {}
             for k, v in self['signals'].items():
                 if len(v.shape) == 2:
-                    columns.update({k + "-" + str(i): dd.Series(v[:,i]) for i in range(v.shape[1])})
+                    columns.update({k + "-" + str(i): v[:,i] for i in range(v.shape[1])})
                 elif len(v.shape) == 1:
-                    columns.update({k : dd.Series(v)})
+                    columns.update({k : v})
                 else:
                     continue
             df = labels.assign(**columns).groupby(c).mean()
