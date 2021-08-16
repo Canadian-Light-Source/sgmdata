@@ -13,8 +13,8 @@ from multiprocessing.pool import ThreadPool
 from functools import partial
 from sgmdata.plots import eemscan, xrfmap
 from sgmdata.xrffit import fit_peaks
+from dask.diagnostics import ProgressBar
 from functools import reduce
-
 import warnings
 
 try:
@@ -56,13 +56,14 @@ class SGMScan(object):
                     bin_labels[key][np.where(
                         np.logical_and(indep_value >= bin_edges[i][j], indep_value <= bin_edges[i][j + 1]))] = b
             axes = np.vstack([v for k, v in bin_labels.items()]).T
-            bin_l_dask = da.from_array(axes, chunks='auto')
+            chunks = tuple([np.int(np.divide(dim, npartitions)) for dim in axes.shape])
+            bin_l_dask = da.from_array(axes, chunks=chunks)
             columns = [k for k, v in bin_labels.items()]
             return dd.from_dask_array(bin_l_dask, columns=columns)
 
         def make_df(self, labels=None):
             c = [k for k, v in self['independent'].items()]
-            signal_columns = [labels]
+            signal_columns = []
             for k, v in self['signals'].items():
                 if len(v.shape) == 2:
                     columns = [k + "-" + str(i) for i in range(v.shape[1])]
@@ -71,11 +72,13 @@ class SGMScan(object):
                 else:
                     continue
                 signal_columns.append(dd.from_dask_array(v, columns=columns))
-            #df = reduce(lambda left, right: dd.merge(left, right, left_index=True, right_index=False,
-            #                                         how='outer'), signal_columns)
-            df = dd.multi.concat(signal_columns, axis=1)
-            self.__setattr__('dataframe', {"binned": df.groupby(c).mean()})
-            return df.groupby(c).mean()
+            left = labels.set_index('id').persist()
+            df = reduce(lambda right: left.merge(right, left_index=True, right_index=False,
+                                                 how='outer'), signal_columns)
+            # df = dd.multi.concat(signal_columns, axis=1)
+            df = df.groupby(c).mean()
+            self.__setattr__('binned', {"dataframe": df})
+            return df
 
         def interpolate(self, **kwargs):
             """
@@ -88,14 +91,9 @@ class SGMScan(object):
                                                                       or can be the number of bins desired.
                            resolution (type: list or number) -- used instead of bins to define the bin to bin distance.
             """
-            if 'compute' in kwargs.keys():
-                compute = kwargs['compute']
-            else:
-                compute = True
-            if 'method' in kwargs.keys():
-                method = kwargs.keys()
-            else:
-                method = "nearest"
+            compute = kwargs.get('compute', True)
+            method = kwargs.get('method', 'nearest')
+
             axis = self['independent']
             dim = len(axis.keys())
             if 'start' not in kwargs.keys():
@@ -161,30 +159,42 @@ class SGMScan(object):
             bin_edges = [np.linspace(start[i] - offset[i], stop[i] + offset[i], bin_num[i] + 1, endpoint=True) for i in
                          range(len(bin_num))]
             self.__setattr__("new_axes", {"values": bins, "edges": bin_edges})
-            labels = self.label_bins(bins, bin_edges, self['independent'], self.npartitions)
-            df = delayed(self.make_df(labels=labels))
-            if compute:
-                nm = [k for k, v in self['independent'].items()]
-                if len(nm) == 1:
-                    idx = pd.Index(bins[0], name=nm[0])
+            labels = delayed(self.label_bins(bins, bin_edges, self['independent'], self.npartitions))
+            df = self.make_df(labels=labels)
+            nm = [k for k, v in self['independent'].items()]
+            if len(nm) == 1:
+                idx = pd.Index(bins[0], name=nm[0])
+                if compute:
                     df = df.compute().reindex(idx).interpolate()
-                    self.__setattr__('binned', {"dataframe": df})
-                    return df
-                elif len(nm) == 2:
-                    _y = np.array([bins[1] for b in bins[0]]).flatten()
-                    _x = np.array([[bins[0][j] for i in range(len(bins[1]))] for j in range(len(bins[0]))]).flatten()
-                    array = [_x, _y]
-                    idx = pd.MultiIndex.from_tuples(list(zip(*array)), names=nm)
-                    # This method works for now, but can take a fair amount of time.
-                    df = df.compute().unstack().interpolate(method=method).fillna(0).stack().reindex(idx)
-                    binned = {"dataframe": df}
-                    self.__setattr__('binned', binned)
-                    return df
-                else:
-                    raise ValueError("Too many independent axis for interpolation")
-
-            else:
+                self.__setattr__('binned', {"dataframe": df, "index": idx})
                 return df
+            elif len(nm) == 2:
+                _y = np.array([bins[1] for b in bins[0]]).flatten()
+                _x = np.array([[bins[0][j] for i in range(len(bins[1]))] for j in range(len(bins[0]))]).flatten()
+                array = [_x, _y]
+                idx = pd.MultiIndex.from_tuples(list(zip(*array)), names=nm)
+                # This method works for now, but can take a fair amount of time.
+                if compute:
+                    df = df.compute().unstack().interpolate(method=method).fillna(0).stack().reindex(idx)
+                binned = {"dataframe": df, "index": idx}
+                self.__setattr__('binned', binned)
+                return df
+            else:
+                raise ValueError("Too many independent axis for interpolation")
+
+        def compute(self, **kwargs):
+            method = kwargs.get('method', True)
+            if hasattr(self, 'binned'):
+                if 'df' in self['binned'].keys():
+                    idx = self['binned'].get('idx', None)
+                    if isinstance(idx, pd.MultiIndex):
+                        df = self["binned"]['dataframe'].compute().interpolate(method=method).fillna(0).stack().reindex(
+                            idx)
+                    elif isinstance(idx, pd.Index):
+                        df = self["binned"]['dataframe'].compute().reindex(idx).interpolate()
+                    self['binned']['dataframe'] = df
+                    return df
+            print("Nothing to compute.")
 
         def fit_mcas(self, detectors=[], emission=[]):
             if not len(detectors):
@@ -642,15 +652,11 @@ class SGMData(object):
     def interpolate(self, **kwargs):
         _interpolate = partial(self._interpolate, **kwargs)
         entries = []
-        compute = kwargs.get('compute', True)
         for file, val in self.entries():
             for key, entry in val.__dict__.items():
                 entries.append(entry)
-        if compute:
-            with ThreadPool(self.threads) as pool:
-                results = list(tqdm(pool.imap_unordered(_interpolate, entries), total=len(entries)))
-        else:
-            results = [_interpolate(e) for e in entries]
+        with ThreadPool(self.threads) as pool:
+            results = list(tqdm(pool.imap_unordered(_interpolate, entries), total=len(entries)))
         return results
 
     def _interpolate(self, entry, **kwargs):
