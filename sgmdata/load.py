@@ -62,7 +62,7 @@ class SGMScan(object):
 
         def make_df(self, labels=None):
             c = [k for k, v in self['independent'].items()]
-            columns = {}
+            columns = []
             for k, v in self['signals'].items():
                 if len(v.shape) == 2:
                     columns.update({k + "-" + str(i): v[:,i] for i in range(v.shape[1])})
@@ -154,7 +154,7 @@ class SGMScan(object):
                          range(len(bin_num))]
             self.__setattr__("new_axes", {"values": bins, "edges": bin_edges})
             labels = delayed(self.label_bins(bins, bin_edges, self['independent'], self.npartitions))
-            df = self.make_df(labels=labels)
+            df = delayed(self.make_df, labels=labels)
             nm = [k for k, v in self['independent'].items()]
             if len(nm) == 1:
                 idx = pd.Index(bins[0], name=nm[0])
@@ -649,8 +649,12 @@ class SGMData(object):
         for file, val in self.entries():
             for key, entry in val.__dict__.items():
                 entries.append(entry)
-        with ThreadPool(self.threads) as pool:
-            results = list(tqdm(pool.imap_unordered(_interpolate, entries), total=len(entries)))
+        compute = kwargs.get('compute', True)
+        if compute:
+            with ThreadPool(self.threads) as pool:
+                results = list(tqdm(pool.imap_unordered(_interpolate, entries), total=len(entries)))
+        else:
+            results = list(tqdm(map(lambda x: delayed(_interpolate, x), entries)), total=len(entries))
         return results
 
     def _interpolate(self, entry, **kwargs):
