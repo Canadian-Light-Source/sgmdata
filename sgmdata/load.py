@@ -654,7 +654,7 @@ class SGMData(object):
             with ThreadPool(self.threads) as pool:
                 results = list(tqdm(pool.imap_unordered(_interpolate, entries), total=len(entries)))
         else:
-            results = list(tqdm(map(lambda x: delayed(_interpolate, x), entries)), total=len(entries))
+            results = list(tqdm(map(lambda x: delayed(_interpolate, x), entries), total=len(entries)))
         return results
 
     def _interpolate(self, entry, **kwargs):
