@@ -126,13 +126,13 @@ def interpolate(independent, signals, command=None, **kwargs):
             bin_num = [int(len(axis[k]) / kwargs['bins']) for i, k in enumerate(axis.keys())]
     bin_edges = [np.linspace(start[i] - offset[i], stop[i] + offset[i], bin_num[i] + 1, endpoint=True) for i in
                  range(len(bin_num))]
-    labels = label_bins(bins, bin_edges, independent, npartitions)
+    labels = delayed(label_bins)(bins, bin_edges, independent, npartitions)
     df = make_df(independent, signals, labels)
     nm = [k for k, v in independent.items()]
     if len(nm) == 1:
         idx = pd.Index(bins[0], name=nm[0])
         if compute:
-            df = df.compute().reindex(idx).interpolate()
+            df = df.compute().compute().reindex(idx).interpolate()
     elif len(nm) == 2:
         _y = np.array([bins[1] for b in bins[0]]).flatten()
         _x = np.array([[bins[0][j] for i in range(len(bins[1]))] for j in range(len(bins[0]))]).flatten()
@@ -140,7 +140,7 @@ def interpolate(independent, signals, command=None, **kwargs):
         idx = pd.MultiIndex.from_tuples(list(zip(*array)), names=nm)
         # This method works for now, but can take a fair amount of time.
         if compute:
-            df = df.compute().unstack().interpolate(method=method).fillna(0).stack().reindex(idx)
+            df = df.compute().compute().unstack().interpolate(method=method).fillna(0).stack().reindex(idx)
     else:
         raise ValueError("Too many independent axis for interpolation")
 
