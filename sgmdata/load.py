@@ -521,23 +521,17 @@ class SGMData(object):
                 if 'scan' in self.command[0] and "en" == self.command[1]:
                     keys = eemscan.required
                     print(self.keys())
-                    for keyItem in self.keys():
-                        print(keyItem)
-                        for subKey in self[keyItem]:
-                            if "sdd[1-4]_[0-2].*" in subKey:
-                                print(keyItem)
-                        # for valItem in self[keyItem]:
-                        #     print(valItem)
+                    df = self['binned']['dataframe']
                     # df = self.data
-                #     roi_cols = df.filter(regex="sdd[1-4]_[0-2].*").columns
-                #     df.drop(columns=roi_cols, inplace=True)
-                #     data = {k: df.filter(regex=("%s.*" % k), axis=1).to_numpy() for k in keys}
-                #     data.update({df.index.name: np.array(df.index), 'emission': np.linspace(0, 2560, 256)})
-                #     data.update({'image': data['sdd1']})
-                #     kwargs.update(data)
-                #     return eemscan.plot(**data)
-                # elif 'mesh' in self.command[0]:
-                #     pass
+                    roi_cols = df.filter(regex="sdd[1-4]_[0-2].*").columns
+                    df.drop(columns=roi_cols, inplace=True)
+                    data = {k: df.filter(regex=("%s.*" % k), axis=1).to_numpy() for k in keys}
+                    data.update({df.index.name: np.array(df.index), 'emission': np.linspace(0, 2560, 256)})
+                    data.update({'image': data['sdd1']})
+                    kwargs.update(data)
+                    return eemscan.plot(**data)
+                elif 'mesh' in self.command[0]:
+                    pass
 
     def __init__(self, files, **kwargs):
         self.__dict__.update(kwargs)
