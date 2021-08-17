@@ -62,48 +62,21 @@ def check_sample_fitness(list_of_files):
         specified in list_of_files.
     """
     sgm_data = sgmdata.load.SGMData(list_of_files)
+    interp_list = sgm_data.interpolate(resolution=0.1)
     file = list(sgm_data.__dict__['scans'].keys())
-    print(file)
-    # i = 0
-    # while i < len(file):
-    #     print("\n" + str(file[i]))
-    #     for item in sgm_data.__dict__['scans'][file[i]].__dict__.keys():
-    #         print(item)
-    #     i += 1
+    collect = sgm_data.__dict__['scans'][file[0]].__dict__['entry1']
+    O = sgmdata.load.DisplayDict(collect)
+    test_processed = sgmdata.load.SGMData.Processed(O)
+    # test_processed.write()
+    test_processed.plot()
 
-    # if len(sgm_data.__dict__['scans']) == 0:
-    #     raise ValueError("hdf5 file must contain scans to be able to predict the number of scans required. The hdf5 "
-    #                      "file you have provided does not contain any scans. PLease try again with an hdf5 file that"
-    #                      " does contain scans.")
-    # has_sdd = False
-    # file = list(sgm_data.__dict__['scans'].keys())
-    # sample_name = list(sgm_data.__dict__['scans'][file[0]].__dict__.keys())
-    # signals = list(sgm_data.__dict__['scans'][file[0]].__getitem__(sample_name[0]).__getattr__('signals').keys())
-    # i = 0
-    # while i < len(signals) and not has_sdd:
-    #     if "sdd" in signals[i]:
-    #         has_sdd = True
-    #     else:
-    #         i += 1
-    # if not has_sdd:
-    #     raise ValueError("Scans must have sdd values to be able to predict the number of scans required. One or "
-    #                      "more of the scans you have provided do not have sdd values. Please try again using "
-    #                      "scans with sdd values. ")
-    # sample_type = sgm_data.__dict__['scans'][file[0]].__getitem__(sample_name[0])['sample']
-    # for indiv_file in file:
-    #     sample_name = list(sgm_data.__dict__['scans'][indiv_file].__dict__.keys())
-    #     for scan in sample_name:
-    #         if sgm_data.__dict__['scans'][indiv_file].__getitem__(scan)['sample'] != sample_type:
-    #             raise ValueError("In order to predict, the scans in the hdf5 file passed in by user must all be from"
-    #                              " the same sample. The scans in the hdf5 file passed in by the user are not all from"
-    #                              " the same sample. Please "
-    #                              "try again with an hdf5 file only containing scans from the"
-    #                              " same sample. ")
-    # interp_list = sgm_data.interpolate(resolution=0.1)
-    # return interp_list
+    # print(test_processed)
+    # print("\n\t\t\t***" + str(O.keys()))
+    # print("\n\t\t\t***" + str(UO.keys()))
 
 
-x = file_retrieval('C:/Users/roseh/Desktop/Internship/MyCode/h5Files/*bee2-c*.hdf5')
+
+x = file_retrieval('C:/Users/roseh/Desktop/Internship/MyCode/h5Files/*Co-nitrate*Bottom*.hdf5')
 y = check_sample_fitness(x)
 # print(y)
 

@@ -362,7 +362,7 @@ class SGMScan(object):
                     xrfmap.plot_xyz(**kwargs)
 
     def __init__(self, **kwargs):
-        self.__dict__ = {}
+        self.__dict__ = OrderedDict()
         keys = list(kwargs.keys())
         if len(keys) > 0:
             shortest = len(keys[0])
@@ -409,7 +409,28 @@ class SGMScan(object):
         return self.__dict__[item]
 
 
-class DisplayDict(dict):
+class DisplayUnorderedDict(dict):
+    def __getattr__(self, name):
+        return self[name]
+
+    def __setattr__(self, name, value):
+        self[name] = value
+
+    def _repr_html_(self):
+        table = [
+            "<table>",
+            "  <thead>",
+            "    <tr><td> </td><th>Key</th><th>Value</th></tr>",
+            "  </thead>",
+            "  <tbody>",
+        ]
+        for key, value in self.__dict__.items():
+            table.append(f"<tr><th> {key}</th><th>{value}</th></tr>")
+        table.append("</tbody></table>")
+        return "\n".join(table)
+
+
+class DisplayDict(OrderedDict):
     def __getattr__(self, name):
         return self[name]
 
@@ -466,7 +487,11 @@ class SGMData(object):
                 entry = 'entry' + str(NXentries[-1] + 1)
             else:
                 entry = 'entry1'
-            axes = [nm for nm in self.data.index.names]
+            data = None
+            if 'binned' in self.keys():
+                if 'dataframe' in self['binned'].keys():
+                    data = self['binned']['dataframe']
+            axes = [nm for nm in data.index.names]
             nxent = h5.create_group(entry)
             nxent.attrs.create(u'NX_class', u'NXentry')
             nxdata = nxent.create_group('data')
@@ -474,16 +499,16 @@ class SGMData(object):
             nxdata.attrs.create(u'axes', axes)
             nxdata.attrs.create(u'signal', signal)
             if len(axes) == 1:
-                arr = np.array(self.data.index)
-                nxdata.create_dataset(self.data.index.name, arr.shape, data=arr, dtype=arr.dtype)
+                arr = np.array(data.index)
+                nxdata.create_dataset(data.index.name, arr.shape, data=arr, dtype=arr.dtype)
             elif len(axes) > 1:
                 for i, ax in enumerate(axes):
-                    arr = np.array(self.data.index.levels[i])
+                    arr = np.array(data.index.levels[i])
                     nxdata.create_dataset(ax, arr.shape, data=arr, dtype=arr.dtype)
             for sig in self.signals:
-                arr = self.data.filter(regex="%s." % sig.split('_')[0]).to_numpy()
-                if len(self.data.index.names) > 1:
-                    shape = [len(self.data.index.levels[0]), len(self.data.index.levels[1])]
+                arr = data.filter(regex="%s." % sig.split('_')[0]).to_numpy()
+                if len(data.index.names) > 1:
+                    shape = [len(data.index.levels[0]), len(data.index.levels[1])]
                     shape += [s for s in arr.shape[1:]]
                     arr = np.reshape(arr, tuple(shape))
                 nxdata.create_dataset(sig, arr.shape, data=arr, dtype=arr.dtype)
@@ -495,16 +520,24 @@ class SGMData(object):
             else:
                 if 'scan' in self.command[0] and "en" == self.command[1]:
                     keys = eemscan.required
-                    df = self.data
-                    roi_cols = df.filter(regex="sdd[1-4]_[0-2].*").columns
-                    df.drop(columns=roi_cols, inplace=True)
-                    data = {k: df.filter(regex=("%s.*" % k), axis=1).to_numpy() for k in keys}
-                    data.update({df.index.name: np.array(df.index), 'emission': np.linspace(0, 2560, 256)})
-                    data.update({'image': data['sdd1']})
-                    kwargs.update(data)
-                    return eemscan.plot(**data)
-                elif 'mesh' in self.command[0]:
-                    pass
+                    print(self.keys())
+                    for keyItem in self.keys():
+                        print(keyItem)
+                        for subKey in self[keyItem]:
+                            if "sdd[1-4]_[0-2].*" in subKey:
+                                print(keyItem)
+                        # for valItem in self[keyItem]:
+                        #     print(valItem)
+                    # df = self.data
+                #     roi_cols = df.filter(regex="sdd[1-4]_[0-2].*").columns
+                #     df.drop(columns=roi_cols, inplace=True)
+                #     data = {k: df.filter(regex=("%s.*" % k), axis=1).to_numpy() for k in keys}
+                #     data.update({df.index.name: np.array(df.index), 'emission': np.linspace(0, 2560, 256)})
+                #     data.update({'image': data['sdd1']})
+                #     kwargs.update(data)
+                #     return eemscan.plot(**data)
+                # elif 'mesh' in self.command[0]:
+                #     pass
 
     def __init__(self, files, **kwargs):
         self.__dict__.update(kwargs)
