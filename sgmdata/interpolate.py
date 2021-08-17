@@ -126,7 +126,7 @@ def interpolate(independent, signals, command=None, **kwargs):
             bin_num = [int(len(axis[k]) / kwargs['bins']) for i, k in enumerate(axis.keys())]
     bin_edges = [np.linspace(start[i] - offset[i], stop[i] + offset[i], bin_num[i] + 1, endpoint=True) for i in
                  range(len(bin_num))]
-    labels = delayed(label_bins)(bins, bin_edges, independent, npartitions)
+    labels = label_bins(bins, bin_edges, independent, npartitions)
     df = make_df(independent, signals, labels)
     nm = [k for k, v in independent.items()]
     if len(nm) == 1:
