@@ -105,8 +105,8 @@ def _interpolate(entry, **kwargs):
     bin_edges = [np.linspace(start[i] - offset[i], stop[i] + offset[i], bin_num[i] + 1, endpoint=True) for i in
                  range(len(bin_num))]
     entry.__setattr__("new_axes", {"values": bins, "edges": bin_edges})
-    labels = delayed(entry.label_bins(bins, bin_edges, entry['independent'], entry.npartitions))
-    df = delayed(entry.make_df, labels=labels)
+    labels = delayed(entry.label_bins)(bins, bin_edges, entry['independent'], entry.npartitions)
+    df = delayed(entry.make_df)(labels=labels)
     nm = [k for k, v in entry['independent'].items()]
     if len(nm) == 1:
         idx = pd.Index(bins[0], name=nm[0])
