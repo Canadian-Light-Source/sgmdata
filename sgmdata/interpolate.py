@@ -53,6 +53,12 @@ def dask_unique(value):
     else:
         return int(np.unique(value).shape[0] / 5)
 
+def compute_df(df, idx, method = 'nearest'):
+    if len(idx.shape) == 1:
+        return df.compute().compute().reindex(idx).interpolate()
+    elif len(idx.shape) == 2:
+        return df.compute().compute().unstack().interpolate(method=method).fillna(0).stack().reindex(idx)
+
 def interpolate(independent, signals, command=None, **kwargs):
     """
         Creates the bins required for each independent axes to be histogrammed into for interpolation,
@@ -134,19 +140,15 @@ def interpolate(independent, signals, command=None, **kwargs):
     nm = [k for k, v in independent.items()]
     if len(nm) == 1:
         idx = pd.Index(bins[0], name=nm[0])
-        if compute:
-            with ProgressBar():
-                df = df.compute().compute().reindex(idx).interpolate()
     elif len(nm) == 2:
         _y = np.array([bins[1] for b in bins[0]]).flatten()
         _x = np.array([[bins[0][j] for i in range(len(bins[1]))] for j in range(len(bins[0]))]).flatten()
         array = [_x, _y]
         idx = pd.MultiIndex.from_tuples(list(zip(*array)), names=nm)
-        # This method works for now, but can take a fair amount of time.
-        if compute:
-            with ProgressBar():
-                df = df.compute().compute().unstack().interpolate(method=method).fillna(0).stack().reindex(idx)
     else:
         raise ValueError("Too many independent axis for interpolation")
-
+    if compute:
+        df = compute_df(df, idx, method=method)
     return df, idx
+
+

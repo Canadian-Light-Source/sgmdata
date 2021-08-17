@@ -12,7 +12,7 @@ from multiprocessing.pool import ThreadPool
 from functools import partial
 from sgmdata.plots import eemscan, xrfmap
 from sgmdata.xrffit import fit_peaks
-from sgmdata.interpolate import interpolate
+from sgmdata.interpolate import interpolate, compute_df
 from dask.diagnostics import ProgressBar
 
 import warnings
@@ -518,7 +518,6 @@ class SGMData(object):
         return {file_root: entries}
 
     def interpolate(self, **kwargs):
-        kwargs['compute'] = False
         _interpolate = partial(self._interpolate, **kwargs)
         entries = []
         for file, val in self.entries():
@@ -540,7 +539,7 @@ class SGMData(object):
                 command = entry.command
             else:
                 command = None
-            return delayed(interpolate)(independent, signals, command=command, **kwargs)
+            return interpolate(independent, signals, command=command, **kwargs)
 
     def mean(self, bad_scans=None):
         if bad_scans is None:
