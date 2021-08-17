@@ -656,7 +656,7 @@ class SGMData(object):
         return results
 
     def _interpolate(self, entry, **kwargs):
-        compute = kwargs.get('compute', False)
+        compute = kwargs.get('compute', True)
         if compute:
             return entry.interpolate(**kwargs)
         else:
