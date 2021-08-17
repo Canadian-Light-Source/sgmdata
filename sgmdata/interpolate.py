@@ -4,6 +4,7 @@ import dask.array as da
 import dask.dataframe as dd
 import pandas as pd
 import warnings
+from dask.diagnostics import ProgressBar
 
 def label_bins(bins, bin_edges, independent, npartitions):
     """
@@ -132,7 +133,8 @@ def interpolate(independent, signals, command=None, **kwargs):
     if len(nm) == 1:
         idx = pd.Index(bins[0], name=nm[0])
         if compute:
-            df = df.compute().compute().reindex(idx).interpolate()
+            with ProgressBar():
+                df = df.compute().compute().reindex(idx).interpolate()
     elif len(nm) == 2:
         _y = np.array([bins[1] for b in bins[0]]).flatten()
         _x = np.array([[bins[0][j] for i in range(len(bins[1]))] for j in range(len(bins[0]))]).flatten()
@@ -140,8 +142,9 @@ def interpolate(independent, signals, command=None, **kwargs):
         idx = pd.MultiIndex.from_tuples(list(zip(*array)), names=nm)
         # This method works for now, but can take a fair amount of time.
         if compute:
-            df = df.compute().compute().unstack().interpolate(method=method).fillna(0).stack().reindex(idx)
+            with ProgressBar():
+                df = df.compute().compute().unstack().interpolate(method=method).fillna(0).stack().reindex(idx)
     else:
         raise ValueError("Too many independent axis for interpolation")
 
-    return bins, bin_edges, df, idx
+    return df, idx

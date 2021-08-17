@@ -3,10 +3,9 @@ import h5py
 
 from . import config
 import h5pyd
-from dask import compute, delayed
+from dask import delayed
 import dask.array as da
 import dask.dataframe as dd
-from dask.distributed import Client
 import pandas as pd
 import numpy as np
 from multiprocessing.pool import ThreadPool
@@ -14,7 +13,6 @@ from functools import partial
 from sgmdata.plots import eemscan, xrfmap
 from sgmdata.xrffit import fit_peaks
 from sgmdata.interpolate import interpolate
-from dask.diagnostics import ProgressBar
 import warnings
 
 try:
@@ -65,9 +63,8 @@ class SGMScan(object):
                 command = self.command
             else:
                 command = None
-            bins, bin_edges, df, idx = interpolate(independent, signals, command=command, **kwargs)
+            df, idx = interpolate(independent, signals, command=command, **kwargs)
             self.__setattr__('binned', {"dataframe": df, "index": idx})
-            self.__setattr__('new_axes', {"values": bins, "edges": bin_edges})
             return df
 
         def compute(self, **kwargs):
