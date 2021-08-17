@@ -660,9 +660,9 @@ class SGMData(object):
         return results
 
     def _batch_interpolate(self, entry, **kwargs):
-        compute = kwargs.get('compute', False)
+        compute = kwargs.get('compute', True)
         if compute:
-            return _interpolate(entry, **kwargs)
+            return entry.interpolate(**kwargs)
         else:
             return delayed(_interpolate)(entry, **kwargs)
 
