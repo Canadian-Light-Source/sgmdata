@@ -75,6 +75,10 @@ class SGMScan(object):
             return df
 
         def interpolate(self, **kwargs):
+            self._interpolate(self, **kwargs)
+
+        @staticmethod
+        def _interpolate(entry, **kwargs):
             """
                 Creates the bins required for each independent axes to be histogrammed into for interpolation,
                 then uses dask dataframe groupby commands to perform a linear interpolation.
@@ -88,11 +92,11 @@ class SGMScan(object):
             compute = kwargs.get('compute', True)
             method = kwargs.get('method', 'nearest')
 
-            axis = self['independent']
+            axis = entry['independent']
             dim = len(axis.keys())
             if 'start' not in kwargs.keys():
-                if hasattr(self, 'command'):
-                    command = self.command
+                if hasattr(entry, 'command'):
+                    command = entry.command
                     if 'scan' in command[0]:
                         start = [round(float(command[2]))]
                     elif 'mesh' in command[0]:
@@ -102,8 +106,8 @@ class SGMScan(object):
             else:
                 start = kwargs['start']
             if 'stop' not in kwargs.keys():
-                if hasattr(self, 'command'):
-                    command = self.command
+                if hasattr(entry, 'command'):
+                    command = entry.command
                     if 'scan' in command[0]:
                         stop = [round(float(command[3]))]
                     elif 'mesh' in command[0]:
@@ -152,15 +156,15 @@ class SGMScan(object):
                     bin_num = [int(len(axis[k]) / kwargs['bins']) for i, k in enumerate(axis.keys())]
             bin_edges = [np.linspace(start[i] - offset[i], stop[i] + offset[i], bin_num[i] + 1, endpoint=True) for i in
                          range(len(bin_num))]
-            self.__setattr__("new_axes", {"values": bins, "edges": bin_edges})
-            labels = delayed(self.label_bins(bins, bin_edges, self['independent'], self.npartitions))
-            df = delayed(self.make_df, labels=labels)
-            nm = [k for k, v in self['independent'].items()]
+            entry.__setattr__("new_axes", {"values": bins, "edges": bin_edges})
+            labels = delayed(entry.label_bins(bins, bin_edges, entry['independent'], entry.npartitions))
+            df = delayed(entry.make_df, labels=labels)
+            nm = [k for k, v in entry['independent'].items()]
             if len(nm) == 1:
                 idx = pd.Index(bins[0], name=nm[0])
                 if compute:
                     df = df.compute().reindex(idx).interpolate()
-                self.__setattr__('binned', {"dataframe": df, "index": idx})
+                entry.__setattr__('binned', {"dataframe": df, "index": idx})
                 return df
             elif len(nm) == 2:
                 _y = np.array([bins[1] for b in bins[0]]).flatten()
@@ -171,7 +175,7 @@ class SGMScan(object):
                 if compute:
                     df = df.compute().unstack().interpolate(method=method).fillna(0).stack().reindex(idx)
                 binned = {"dataframe": df, "index": idx}
-                self.__setattr__('binned', binned)
+                entry.__setattr__('binned', binned)
                 return df
             else:
                 raise ValueError("Too many independent axis for interpolation")
@@ -658,7 +662,7 @@ class SGMData(object):
         if compute:
             return entry.interpolate(**kwargs)
         else:
-            return delayed(entry.interpolate)(**kwargs)
+            return delayed(entry._interpolate)(entry, **kwargs)
 
     def mean(self, bad_scans=None):
         if bad_scans is None:
