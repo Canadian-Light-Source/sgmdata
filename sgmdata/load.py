@@ -68,7 +68,7 @@ class SGMScan(object):
             bins, bin_edges, df, idx = interpolate(independent, signals, command=command, **kwargs)
             self.__setattr__('binned', {"dataframe": df, "index": idx})
             self.__setattr__('new_axes', {"values": bins, "edges": bin_edges})
-            return df, idx
+            return df
 
         def compute(self, **kwargs):
             method = kwargs.get('method', True)
