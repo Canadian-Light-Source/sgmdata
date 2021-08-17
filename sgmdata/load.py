@@ -63,7 +63,7 @@ class SGMScan(object):
         @staticmethod
         def make_df(independent, signals, labels):
             c = [k for k, v in independent.items()]
-            columns = []
+            columns = {}
             for k, v in signals.items():
                 if len(v.shape) == 2:
                     columns.update({k + "-" + str(i): v[:,i] for i in range(v.shape[1])})
