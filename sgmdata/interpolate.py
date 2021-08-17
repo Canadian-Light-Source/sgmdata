@@ -38,6 +38,17 @@ def make_df(independent, signals, labels):
     df = labels.assign(**columns).groupby(c).mean()
     return df
 
+def dask_max(value):
+    if hasattr(value, 'compute'):
+        return int(np.unique(np.floor(value.compute() * 100)).shape[0] / 1.1)
+    else:
+        return int(np.unique(np.floor(value * 100)).shape[0] / 1.1)
+
+def dask_unique(value):
+    if hasattr(value, 'compute'):
+        return int(np.unique(value.compute()).shape[0] / 5)
+    else:
+        return int(np.unique(value).shape[0] / 5)
 
 def interpolate(independent, signals, command=None, **kwargs):
     """
@@ -84,14 +95,14 @@ def interpolate(independent, signals, command=None, **kwargs):
     if 'resolution' in kwargs.keys() and 'bins' in kwargs.keys():
         raise KeyError("You can only use the keyword bins, or resolution not both")
     if 'resolution' not in kwargs.keys() and 'bins' not in kwargs.keys():
-        bin_num = [int(np.unique(v.compute()).shape[0] / 5) for k, v in axis.items()]
+        bin_num = [dask_unique(v) for k, v in axis.items()]
         offset = [abs(stop[i] - start[i]) / (2 * bin_num[i]) for i in range(len(bin_num))]
         bins = [np.linspace(start[i], stop[i], bin_num[i], endpoint=True) for i in range(len(bin_num))]
     elif 'resolution' in kwargs.keys():
         resolution = kwargs['resolution']
         if not isinstance(kwargs['resolution'], list):
             resolution = [resolution for i, _ in enumerate(axis.keys())]
-        max_res = [int(np.unique(np.floor(v.compute() * 100)).shape[0] / 1.1) for k, v in axis.items()]
+        max_res = [dask_max(v)  for k, v in axis.items() ]
         bin_num = [int(abs(stop[i] - start[i]) / resolution[i]) for i, _ in enumerate(axis.keys())]
         for i, l in enumerate(max_res):
             if l < bin_num[i]:
