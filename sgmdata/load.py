@@ -524,7 +524,7 @@ class SGMData(object):
             for key, entry in val.__dict__.items():
                 entries.append(entry)
         with ProgressBar():
-            results = [_interpolate(entry) for entry in entries]
+            results = tqdm([_interpolate(entry) for entry in entries], total=len(entries))
         return results
 
     def _interpolate(self, entry, **kwargs):
