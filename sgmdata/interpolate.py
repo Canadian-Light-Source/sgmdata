@@ -115,7 +115,6 @@ def interpolate(independent, signals, command=None, **kwargs):
             bin_num = [int(len(axis[k]) / kwargs['bins']) for i, k in enumerate(axis.keys())]
     bin_edges = [np.linspace(start[i] - offset[i], stop[i] + offset[i], bin_num[i] + 1, endpoint=True) for i in
                  range(len(bin_num))]
-    attr = {"new_axes", {"values": bins, "edges": bin_edges}}
     labels = delayed(label_bins)(bins, bin_edges, independent, npartitions)
     df = delayed(make_df)(independent, signals, labels)
     nm = [k for k, v in independent.items()]
@@ -133,5 +132,4 @@ def interpolate(independent, signals, command=None, **kwargs):
             df = df.compute().unstack().interpolate(method=method).fillna(0).stack().reindex(idx)
     else:
         raise ValueError("Too many independent axis for interpolation")
-    attr.update({'binned', {"dataframe": df, "index": idx}})
-    return attr
+    return bins, bin_edges, df, idx
