@@ -66,7 +66,7 @@ class SGMScan(object):
             columns = {}
             for k, v in signals.items():
                 if len(v.shape) == 2:
-                    columns.update({k + "-" + str(i): v[:,i] for i in range(v.shape[1])})
+                    columns.update({k + "-" + str(i): dd.from_array(v[:,i]) for i in range(v.shape[1])})
                 elif len(v.shape) == 1:
                     columns.update({k : v})
                 else:
