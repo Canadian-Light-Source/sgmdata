@@ -13,6 +13,8 @@ from functools import partial
 from sgmdata.plots import eemscan, xrfmap
 from sgmdata.xrffit import fit_peaks
 from sgmdata.interpolate import interpolate
+from dask.diagnostics import ProgressBar
+
 import warnings
 
 try:
@@ -516,13 +518,14 @@ class SGMData(object):
         return {file_root: entries}
 
     def interpolate(self, **kwargs):
+        kwargs['compute'] = False
         _interpolate = partial(self._interpolate, **kwargs)
         entries = []
         for file, val in self.entries():
             for key, entry in val.__dict__.items():
                 entries.append(entry)
-        with ThreadPool(self.threads) as pool:
-            results = list(tqdm(pool.imap_unordered(_interpolate, entries), total=len(entries)))
+        with ProgressBar():
+            results = [_interpolate(entry) for entry in entries]
         return results
 
     def _interpolate(self, entry, **kwargs):
