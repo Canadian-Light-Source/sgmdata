@@ -62,13 +62,9 @@ def check_sample_fitness(list_of_files):
         specified in list_of_files.
     """
     sgm_data = sgmdata.load.SGMData(list_of_files)
-    # interp_list = sgm_data.interpolate(resolution=0.1)
-    # print(sgm_data._repr_console_())
-
+    print(sgm_data._repr_console_())
     test_scan = sgm_data.scans['Co-nitrate-N-Bottom9']['entry1']
-    # test_scan = sgm_data.scans['Bee2-C-Top30']['entry1']
-    print(test_scan.make_df())
-    # print(interpolated_scan)
+    interpolated = test_scan.interpolate(resolution=0.1)
 
 
 x = file_retrieval('C:/Users/roseh/Desktop/Internship/MyCode/h5Files/*nitrate*Bottom*.hdf5')

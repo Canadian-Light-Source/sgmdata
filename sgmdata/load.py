@@ -14,7 +14,10 @@ from functools import partial
 from sgmdata.plots import eemscan, xrfmap
 from sgmdata.xrffit import fit_peaks
 from functools import reduce
+###
 from tabulate import tabulate
+import sys
+###
 
 import warnings
 from collections import OrderedDict
@@ -27,6 +30,11 @@ try:
         from tqdm import tqdm  # Other type (?)
 except NameError:
     from tqdm import tqdm
+
+sys_has_tab = False
+if 'tabulate' in sys.modules:
+    sys_has_tab = True
+
 
 
 class SGMScan(object):
@@ -64,6 +72,7 @@ class SGMScan(object):
 
         def make_df(self, labels=None):
             c = [k for k, v in self['independent'].items()]
+            # print(self['independent'].items())
             signal_columns = [labels]
             for k, v in self['signals'].items():
                 if len(v.shape) == 2:
@@ -78,11 +87,17 @@ class SGMScan(object):
             #     print("\n\n\n******************************\nELEMENT " + str(i) + ":\n\t\tTYPE:\t" +
             #           str(type(signal_columns[i])) + "\n\t\tVALUE:\t" + str(signal_columns[i]))
             #     i += 1
-            #df = reduce(lambda left, right: dd.merge(left, right, left_index=True, right_index=False,
+            # df = reduce(lambda left, right: dd.merge(left, right, left_index=True, right_index=False,
             #                                         how='outer'), signal_columns)
-            df = dd.multi.concat(signal_columns, axis=1)
-            self.__setattr__('dataframe', {"binned": df.groupby(c).mean()})
-            return df.groupby(c).mean()
+            df = dd.multi.concat(signal_columns[1:], axis=1)
+            # self.__setattr__('dataframe', {"binned": df.groupby(c).mean()})
+            # element1 = df[df[]]
+            y = df.columns
+            # for item in y:
+            #     if "sdd" not in item:
+            #         print(item)
+            # print(df.groupby(c))
+            # return df.groupby(c).mean()
 
         def interpolate(self, **kwargs):
             """
@@ -786,18 +801,34 @@ class SGMData(object):
         """
         Takes own data and organizes it into a console-friendly table.
         """
-        table = []
-        temp_list = []
-        for key in self.scans.keys():
-            for subkey in self.scans[key].__dict__:
-                temp_list.append(key)
-                temp_list.append(subkey)
-                temp_list.append(self.scans[key].__dict__[subkey].sample)
-                temp_list.append(self.scans[key].__dict__[subkey].command)
-                temp_list.append(self.scans[key].__dict__[subkey].independent)
-                temp_list.append(self.scans[key].__dict__[subkey].signals)
-                temp_list.append(self.scans[key].__dict__[subkey].other)
-                table.append(temp_list)
-                temp_list = []
-        return tabulate(table, headers=["File", "Entry", "Sample", "Command", "Independent", "Signals", "Other"])
+        if not sys_has_tab:
+            table = []
+            temp_list = []
+            for key in self.scans.keys():
+                for subkey in self.scans[key].__dict__:
+                    temp_list.append(key)
+                    temp_list.append(subkey)
+                    temp_list.append(self.scans[key].__dict__[subkey].sample)
+                    temp_list.append(self.scans[key].__dict__[subkey].command)
+                    temp_list.append(self.scans[key].__dict__[subkey].independent)
+                    temp_list.append(self.scans[key].__dict__[subkey].signals)
+                    temp_list.append(self.scans[key].__dict__[subkey].other)
+                    table.append(temp_list)
+                    temp_list = []
+            return tabulate(table, headers=["File", "Entry", "Sample", "Command", "Independent", "Signals", "Other"])
+        else:
+            final_str = ""
+            temp_str = ""
+            for key in self.scans.keys():
+                for subkey in self.scans[key].__dict__:
+                    temp_str = ("Entry:\t" + str(subkey))
+                    temp_str = (temp_str + "\t\t\tFile: " + str(key))
+                    temp_str = (temp_str + "\t\t\tSample: " + str(self.scans[key].__dict__[subkey].sample))
+                    temp_str = (temp_str + "\t\t\tCommand: " + str(self.scans[key].__dict__[subkey].command))
+                    temp_str = (temp_str +"\t\t\tIndependent: " + str(self.scans[key].__dict__[subkey].independent))
+                    temp_str = (temp_str +"\t\t\tSignals: " + str(self.scans[key].__dict__[subkey].signals))
+                    temp_str = (temp_str +"\t\t\tOther: " + str(self.scans[key].__dict__[subkey].other) + "\n")
+                    final_str = str(final_str) + str(temp_str)
+                    temp_str = ""
+            return final_str
 
