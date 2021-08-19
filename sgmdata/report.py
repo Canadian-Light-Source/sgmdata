@@ -614,8 +614,15 @@ to the relevant subsection of the report.}
                                                 'res': 0.1
                                                 }})
                     continue
-                with h5py.File(avg_path, 'r') as h5:
+                if os.path.exists(avg_path):
+                    fpath = avg_path
+                elif os.path.exists(avg_path.replace('/home/jovyan/', '.')):
+                    fpath = avg_path.replace('/home/jovyan/', '.')
+                else:
+                    fpath = avg_path.replace('/home/jovyan/', '.')
+                    raise OSError(1, "No such file for sample average %s" % fpath)
 
+                with h5py.File(fpath, 'r') as h5:
                     NXentries = [str(x) for x in h5['/'].keys() if 'NXentry' in str(h5[x].attrs.get('NX_class'))]
                     if not NXentries:
                         NXentries = ['entry1']
@@ -692,7 +699,7 @@ to the relevant subsection of the report.}
                                             }})
             self.scans_log.update({k: scans_list})
 
-    def get_or_process_data(self, process=False, key=None):
+    def get_or_process_data(self, process=False, key=None, **kwargs):
         """
             User SGMQuery to find if EEMs and averaged (processed) files exist in SGMLive database.
             Optional Keyword:
@@ -728,7 +735,14 @@ to the relevant subsection of the report.}
                         self.client.shutdown()
                         self.client = Client()
                         process_count = 0
-                    sgmq = preprocess(sample, user=self.account, resolution=0.1, client=self.client, query=True)
+                    resolution = kwargs.get('resolution', 0.1)
+                    sgmq = preprocess(sample,
+                                      user=self.account,
+                                      resolution=resolution,
+                                      client=self.client,
+                                      query=True,
+                                      **kwargs
+                                      )
                     try:
                         sgmq.connection.close()
                     except AttributeError:
@@ -762,7 +776,7 @@ to the relevant subsection of the report.}
         copyfile(main, path)
         self.make_header_tex()
 
-    def create_sample_report(self, key=None, plots=True, process=False):
+    def create_sample_report(self, key=None, plots=True, process=False, **kwargs):
         """
             Core logic to create LaTeX report from confluence experimental log.
         """
@@ -823,6 +837,6 @@ to the relevant subsection of the report.}
                 self.make_plot(img_data, positions, k, iter(sample_list))
                 del img_data, data, image, df
             self.sample_lists.update({k: sample_list})
-        self.make_scan_figures(*self.get_or_process_data(process=process, key=key), plots=plots)
+        self.make_scan_figures(*self.get_or_process_data(process=process, key=key, **kwargs), plots=plots)
         self.make_holder_table()
 

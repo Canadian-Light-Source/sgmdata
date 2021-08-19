@@ -3,24 +3,19 @@ import h5py
 
 from . import config
 import h5pyd
-from dask import compute, delayed
+from dask import delayed
 import dask.array as da
 import dask.dataframe as dd
-from dask.distributed import Client
 import pandas as pd
 import numpy as np
 from multiprocessing.pool import ThreadPool
 from functools import partial
 from sgmdata.plots import eemscan, xrfmap
 from sgmdata.xrffit import fit_peaks
-from functools import reduce
-###
-from tabulate import tabulate
-import sys
-###
+from sgmdata.interpolate import interpolate, compute_df
+from dask.diagnostics import ProgressBar
 
 import warnings
-from collections import OrderedDict
 
 try:
     shell = get_ipython().__class__.__name__
@@ -31,11 +26,27 @@ try:
 except NameError:
     from tqdm import tqdm
 
-sys_has_tab = False
-if 'tabulate' in sys.modules:
-    sys_has_tab = True
 
 
+class DisplayDict(dict):
+    def __getattr__(self, name):
+        return self[name]
+
+    def __setattr__(self, name, value):
+        self[name] = value
+
+    def _repr_html_(self):
+        table = [
+            "<table>",
+            "  <thead>",
+            "    <tr><td> </td><th>Key</th><th>Value</th></tr>",
+            "  </thead>",
+            "  <tbody>",
+        ]
+        for key, value in self.__dict__.items():
+            table.append(f"<tr><th> {key}</th><th>{value}</th></tr>")
+        table.append("</tbody></table>")
+        return "\n".join(table)
 
 class SGMScan(object):
     """
@@ -44,169 +55,33 @@ class SGMScan(object):
         for interpolation.
     """
 
-    class DataDict(OrderedDict):
-        def __getattr__(self, name):
-            return self[name]
-
-        def __setattr__(self, name, value):
-            self[name] = value
-
-        @staticmethod
-        def label_bins(bins, bin_edges, independent, npartitions):
-            """
-                Program creates an array the length of an independent axis and fills it
-                with bin center values that the independent array falls into.
-            """
-            bin_labels = {}
-            val = independent
-            for i, key in enumerate(val.keys()):
-                bin_labels[key] = np.full(val[key].shape, np.nan)
-                indep_value = val[key]
-                for j, b in enumerate(bins[i]):
-                    bin_labels[key][np.where(
-                        np.logical_and(indep_value >= bin_edges[i][j], indep_value <= bin_edges[i][j + 1]))] = b
-            axes = np.vstack([v for k, v in bin_labels.items()]).T
-            bin_l_dask = da.from_array(axes, chunks='auto')
-            columns = [k for k, v in bin_labels.items()]
-            return dd.from_dask_array(bin_l_dask, columns=columns)
-
-        def make_df(self, labels=None):
-            c = [k for k, v in self['independent'].items()]
-            # print(self['independent'].items())
-            signal_columns = [labels]
-            for k, v in self['signals'].items():
-                if len(v.shape) == 2:
-                    columns = [k + "-" + str(i) for i in range(v.shape[1])]
-                elif len(v.shape) == 1:
-                    columns = [k]
-                else:
-                    continue
-                signal_columns.append(dd.from_dask_array(v, columns=columns))
-            # i = 0
-            # while i < len(signal_columns):
-            #     print("\n\n\n******************************\nELEMENT " + str(i) + ":\n\t\tTYPE:\t" +
-            #           str(type(signal_columns[i])) + "\n\t\tVALUE:\t" + str(signal_columns[i]))
-            #     i += 1
-            # df = reduce(lambda left, right: dd.merge(left, right, left_index=True, right_index=False,
-            #                                         how='outer'), signal_columns)
-            df = dd.multi.concat(signal_columns[1:], axis=1)
-            # self.__setattr__('dataframe', {"binned": df.groupby(c).mean()})
-            # element1 = df[df[]]
-            y = df.columns
-            # for item in y:
-            #     if "sdd" not in item:
-            #         print(item)
-            # print(df.groupby(c))
-            # return df.groupby(c).mean()
+    class DataDict(DisplayDict):
 
         def interpolate(self, **kwargs):
-            """
-                Creates the bins required for each independent axes to be histogrammed into for interpolation,
-                then uses dask dataframe groupby commands to perform a linear interpolation.
-                Optional Keywords:
-                           start (type: list or number) -- starting position of the new array
-                           stop  (type: list or number) -- ending position of the new array
-                           bins (type: list of numbers or arrays) --  this can be an array of bin values for each axes,
-                                                                      or can be the number of bins desired.
-                           resolution (type: list or number) -- used instead of bins to define the bin to bin distance.
-            """
-            if 'compute' in kwargs.keys():
-                compute = kwargs['compute']
+            independent = self['independent']
+            signals = self['signals']
+            kwargs['npartitions'] = self.npartitions
+            if hasattr(self, 'command'):
+                command = self.command
             else:
-                compute = True
-            if 'method' in kwargs.keys():
-                method = kwargs.keys()
-            else:
-                method = "nearest"
-            axis = self['independent']
-            dim = len(axis.keys())
-            if 'start' not in kwargs.keys():
-                if hasattr(self, 'command'):
-                    command = self.command
-                    if 'scan' in command[0]:
-                        start = [round(float(command[2]))]
-                    elif 'mesh' in command[0]:
-                        start = [float(command[2]), float(command[6])]
-                else:
-                    start = [round(v.min()) for k, v in axis.items()]
-            else:
-                start = kwargs['start']
-            if 'stop' not in kwargs.keys():
-                if hasattr(self, 'command'):
-                    command = self.command
-                    if 'scan' in command[0]:
-                        stop = [round(float(command[3]))]
-                    elif 'mesh' in command[0]:
-                        stop = [float(command[3]), float(command[7])]
-                else:
-                    stop = [round(v.max()) + 1 for k, v in axis.items()]
-            else:
-                stop = kwargs['stop']
-            if not isinstance(start, list):
-                start = [start for i, _ in enumerate(axis.keys())]
-            if not isinstance(stop, list):
-                stop = [stop for i, _ in enumerate(axis.keys())]
-            if len(start) != len(stop):
-                raise ValueError("Start and Stop coordinates must have same length")
-            if 'resolution' in kwargs.keys() and 'bins' in kwargs.keys():
-                raise KeyError("You can only use the keyword bins, or resolution not both")
-            if 'resolution' not in kwargs.keys() and 'bins' not in kwargs.keys():
-                bin_num = [int(np.unique(v.compute()).shape[0] / 5) for k, v in axis.items()]
-                offset = [abs(stop[i] - start[i]) / (2 * bin_num[i]) for i in range(len(bin_num))]
-                bins = [np.linspace(start[i], stop[i], bin_num[i], endpoint=True) for i in range(len(bin_num))]
-            elif 'resolution' in kwargs.keys():
-                resolution = kwargs['resolution']
-                if not isinstance(kwargs['resolution'], list):
-                    resolution = [resolution for i, _ in enumerate(axis.keys())]
-                max_res = [int(np.unique(np.floor(v.compute() * 100)).shape[0] / 1.1) for k, v in axis.items()]
-                bin_num = [int(abs(stop[i] - start[i]) / resolution[i]) for i, _ in enumerate(axis.keys())]
-                for i, l in enumerate(max_res):
-                    if l < bin_num[i]:
-                        warnings.warn(
-                            "Resolution setting can't be higher than experimental resolution, setting resolution for axis %s to %f" % (
-                                i, abs(stop[i] - start[i]) / l), UserWarning)
-                        bin_num[i] = l
-                offset = [item / 2 for item in resolution]
-                bins = [np.linspace(start[i], stop[i], bin_num[i], endpoint=True) for i in range(len(bin_num))]
-            elif 'bins' in kwargs.keys():
-                if isinstance(kwargs['bins'], list):
-                    if len(kwargs['bins'][0]) == 1:
-                        bin_num = [np.floor(len(np.unique(axis[k])) / kwargs['bins'][i]) for i, k in
-                                   enumerate(axis.keys())]
-                        bins = [np.linspace(start[i], stop[i], bin_num[i], endpoint=True) for i in range(len(bin_num))]
-                    else:
-                        start = [item[0] for item in kwargs['bins']]
-                        stop = [item[1] for item in kwargs['bins']]
-                        bin_num = []
-                elif isinstance(kwargs['bins'], int):
-                    bin_num = [int(len(axis[k]) / kwargs['bins']) for i, k in enumerate(axis.keys())]
-            bin_edges = [np.linspace(start[i] - offset[i], stop[i] + offset[i], bin_num[i] + 1, endpoint=True) for i in
-                         range(len(bin_num))]
-            self.__setattr__("new_axes", {"values": bins, "edges": bin_edges})
-            labels = self.label_bins(bins, bin_edges, self['independent'], self.npartitions)
-            df = self.make_df(labels=labels)
-            if compute:
-                nm = [k for k, v in self['independent'].items()]
-                if len(nm) == 1:
-                    idx = pd.Index(bins[0], name=nm[0])
-                    df = df.compute().reindex(idx).interpolate()
-                    self.__setattr__('binned', {"dataframe": df})
-                    return df
-                elif len(nm) == 2:
-                    _y = np.array([bins[1] for b in bins[0]]).flatten()
-                    _x = np.array([[bins[0][j] for i in range(len(bins[1]))] for j in range(len(bins[0]))]).flatten()
-                    array = [_x, _y]
-                    idx = pd.MultiIndex.from_tuples(list(zip(*array)), names=nm)
-                    # This method works for now, but can take a fair amount of time.
-                    df = df.compute().unstack().interpolate(method=method).fillna(0).stack().reindex(idx)
-                    binned = {"dataframe": df}
-                    self.__setattr__('binned', binned)
-                    return df
-                else:
-                    raise ValueError("Too many independent axis for interpolation")
+                command = None
+            df, idx = interpolate(independent, signals, command=command, **kwargs)
+            self.__setattr__('binned', {"dataframe": df, "index": idx})
+            return df
 
-            else:
-                return df
+        def compute(self, **kwargs):
+            method = kwargs.get('method', True)
+            if hasattr(self, 'binned'):
+                if 'df' in self['binned'].keys():
+                    idx = self['binned'].get('idx', None)
+                    if isinstance(idx, pd.MultiIndex):
+                        df = self["binned"]['dataframe'].compute().interpolate(method=method).fillna(0).stack().reindex(
+                            idx)
+                    elif isinstance(idx, pd.Index):
+                        df = self["binned"]['dataframe'].compute().reindex(idx).interpolate()
+                    self['binned']['dataframe'] = df
+                    return df
+            print("Nothing to compute.")
 
         def fit_mcas(self, detectors=[], emission=[]):
             if not len(detectors):
@@ -216,7 +91,6 @@ class SGMScan(object):
                     emission = self['other']['emission'].compute()
                 else:
                     sig = self['signals'][detectors[0]]
-                    print("H\nE\nL\nL\nO\n")
                     emission = np.linspace(0, sig.shape[1] * 10, sig.shape[1])
             if 'binned' in self.keys():
                 df = self['binned']['dataframe']
@@ -269,23 +143,6 @@ class SGMScan(object):
                 "</td>",
             ]
             return " ".join(entry)
-
-        def _repr_console_(self):
-            """
-            Takes own data and organizes it into a console-friendly table.
-            """
-            if not sys_has_tab:
-                table = []
-                headers = []
-                for key in self.keys():
-                    headers.append(str(key))
-                    table.append(self[key])
-                return tabulate([table], headers=headers)
-            else:
-                temp_str = ""
-                for key in self.keys():
-                    temp_str = (str(temp_str) + str(key) + ": " + str(self[key]) + "\t\t\t")
-                return temp_str
 
         def write(self, filename=None):
             """ Write data to NeXuS formatted data file."""
@@ -401,28 +258,9 @@ class SGMScan(object):
                     xrfmap.plot_xyz(**kwargs)
 
     def __init__(self, **kwargs):
-        self.__dict__ = OrderedDict()
-        keys = list(kwargs.keys())
-        if len(keys) > 0:
-            shortest = len(keys[0])
-            longest = len(keys[0])
-            for key, value in kwargs.items():
-                if len(key) < shortest:
-                    shortest = len(key)
-                elif len(key) > longest:
-                    longest = len(key)
-            temp = []
-            cur_len = shortest
-            while cur_len <= longest:
-                for entry in keys:
-                    if len(entry) == cur_len:
-                        temp.append(entry)
-                temp.sort()
-                for key, value in kwargs.items():
-                    if key in temp:
-                        self.__dict__[key] = SGMScan.DataDict(value)
-                temp.clear()
-                cur_len += 1
+        self.__dict__.update(kwargs)
+        for key, value in kwargs.items():
+            self.__dict__[key] = SGMScan.DataDict(value)
 
     def __repr__(self):
         represent = ""
@@ -448,46 +286,6 @@ class SGMScan(object):
         return self.__dict__[item]
 
 
-class DisplayUnorderedDict(dict):
-    def __getattr__(self, name):
-        return self[name]
-
-    def __setattr__(self, name, value):
-        self[name] = value
-
-    def _repr_html_(self):
-        table = [
-            "<table>",
-            "  <thead>",
-            "    <tr><td> </td><th>Key</th><th>Value</th></tr>",
-            "  </thead>",
-            "  <tbody>",
-        ]
-        for key, value in self.__dict__.items():
-            table.append(f"<tr><th> {key}</th><th>{value}</th></tr>")
-        table.append("</tbody></table>")
-        return "\n".join(table)
-
-
-class DisplayDict(OrderedDict):
-    def __getattr__(self, name):
-        return self[name]
-
-    def __setattr__(self, name, value):
-        self[name] = value
-
-    def _repr_html_(self):
-        table = [
-            "<table>",
-            "  <thead>",
-            "    <tr><td> </td><th>Key</th><th>Value</th></tr>",
-            "  </thead>",
-            "  <tbody>",
-        ]
-        for key, value in self.__dict__.items():
-            table.append(f"<tr><th> {key}</th><th>{value}</th></tr>")
-        table.append("</tbody></table>")
-        return "\n".join(table)
 
 
 class SGMData(object):
@@ -526,11 +324,7 @@ class SGMData(object):
                 entry = 'entry' + str(NXentries[-1] + 1)
             else:
                 entry = 'entry1'
-            data = None
-            if 'binned' in self.keys():
-                if 'dataframe' in self['binned'].keys():
-                    data = self['binned']['dataframe']
-            axes = [nm for nm in data.index.names]
+            axes = [nm for nm in self.data.index.names]
             nxent = h5.create_group(entry)
             nxent.attrs.create(u'NX_class', u'NXentry')
             nxdata = nxent.create_group('data')
@@ -538,16 +332,16 @@ class SGMData(object):
             nxdata.attrs.create(u'axes', axes)
             nxdata.attrs.create(u'signal', signal)
             if len(axes) == 1:
-                arr = np.array(data.index)
-                nxdata.create_dataset(data.index.name, arr.shape, data=arr, dtype=arr.dtype)
+                arr = np.array(self.data.index)
+                nxdata.create_dataset(self.data.index.name, arr.shape, data=arr, dtype=arr.dtype)
             elif len(axes) > 1:
                 for i, ax in enumerate(axes):
-                    arr = np.array(data.index.levels[i])
+                    arr = np.array(self.data.index.levels[i])
                     nxdata.create_dataset(ax, arr.shape, data=arr, dtype=arr.dtype)
             for sig in self.signals:
-                arr = data.filter(regex="%s." % sig.split('_')[0]).to_numpy()
-                if len(data.index.names) > 1:
-                    shape = [len(data.index.levels[0]), len(data.index.levels[1])]
+                arr = self.data.filter(regex="%s." % sig.split('_')[0]).to_numpy()
+                if len(self.data.index.names) > 1:
+                    shape = [len(self.data.index.levels[0]), len(self.data.index.levels[1])]
                     shape += [s for s in arr.shape[1:]]
                     arr = np.reshape(arr, tuple(shape))
                 nxdata.create_dataset(sig, arr.shape, data=arr, dtype=arr.dtype)
@@ -559,7 +353,7 @@ class SGMData(object):
             else:
                 if 'scan' in self.command[0] and "en" == self.command[1]:
                     keys = eemscan.required
-                    df = self['binned']['dataframe']
+                    df = self.data
                     roi_cols = df.filter(regex="sdd[1-4]_[0-2].*").columns
                     df.drop(columns=roi_cols, inplace=True)
                     data = {k: df.filter(regex=("%s.*" % k), axis=1).to_numpy() for k in keys}
@@ -578,18 +372,18 @@ class SGMData(object):
             self.npartitions = 3
         if not hasattr(self, 'threads'):
             self.threads = 4
-        files = sorted([os.path.abspath(file) for file in files])
-        self.scans = OrderedDict((k.split('\\')[-1].split(".")[0], OrderedDict) for k in files)
+        files = [os.path.abspath(file) for file in files]
+        self.scans = {k.split('/')[-1].split(".")[0]: [] for k in files}
         self.interp_params = {}
         with ThreadPool(self.threads) as pool:
-                L = list(tqdm(pool.imap_unordered(self._load_data, files), total=len(files)))
+            L = list(tqdm(pool.imap_unordered(self._load_data, files), total=len(files)))
         err = [l['ERROR'] for l in L if 'ERROR' in l.keys()]
         L = [l for l in L if 'ERROR' not in l.keys()]
         if len(err):
             warnings.warn(f"Some scan files were not loaded: {err}")
             for e in err:
                 del self.scans[e]
-        self.scans.update(OrderedDict((k, SGMScan(**v)) for d in L for k, v in d.items()))
+        self.scans.update({k: SGMScan(**v) for d in L for k, v in d.items()})
         self.entries = self.scans.items
 
     def _find_data(self, node, indep=None, other=False):
@@ -726,27 +520,26 @@ class SGMData(object):
     def interpolate(self, **kwargs):
         _interpolate = partial(self._interpolate, **kwargs)
         entries = []
-        compute = kwargs.get('compute', False)
         for file, val in self.entries():
             for key, entry in val.__dict__.items():
                 entries.append(entry)
         with ThreadPool(self.threads) as pool:
-            results = list(tqdm(pool.imap(_interpolate, entries), total=len(entries)))
-        i = 1
-        while i < len(results):
-            if len(results[i]) != len(results[0]):
-                raise ValueError("All of the signals for the scans must be the same length. The signals for the scans "
-                                 "in the hdf5 file you provided are not the same length. This issue can be fixed by "
-                                 "decreasing the motor scan range. Please decrease the motor scan range and try again.")
-            elif len(results[i].columns) != len(results[0].columns):
-                raise ValueError("** All of the signals for the scans must be the same length. The signals for the scans "
-                                 "in the hdf5 file you provided are not the same length. This issue can be fixed by "
-                                 "decreasing the motor scan range. Please decrease the motor scan range and try again.")
-            i += 1
+            results = list(tqdm(pool.imap_unordered(_interpolate, entries), total=len(entries)))
         return results
 
     def _interpolate(self, entry, **kwargs):
-        return entry.interpolate(**kwargs)
+        compute = kwargs.get('compute', True)
+        if compute:
+            return entry.interpolate(**kwargs)
+        else:
+            independent = entry['independent']
+            signals = entry['signals']
+            kwargs['npartitions'] = self.npartitions
+            if hasattr(entry, 'command'):
+                command = entry.command
+            else:
+                command = None
+            return interpolate(independent, signals, command=command, **kwargs)
 
     def mean(self, bad_scans=None):
         if bad_scans is None:
@@ -813,39 +606,3 @@ class SGMData(object):
         table.append("</tbody></table>")
 
         return "\n".join(table)
-
-    def _repr_console_(self):
-        """
-        Takes own data and organizes it into a console-friendly table.
-        """
-        if not sys_has_tab:
-            table = []
-            temp_list = []
-            for key in self.scans.keys():
-                for subkey in self.scans[key].__dict__:
-                    temp_list.append(key)
-                    temp_list.append(subkey)
-                    temp_list.append(self.scans[key].__dict__[subkey].sample)
-                    temp_list.append(self.scans[key].__dict__[subkey].command)
-                    temp_list.append(self.scans[key].__dict__[subkey].independent)
-                    temp_list.append(self.scans[key].__dict__[subkey].signals)
-                    temp_list.append(self.scans[key].__dict__[subkey].other)
-                    table.append(temp_list)
-                    temp_list = []
-            return tabulate(table, headers=["File", "Entry", "Sample", "Command", "Independent", "Signals", "Other"])
-        else:
-            final_str = ""
-            temp_str = ""
-            for key in self.scans.keys():
-                for subkey in self.scans[key].__dict__:
-                    temp_str = ("Entry:\t" + str(subkey))
-                    temp_str = (temp_str + "\t\t\tFile: " + str(key))
-                    temp_str = (temp_str + "\t\t\tSample: " + str(self.scans[key].__dict__[subkey].sample))
-                    temp_str = (temp_str + "\t\t\tCommand: " + str(self.scans[key].__dict__[subkey].command))
-                    temp_str = (temp_str +"\t\t\tIndependent: " + str(self.scans[key].__dict__[subkey].independent))
-                    temp_str = (temp_str +"\t\t\tSignals: " + str(self.scans[key].__dict__[subkey].signals))
-                    temp_str = (temp_str +"\t\t\tOther: " + str(self.scans[key].__dict__[subkey].other) + "\n")
-                    final_str = str(final_str) + str(temp_str)
-                    temp_str = ""
-            return final_str
-
