@@ -63,7 +63,14 @@ class SGMQuery(object):
         self.domains = []
         self.avg_id = []
         self.get_paths()
-        if self.paths and self.data:
+        if self.paths:
+            if os.path.exists("/".join(self.paths[0].split('/')[:-1]).replace('/home/jovyan', ".")):
+                local_paths = [p.replace('/home/jovyan', '.') for p in self.paths]
+                self.paths = local_paths
+            elif os.path.exists("/".join(self.paths[0].split('/')[:-1]).replace('/home/jovyan', "/SpecData")):
+                local_paths = [p.replace('/home/jovyan', '/SpecData') for p in self.paths]
+                self.paths = local_paths
+        if self.data:
             self.data = SGMData(self.paths, **kwargs)
 
     def get_paths(self):
@@ -114,7 +121,11 @@ class SGMQuery(object):
 
             # Get most common average scan id.
             f = Counter(avg_ids)
-            self.avg_id = [f.most_common()[0][0]]
+            if f.most_commmon()[0][0] == None and len(f.most_common()) > 1:
+                most_common = f.most_common()[1][0]
+            else:
+                most_common = f.most_common()[0][0]
+            self.avg_id = [most_common]
             if not self.avg_id[0]:
                 print(f"No average scan found for, {self.sample}, in account {self.user}.")
                 return []
@@ -425,36 +436,23 @@ def preprocess(sample, **kwargs):
          (HTML) hyperlink for preprocessed data stored in SGMLive
     """
     user = kwargs.get('user', False)
-    cl = kwargs.get('client', False)
     bs_args = kwargs.get('bscan_thresh', dict(cont=55, dump=30, sat=60))
     sdd_max = kwargs.get('sdd_max', 105000)
     clear = kwargs.get('clear', True)
     query_return = kwargs.get('query', False)
-    start = kwargs.get('start', None)
-    stop = kwargs.get('stop', None)
     if isinstance(bs_args, tuple):
         bs_args = dict(cont=bs_args[0], dump=bs_args[1], sat=bs_args[2], sdd_max=sdd_max)
     resolution = kwargs.get('resolution', 0.1)
+    kwargs.update({'resolution':resolution})
     if user:
         sgmq = SGMQuery(sample=sample, user=user, data=False)
     else:
         sgmq = SGMQuery(sample=sample, data=False)
-    if not cl:
-        cl = Client()
     if len(sgmq.paths):
         print("Found %d scans matching sample: %s, for user: %s" % (len(sgmq.paths), sample, user))
-        if os.path.exists("/".join(sgmq.paths[0].split('/')[:-1]).replace('/home/jovyan', ".")):
-            local_paths = [p.replace('/home/jovyan', '.') for p in sgmq.paths]
-            sgmq.paths = local_paths
-        elif os.path.exists("/".join(sgmq.paths[0].split('/')[:-1]).replace('/home/jovyan', "/SpecData")):
-            local_paths = [p.replace('/home/jovyan', '/SpecData') for p in sgmq.paths]
-            sgmq.paths = local_paths
-        sgm_data = sgmdata.SGMData(sgmq.paths, client=cl)
+        sgm_data = sgmdata.SGMData(sgmq.paths, **kwargs)
         print("Interpolating...", end=" ")
-        if start and stop:
-            interp = sgm_data.interpolate(resolution=resolution, start=start, stop=stop)
-        else:
-            interp = sgm_data.interpolate(resolution=resolution)
+        interp = sgm_data.interpolate(**kwargs)
         sgmq.write_proc(sgm_data.scans)
         bscans = badscans(interp, **bs_args)
         if len(bscans) != len(sgm_data.scans):
