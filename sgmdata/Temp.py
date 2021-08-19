@@ -62,21 +62,17 @@ def check_sample_fitness(list_of_files):
         specified in list_of_files.
     """
     sgm_data = sgmdata.load.SGMData(list_of_files)
-    interp_list = sgm_data.interpolate(resolution=0.1)
-    file = list(sgm_data.__dict__['scans'].keys())
-    collect = sgm_data.__dict__['scans'][file[0]].__dict__['entry1']
-    O = sgmdata.load.DisplayDict(collect)
-    test_processed = sgmdata.load.SGMData.Processed(O)
-    # test_processed.write()
-    test_processed.plot()
+    # interp_list = sgm_data.interpolate(resolution=0.1)
+    # print(sgm_data._repr_console_())
 
-    # print(test_processed)
-    # print("\n\t\t\t***" + str(O.keys()))
-    # print("\n\t\t\t***" + str(UO.keys()))
+    test_scan = sgm_data.scans['Co-nitrate-N-Bottom9']['entry1']
+    # test_scan = sgm_data.scans['Bee2-C-Top30']['entry1']
+    print(test_scan.make_df())
+    # print(interpolated_scan)
 
 
-
-x = file_retrieval('C:/Users/roseh/Desktop/Internship/MyCode/h5Files/*Co-nitrate*Bottom*.hdf5')
+x = file_retrieval('C:/Users/roseh/Desktop/Internship/MyCode/h5Files/*nitrate*Bottom*.hdf5')
+# x = file_retrieval('C:/Users/roseh/Desktop/Internship/MyCode/h5Files/*bee*.hdf5')
 y = check_sample_fitness(x)
 # print(y)
 

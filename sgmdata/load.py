@@ -14,6 +14,7 @@ from functools import partial
 from sgmdata.plots import eemscan, xrfmap
 from sgmdata.xrffit import fit_peaks
 from functools import reduce
+from tabulate import tabulate
 
 import warnings
 from collections import OrderedDict
@@ -35,7 +36,7 @@ class SGMScan(object):
         for interpolation.
     """
 
-    class DataDict(dict):
+    class DataDict(OrderedDict):
         def __getattr__(self, name):
             return self[name]
 
@@ -72,6 +73,11 @@ class SGMScan(object):
                 else:
                     continue
                 signal_columns.append(dd.from_dask_array(v, columns=columns))
+            # i = 0
+            # while i < len(signal_columns):
+            #     print("\n\n\n******************************\nELEMENT " + str(i) + ":\n\t\tTYPE:\t" +
+            #           str(type(signal_columns[i])) + "\n\t\tVALUE:\t" + str(signal_columns[i]))
+            #     i += 1
             #df = reduce(lambda left, right: dd.merge(left, right, left_index=True, right_index=False,
             #                                         how='outer'), signal_columns)
             df = dd.multi.concat(signal_columns, axis=1)
@@ -195,6 +201,7 @@ class SGMScan(object):
                     emission = self['other']['emission'].compute()
                 else:
                     sig = self['signals'][detectors[0]]
+                    print("H\nE\nL\nL\nO\n")
                     emission = np.linspace(0, sig.shape[1] * 10, sig.shape[1])
             if 'binned' in self.keys():
                 df = self['binned']['dataframe']
@@ -520,9 +527,7 @@ class SGMData(object):
             else:
                 if 'scan' in self.command[0] and "en" == self.command[1]:
                     keys = eemscan.required
-                    print(self.keys())
                     df = self['binned']['dataframe']
-                    # df = self.data
                     roi_cols = df.filter(regex="sdd[1-4]_[0-2].*").columns
                     df.drop(columns=roi_cols, inplace=True)
                     data = {k: df.filter(regex=("%s.*" % k), axis=1).to_numpy() for k in keys}
