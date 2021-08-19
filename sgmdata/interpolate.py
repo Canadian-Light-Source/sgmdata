@@ -20,7 +20,7 @@ def label_bins(bins, bin_edges, independent):
             bin_labels[key][np.where(
                 np.logical_and(indep_value >= bin_edges[i][j], indep_value <= bin_edges[i][j + 1]))] = b
     axes = np.squeeze(np.vstack([v for k, v in bin_labels.items()]).T)
-    columns = {k: axes[i] for i,k in enumerate(bin_labels.keys())}
+    columns = {k: axes if len(axes.shape) == 1 else axes[:, i] for i, k in enumerate(bin_labels.keys())}
     return pd.DataFrame.from_dict(columns)
 
 
