@@ -23,7 +23,7 @@ setup(
     packages=find_packages(),
     include_package_data=True,
     install_requires=[
-        "dask[complete]==2021.04.0",
+        "dask[complete]==2021.08.0",
         "msgpack==1.0.0"
         "pandas==1.3.2"
         "h5py>=2.10.0",
