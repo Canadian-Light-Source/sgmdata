@@ -51,9 +51,9 @@ def dask_unique(value):
 
 def compute_df(df, idx, method = 'nearest'):
     if len(idx.shape) == 1:
-        return df.compute().compute().reindex(idx).interpolate()
+        return df.compute().reindex(idx).interpolate()
     elif len(idx.shape) == 2:
-        return df.compute().compute().unstack().interpolate(method=method).fillna(0).stack().reindex(idx)
+        return df.compute().unstack().interpolate(method=method).fillna(0).stack().reindex(idx)
 
 def interpolate(independent, signals, command=None, **kwargs):
     """
