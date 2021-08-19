@@ -64,8 +64,11 @@ def check_sample_fitness(list_of_files):
     sgm_data = sgmdata.load.SGMData(list_of_files)
     # print(sgm_data._repr_console_())
     test_scan = sgm_data.scans['Co-nitrate-N-Bottom9']['entry1']
+    test_scan = test_scan.interpolate()
     test_SGMScan = sgm_data.scans['Co-nitrate-N-Bottom9']
-    print(test_scan._repr_console_())
+    # test_thing = sgm_data.scans
+    # print(type(test_SGMScan))
+    print(test_scan.compute())
     # interpolated = test_scan.interpolate(resolution=0.1)
 
 
