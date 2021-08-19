@@ -30,16 +30,17 @@ def label_bins(bins, bin_edges, independent, npartitions):
 
 def make_df(independent, signals, labels):
     c = [k for k, v in independent.items()]
-    columns = {}
+    signal_columns = [labels]
     for k, v in signals.items():
         if len(v.shape) == 2:
-            columns.update({k + "-" + str(i): dd.from_array(v[:, i]) for i in range(v.shape[1])})
+            columns = [k + "-" + str(i) for i in range(v.shape[1])]
         elif len(v.shape) == 1:
-            columns.update({k: dd.from_array(v)})
+            columns = [k]
         else:
             continue
-    df = labels.assign(**columns).groupby(c).mean()
-    return df
+        signal_columns.append(dd.from_dask_array(v, columns=columns))
+    df = dd.multi.concat(signal_columns, axis=1)
+    return df.groupby(c).mean()
 
 def dask_max(value):
     if hasattr(value, 'compute'):
