@@ -23,12 +23,13 @@ setup(
     packages=find_packages(),
     include_package_data=True,
     install_requires=[
-        "dask[complete]>=2.11.0",
-        "pandas>=0.25.3"
+        "dask[complete]==2021.04.0",
+        "msgpack==1.0.0"
+        "pandas==1.3.2"
         "h5py>=2.10.0",
         "h5pyd",
         "bokeh==1.4.0",
-        "numpy>=1.18.1",
+        "numpy==1.18.1",
         "scipy>=1.4.1",
         "tqdm",
         "python-slugify",
