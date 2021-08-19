@@ -270,6 +270,23 @@ class SGMScan(object):
             ]
             return " ".join(entry)
 
+        def _repr_console_(self):
+            """
+            Takes own data and organizes it into a console-friendly table.
+            """
+            if not sys_has_tab:
+                table = []
+                headers = []
+                for key in self.keys():
+                    headers.append(str(key))
+                    table.append(self[key])
+                return tabulate([table], headers=headers)
+            else:
+                temp_str = ""
+                for key in self.keys():
+                    temp_str = (str(temp_str) + str(key) + ": " + str(self[key]) + "\t\t\t")
+                return temp_str
+
         def write(self, filename=None):
             """ Write data to NeXuS formatted data file."""
             if 'sdd3' in self['signals']:
