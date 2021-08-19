@@ -466,7 +466,7 @@ class SGMData(object):
         try:
             signals = [{k: da.from_array(v, chunks=tuple(
                 [np.int(np.divide(dim, self.npartitions)) for dim in v.shape])).astype('f4') for k, v in d.items() if
-                        np.abs(v.shape[0] - list(indep[i].values())[0].shape[0]) < 2} for i, d in enumerate(data)]
+                        np.abs(v.shape[0] - list(indep[i].values())[0].shape[0]) < 30} for i, d in enumerate(data)]
         except IndexError:
             return {"ERROR": file_root}
         # group all remaining arrays
