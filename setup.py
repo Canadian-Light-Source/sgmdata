@@ -23,6 +23,8 @@ setup(
     packages=find_packages(),
     include_package_data=True,
     install_requires=[
+        "blosc==1.10.2",
+        "lz4==3.1.3",
         "dask[complete]==2021.08.0",
         "msgpack==1.0.0",
         "pandas==1.3.2",

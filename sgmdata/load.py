@@ -523,7 +523,8 @@ class SGMData(object):
         for file, val in self.entries():
             for key, entry in val.__dict__.items():
                 entries.append(entry)
-        results = list(tqdm(map(_interpolate, entries), total=len(entries)))
+        with ThreadPool(self.threads) as pool:
+            results = list(tqdm(pool.imap_unordered(_interpolate, entries), total=len(entries)))
         return results
 
     def _interpolate(self, entry, **kwargs):
