@@ -61,19 +61,29 @@ def check_sample_fitness(list_of_files):
         interp_list(list): a list of pandas dataframes. Contains the interpolated version of the data in the files
         specified in list_of_files.
     """
+    ### Test data for SGMScan
+    # sgm_data = sgmdata.load.SGMData(list_of_files)
+    # test_data = sgm_data.scans['Co-nitrate-N-Bottom9']['entry1']
+    # print(type(test_data))
+
+    ### Test data for DisplayDict
+    # testSGMData = sgmdata.load.SGMData(list_of_files)
+    # # testSGMData = testSGMData.scans['Co-nitrate-N-Bottom9']['entry1']
+    # testSGMData = testSGMData.scans['Bee2-C-Bottom30']['entry1']
+    # testDisplayDict = sgmdata.load.DisplayDict(testSGMData)
+    # print(testDisplayDict._repr_html_())
+
+    ### Test data for SGMData
     sgm_data = sgmdata.load.SGMData(list_of_files)
-    # print(sgm_data._repr_console_())
-    test_scan = sgm_data.scans['Co-nitrate-N-Bottom9']['entry1']
-    test_scan = test_scan.interpolate()
-    test_SGMScan = sgm_data.scans['Co-nitrate-N-Bottom9']
-    # test_thing = sgm_data.scans
-    # print(type(test_SGMScan))
-    print(test_scan.compute())
-    # interpolated = test_scan.interpolate(resolution=0.1)
+    print(sgm_data.interpolate(resolution=0.1))
+
+    # testSGMData1 = sgmdata.load.SGMData(list_of_files)
+    # testSGMData1 = testSGMData1._load_data(list_of_files[0])
+    # print(testSGMData1)
+    # y = testSGMData1.interpolate(resolution=0.1)
 
 
-x = file_retrieval('C:/Users/roseh/Desktop/Internship/MyCode/h5Files/*nitrate*Bottom*.hdf5')
-# x = file_retrieval('C:/Users/roseh/Desktop/Internship/MyCode/h5Files/*bee*.hdf5')
+# x = file_retrieval('C:/Users/roseh/Desktop/Internship/MyCode/h5Files/*nitrate*Bottom*.hdf5')
+x = file_retrieval('C:/Users/roseh/Desktop/Internship/MyCode/h5Files/*bee*.hdf5')
 y = check_sample_fitness(x)
-# print(y)
 
