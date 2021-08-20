@@ -67,23 +67,23 @@ def check_sample_fitness(list_of_files):
     # print(type(test_data))
 
     ### Test data for DisplayDict
-    # testSGMData = sgmdata.load.SGMData(list_of_files)
-    # # testSGMData = testSGMData.scans['Co-nitrate-N-Bottom9']['entry1']
+    testSGMData = sgmdata.load.SGMData(list_of_files)
+    testSGMData = testSGMData.scans['Co-nitrate-N-Bottom9']['entry1']
     # testSGMData = testSGMData.scans['Bee2-C-Bottom30']['entry1']
-    # testDisplayDict = sgmdata.load.DisplayDict(testSGMData)
-    # print(testDisplayDict._repr_html_())
+    TestDD = sgmdata.load.DisplayDict(testSGMData)
+    TestDD._repr_console_()
 
     ### Test data for SGMData
-    sgm_data = sgmdata.load.SGMData(list_of_files)
-    print(sgm_data.interpolate(resolution=0.1))
+    # sgm_data = sgmdata.load.SGMData(list_of_files)
+    # test_load_data = sgm_data._load_data(list_of_files[0])
+    # y = sgm_data._find_data(test_load_data)
+    # print(type(sgm_data))
+    # print(list_of_files[0])
+    # interp = sgm_data.interpolate(resolution=0.1)
+    # print(sgm_data._find_data(interp))
 
-    # testSGMData1 = sgmdata.load.SGMData(list_of_files)
-    # testSGMData1 = testSGMData1._load_data(list_of_files[0])
-    # print(testSGMData1)
-    # y = testSGMData1.interpolate(resolution=0.1)
 
-
-# x = file_retrieval('C:/Users/roseh/Desktop/Internship/MyCode/h5Files/*nitrate*Bottom*.hdf5')
-x = file_retrieval('C:/Users/roseh/Desktop/Internship/MyCode/h5Files/*bee*.hdf5')
+x = file_retrieval('C:/Users/roseh/Desktop/Internship/MyCode/h5Files/*nitrate*Bottom*.hdf5')
+# x = file_retrieval('C:/Users/roseh/Desktop/Internship/MyCode/h5Files/*bee*.hdf5')
 y = check_sample_fitness(x)
 

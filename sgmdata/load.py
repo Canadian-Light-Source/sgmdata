@@ -57,6 +57,23 @@ class DisplayDict(OrderedDict):
         table.append("</tbody></table>")
         return "\n".join(table)
 
+    def _repr_console_(self):
+        """
+        Takes own data and organizes it into a console-friendly table.
+        """
+        if sys_has_tab:
+            table = []
+            headers = []
+            for key in self.keys():
+                headers.append(str(key))
+                table.append(self[key])
+            return tabulate([table], headers=headers)
+        else:
+            temp_str = ""
+            for key in self.keys():
+                temp_str = (str(temp_str) + str(key) + ": " + str(self[key]) + "\t\t\t")
+            return temp_str
+
 
 class SGMScan(object):
     """
@@ -607,6 +624,8 @@ class SGMData(object):
                 else:
                     average.update({key: [
                         SGMData.Processed(command=command.split('_'), data=df, signals=v['signals'], sample=key)]})
+                    test = SGMData.Processed(command=command.split('_'), data=df, signals=v['signals'], sample=key)
+                    test.plot()
         self.averaged = average
         return average
 
@@ -636,7 +655,7 @@ class SGMData(object):
         """
         Takes own data and organizes it into a console-friendly table.
         """
-        if not sys_has_tab:
+        if sys_has_tab:
             table = []
             temp_list = []
             for key in self.scans.keys():
