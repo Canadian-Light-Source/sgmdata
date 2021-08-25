@@ -441,7 +441,7 @@ def preprocess(sample, **kwargs):
     ----
          (HTML) hyperlink for preprocessed data stored in SGMLive
     """
-    user = kwargs.get('user', False)
+    user = kwargs['user'] = kwargs.get('user', False)
     bs_args = kwargs.get('bscan_thresh', dict(cont=55, dump=30, sat=60))
     sdd_max = kwargs.get('sdd_max', 105000)
     clear = kwargs.get('clear', True)
@@ -451,7 +451,7 @@ def preprocess(sample, **kwargs):
     resolution = kwargs.get('resolution', 0.1)
     kwargs.update({'resolution':resolution})
     if user:
-        sgmq = SGMQuery(sample=sample, user=user, data=False, **kwargs)
+        sgmq = SGMQuery(sample=sample, data=False, **kwargs)
     else:
         sgmq = SGMQuery(sample=sample, data=False, **kwargs)
     if len(sgmq.paths):
