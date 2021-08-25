@@ -619,7 +619,7 @@ to the relevant subsection of the report.}
                 elif os.path.exists(avg_path.replace('/home/jovyan/', './')):
                     fpath = avg_path.replace('/home/jovyan/', './')
                 else:
-                    fpath = avg_path.replace('/home/jovyan/', '.')
+                    fpath = avg_path.replace('/home/jovyan/', './')
                     raise OSError(1, "No such file for sample average %s" % fpath)
 
                 with h5py.File(fpath, 'r') as h5:
