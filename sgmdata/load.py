@@ -66,7 +66,8 @@ class SGMScan(object):
             else:
                 command = None
             df, idx = interpolate(independent, signals, command=command, **kwargs)
-            self.__setattr__('binned', {"dataframe": df, "index": idx})
+            if isinstance(df, pd.DataFrame) or isinstance(df, dd.DataFrame):
+                self.__setattr__('binned', {"dataframe": df, "index": idx})
             return df
 
         def compute(self, **kwargs):
