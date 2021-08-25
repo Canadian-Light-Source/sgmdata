@@ -255,7 +255,9 @@ class SGMQuery(object):
             self.cursor.execute("""UPDATE lims_xasprocessedscan SET average_id = %s, modified = %s WHERE id IN %s ;""",
                                 (row[0], now, tuple(processed))
                                 )
-            t = tuple([d for d in self.processed_ids if d not in processed])
+            self.cursor.execute("""SELECT id FROM lims_xasprocessedscan WHERE average_id = %s AND id NOT IN %s ;""",
+                                (row[0], tuple(processed)))
+            t = self.cursor.fetchall()
             if t:
                 self.cursor.execute("""UPDATE lims_xasprocessedscan SET average_id = %s, modified = %s WHERE id in %s ;""",
                                     (None, now, t)
