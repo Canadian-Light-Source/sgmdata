@@ -148,7 +148,7 @@ def interpolate(independent, signals, command=None, **kwargs):
             df = compute_df(df, idx, method=method)
         except Exception as e:
             print("Trouble computing dataframe, error msg: %s" % e)
-            return [],[]
+            return [], []
     return df, idx
 
 
