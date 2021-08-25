@@ -64,7 +64,7 @@ class SGMQuery(object):
         self.avg_id = []
         self.get_paths()
         if self.paths:
-            if os.path.exists("/".join(self.paths[0].split('/')[:-1]).replace('/home/jovyan', ".")):
+            if os.path.exists("/".join(self.paths[0].split('/')[:-1]).replace('/home/jovyan', "./")):
                 local_paths = [p.replace('/home/jovyan', '.') for p in self.paths]
                 self.paths = local_paths
             elif os.path.exists("/".join(self.paths[0].split('/')[:-1]).replace('/home/jovyan', "/SpecData")):
@@ -104,6 +104,8 @@ class SGMQuery(object):
         self.cursor.execute(SQL)
         domains = self.cursor.fetchmany(500)
         if self.processed:
+            if not len(domains):
+                return []
             SQL = "SELECT average_id, domain, id FROM lims_xasprocessedscan WHERE xasscan_id IN ("
             for ID in domains:
                 SQL += "'%d', " % ID[0]
