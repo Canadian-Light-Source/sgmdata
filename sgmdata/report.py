@@ -741,6 +741,7 @@ to the relevant subsection of the report.}
                                       resolution=resolution,
                                       client=self.client,
                                       query=True,
+                                      daterange=(init, datetime.datetime.utcnow()),
                                       **kwargs
                                       )
                     try:

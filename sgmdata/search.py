@@ -451,9 +451,9 @@ def preprocess(sample, **kwargs):
     resolution = kwargs.get('resolution', 0.1)
     kwargs.update({'resolution':resolution})
     if user:
-        sgmq = SGMQuery(sample=sample, user=user, data=False)
+        sgmq = SGMQuery(sample=sample, user=user, data=False, **kwargs)
     else:
-        sgmq = SGMQuery(sample=sample, data=False)
+        sgmq = SGMQuery(sample=sample, data=False, **kwargs)
     if len(sgmq.paths):
         print("Found %d scans matching sample: %s, for user: %s" % (len(sgmq.paths), sample, user))
         sgm_data = sgmdata.SGMData(sgmq.paths, **kwargs)
