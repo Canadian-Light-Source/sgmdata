@@ -616,8 +616,8 @@ to the relevant subsection of the report.}
                     continue
                 if os.path.exists(avg_path):
                     fpath = avg_path
-                elif os.path.exists(avg_path.replace('/home/jovyan/', '.')):
-                    fpath = avg_path.replace('/home/jovyan/', '.')
+                elif os.path.exists(avg_path.replace('/home/jovyan/', './')):
+                    fpath = avg_path.replace('/home/jovyan/', './')
                 else:
                     fpath = avg_path.replace('/home/jovyan/', '.')
                     raise OSError(1, "No such file for sample average %s" % fpath)
