@@ -1,6 +1,7 @@
 import os
 from . import config
 from slugify import slugify
+import hashlib
 import psycopg2
 import sgmdata
 import h5pyd
@@ -62,6 +63,7 @@ class SGMQuery(object):
         self.processed_ids = []
         self.domains = []
         self.avg_id = []
+        self.date_hash = ""
         self.get_paths()
         if self.paths:
             if os.path.exists("/".join(self.paths[0].split('/')[:-1]).replace('/home/jovyan', "./")):
@@ -91,18 +93,20 @@ class SGMQuery(object):
             print(f"No sample, {self.sample}, in account {self.user}.")
             return []
         if self.daterange:
-            SQL = "SELECT id, domain, \"group\" from lims_xasscan WHERE project_id = %d AND sample_id = %d " \
+            SQL = "SELECT id, domain, \"group\", start_time from lims_xasscan WHERE project_id = %d AND sample_id = %d " \
                   "AND (start_time BETWEEN '%s' AND '%s');" % \
                   (
                       self.project_id, self.sample_id, self.daterange[0], self.daterange[1]
                   )
         else:
-            SQL = "SELECT id, domain, \"group\" from lims_xasscan WHERE project_id = %d AND sample_id = %d;" % \
+            SQL = "SELECT id, domain, \"group\", start_time from lims_xasscan WHERE project_id = %d AND sample_id = %d;" % \
                   (
                       self.project_id, self.sample_id
                   )
         self.cursor.execute(SQL)
-        domains = self.cursor.fetchmany(500)
+        domains = self.cursor.fetchall()
+        if len(domains):
+            self.date_hash = hashlib.md5(f"{str(domains[0][3])}-{str(domains[-1][3])}".encode("utf-8"))
         if self.processed:
             if not len(domains):
                 return []
@@ -260,7 +264,7 @@ class SGMQuery(object):
             t = self.cursor.fetchall()
             if t:
                 self.cursor.execute("""UPDATE lims_xasprocessedscan SET average_id = %s, modified = %s WHERE id in %s ;""",
-                                    (None, now, t)
+                                    (None, now, tuple([e[0] for e in t]))
                                     )
             self.cursor.execute("""UPDATE lims_xasscanaverage SET modified = %s WHERE id = %s;""",
                                 (now, row[0])
@@ -332,7 +336,7 @@ class SGMQuery(object):
                 for i, r in enumerate(average[k]):
                     data = r['data']
                     sample = slugify(self.sample)
-                    domain = ".".join([sample + f"-{i}", self.user, "vsrv-sgm-hdf5-01.clsi.ca"])
+                    domain = ".".join([sample + f"-{self.date_hash.hexdigest()}" + f"-{i}", self.user, "vsrv-sgm-hdf5-01.clsi.ca"])
                     try:
                         self.write(data, domain)
                         domain_list.append(domain)
