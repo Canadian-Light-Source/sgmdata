@@ -183,7 +183,7 @@ class ReportBuilder(object):
 
     def make_data(self, df):
         keys = ['image', 'sdd1', 'sdd2', 'sdd3', 'sdd4', 'tey', 'xp', 'yp', 'emission']
-        data = {k: df.filter(regex=("%s.*" % k), axis=1).to_numpy() for k in keys}
+        data = {k: np.squeeze(df.filter(regex=("%s.*" % k), axis=1).to_numpy()) for k in keys}
         data.update({k: np.reshape(v, (len(df.index.levels[0]), len(df.index.levels[1]), v.shape[-1])) if len(
             v.shape) == 2 else np.reshape(v, (len(df.index.levels[0]), len(df.index.levels[1]))) for k, v in
                      data.items()})
