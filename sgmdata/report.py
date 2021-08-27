@@ -837,10 +837,10 @@ to the relevant subsection of the report.}
                 yrange = (float(command[6]), float(command[7]))
                 dx = abs(xrange[0] - xrange[1])/(int(command[4])* 20)
                 dy = abs(yrange[0] - yrange[1])/50
-                df = image.interpolate(resolution=[dx, dy], start=[min(xrange),min(yrange)], stop=[max(xrange), max(yrange)])
-                img_data = self.make_data(df)
+                self.df = image.interpolate(resolution=[dx, dy], start=[min(xrange),min(yrange)], stop=[max(xrange), max(yrange)])
+                img_data = self.make_data(self.df)
                 self.make_plot(img_data, positions, k, iter(sample_list))
-                del img_data, data, image, df
+                del img_data, data, image
             self.sample_lists.update({k: sample_list})
         self.make_scan_figures(*self.get_or_process_data(process=process, key=key, **kwargs), plots=plots)
         self.make_holder_table()
