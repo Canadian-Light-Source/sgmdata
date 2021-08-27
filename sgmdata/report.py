@@ -193,7 +193,7 @@ class ReportBuilder(object):
         if data['sdd1'].shape == data['sdd2'].shape == data['sdd3'].shape == data['sdd4'].shape:
             avg = np.mean(sdds, axis=0)
         else:
-            avg = np.mean([np.squeeze(s) for s in sdds], axis=0)
+            avg = np.mean([np.squeeze(s, axis=2) if len(s.shape) == 3 else s for s in sdds], axis=0)
         avg = np.sum(avg[:, :, 45:55], axis=2)
         data.update({"extent": levels, "image": np.flip(avg.T, axis=1)})
         return data
