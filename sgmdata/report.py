@@ -50,6 +50,7 @@ class ReportBuilder(object):
         self.exp_info = {}
         self.sample_lists = {}
         self.holders = {}
+        self.holder_command = {}
         self.holder_time_init = {}
         self.holder_notes = {}
         self.holder_edges = {}
@@ -821,18 +822,19 @@ to the relevant subsection of the report.}
                         sample_list.append(q[0][2])
             paths += paths2
             if plots:
-                data = SGMData(paths)
+                holder_data = SGMData(paths)
                 try:
-                    entries = [k2 for k1, scan in data.scans.items()
+                    entries = [k2 for k1, scan in holder_data.scans.items()
                                for k2, entry in scan.__dict__.items() if entry['sample'] != k]
                     positions = self.get_sample_positions(paths2, entries)
                 except Exception as e:
                     print("Couldn't get sample positions: %s" % e)
                     positions = []
 
-                image = [entry for k1, scan in data.scans.items() for k2, entry in scan.__dict__.items() if
+                image = [entry for k1, scan in holder_data.scans.items() for k2, entry in scan.__dict__.items() if
                          entry['sample'] == k][0]
                 command = image['command']
+                self.holder_command.update({k: command})
                 xrange = (float(command[2]), float(command[3]))
                 yrange = (float(command[6]), float(command[7]))
                 dx = abs(xrange[0] - xrange[1])/(int(command[4])* 20)
@@ -840,7 +842,7 @@ to the relevant subsection of the report.}
                 self.df = image.interpolate(resolution=[dx, dy], start=[min(xrange),min(yrange)], stop=[max(xrange), max(yrange)])
                 img_data = self.make_data(self.df)
                 self.make_plot(img_data, positions, k, iter(sample_list))
-                del img_data, data, image
+                del img_data, holder_data, image
             self.sample_lists.update({k: sample_list})
         self.make_scan_figures(*self.get_or_process_data(process=process, key=key, **kwargs), plots=plots)
         self.make_holder_table()
