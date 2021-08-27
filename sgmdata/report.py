@@ -837,9 +837,9 @@ to the relevant subsection of the report.}
                 self.holder_command.update({k: command})
                 xrange = (float(command[2]), float(command[3]))
                 yrange = (float(command[6]), float(command[7]))
-                dx = abs(xrange[0] - xrange[1])/(int(command[4])* 20)
-                dy = abs(yrange[0] - yrange[1])/50
-                self.df = image.interpolate(resolution=[dx, dy], start=[min(xrange),min(yrange)], stop=[max(xrange), max(yrange)])
+                dx = abs(xrange[0] - xrange[1])/(int(command[4]) * 15)
+                dy = abs(yrange[0] - yrange[1])/(int(command[-1]))
+                self.df = image.interpolate(resolution=[dx, dy], start=[min(xrange), min(yrange)], stop=[max(xrange), max(yrange)])
                 img_data = self.make_data(self.df)
                 self.make_plot(img_data, positions, k, iter(sample_list))
                 del img_data, holder_data, image
