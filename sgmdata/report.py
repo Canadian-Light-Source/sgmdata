@@ -187,12 +187,13 @@ class ReportBuilder(object):
         data.update({k: np.reshape(v, (len(df.index.levels[0]), len(df.index.levels[1]), v.shape[-1])) if len(
             v.shape) == 2 else np.reshape(v, (len(df.index.levels[0]), len(df.index.levels[1]))) for k, v in
                      data.items()})
-        data.update(
-            {k: np.squeeze(v) for k, v in data.items()}
-        )
         data.update({n: df.index.levels[i] for i, n in enumerate(list(df.index.names))})
         levels = [max(df.index.levels[0]), min(df.index.levels[0]), max(df.index.levels[1]), min(df.index.levels[1])]
-        avg = np.mean([data['sdd1'], data['sdd2'], data['sdd3'], data['sdd4']], axis=0)
+        sdds = [data['sdd1'], data['sdd2'], data['sdd3'], data['sdd4']]
+        if data['sdd1'].shape == data['sdd2'].shape == data['sdd3'].shape == data['sdd4'].shape:
+            avg = np.mean(sdds, axis=0)
+        else:
+            avg = np.mean([np.squeeze(s) for s in sdds], axis=0)
         avg = np.sum(avg[:, :, 45:55], axis=2)
         data.update({"extent": levels, "image": np.flip(avg.T, axis=1)})
         return data
