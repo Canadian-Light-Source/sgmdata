@@ -452,6 +452,7 @@ def preprocess(sample, **kwargs):
     sdd_max = kwargs.get('sdd_max', 105000)
     clear = kwargs.get('clear', True)
     query_return = kwargs.get('query', False)
+    client = kwargs.get('client', False)
     if isinstance(bs_args, tuple):
         bs_args = dict(cont=bs_args[0], dump=bs_args[1], sat=bs_args[2], sdd_max=sdd_max)
     resolution = kwargs.get('resolution', 0.1)
@@ -481,6 +482,8 @@ def preprocess(sample, **kwargs):
                                  l, sgmq.sample) for i, l in enumerate(http)])
             if clear:
                 clear_output()
+            if client:
+                client.restart()
             print(f"Averaged {len(sgm_data.scans) - len(bscans)} scans for {sample}")
             del sgm_data
             if query_return:
