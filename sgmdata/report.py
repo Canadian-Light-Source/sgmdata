@@ -842,6 +842,6 @@ to the relevant subsection of the report.}
                 self.make_plot(img_data, positions, k, iter(sample_list))
                 del img_data, holder_data, image
             self.sample_lists.update({k: sample_list})
-        self.make_scan_figures(*self.get_or_process_data(process=process, key=key, **kwargs), plots=plots)
+        self.make_scan_figures(*self.get_or_process_data(process=process, key=key, **kwargs), plots=plots, key=key)
         self.make_holder_table()
 
