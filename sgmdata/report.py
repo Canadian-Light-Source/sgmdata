@@ -375,12 +375,19 @@ to those samples will be contained therein.
         string = string.replace("}", "\\}")
         return string
 
-    def make_holder_table(self):
+    def make_holder_table(self, key=None):
         """
             LaTeX creation of table for samples on holder
         """
+        if key:
+            if isinstance(key, str):
+                holders = {key: self.holders[key]}
+            elif isinstance(key, list):
+                holders = {k: v for k, v in self.holders.items() if any(l in k for l in key)}
+        else:
+            holders = self.holders
         tex = ""
-        holders = sorted([h for h in self.holders.keys()])
+        holders = sorted([h for h in holders.keys()])
         for h in holders:
             table = "\\\\\n\t".join(
                 ["%s & %s & %s & \\ref{ssec:%s_%d}" % (self.texcrub(self.holders[h][j]), ",".join(s),
