@@ -70,7 +70,7 @@ def check_sample_fitness(list_of_files):
     # print(test_data.keys())
 
 
-x = file_retrieval('C:/Users/roseh/Desktop/Internship/MyCode/h5Files/*Co-nitrate*Top*.hdf5')
+x = file_retrieval('C:/Users/roseh/Desktop/Internship/MyCode/h5Files/*Co-nitrate*.hdf5')
 # x = file_retrieval('C:/Users/roseh/Desktop/Internship/MyCode/h5Files/*bee*.hdf5')
 y = check_sample_fitness(x)
 

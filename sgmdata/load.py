@@ -450,7 +450,16 @@ class SGMData(object):
         if not hasattr(self, 'threads'):
             self.threads = 4
         files = [os.path.abspath(file) for file in files]
-        self.scans = {k.split(slash_type)[-1].split(".")[0]: [] for k in files}
+        # self.scans in a coherent way, eg, making self.scans an OrderedDict() so that it'll have the same order
+        # regardless of the system using the program.
+        self.scans = OrderedDict()
+        temp_dict = {k.split(slash_type)[-1].split(".")[0]: [] for k in files}
+        temp_list = []
+        for key in temp_dict.keys():
+            temp_list.append(str(key))
+        temp_list.sort()
+        for item in temp_list:
+            self.scans[item] = temp_dict[item]
         self.interp_params = {}
         with ThreadPool(self.threads) as pool:
             L = list(tqdm(pool.imap_unordered(self._load_data, files), total=len(files)))
@@ -503,7 +512,8 @@ class SGMData(object):
                 return {"ERROR": file_root}
         # Find the number of scans within the file
         NXentries = [str(x) for x in h5["/"].keys() if 'NXentry' in str(h5[x].attrs.get('NX_class'))]
-        # Ordering Dict in a coherent way, eg, sorts keys so we don't get "entry1, entry10, entry2" when we sort.
+        # Ordering Dict in a coherent way, eg, making NXentries an OrderedDict() and sorting keys so we don't get
+        # "entry1, entry10, entry2" when we sort.
         ordered = OrderedDict()
         shortest = len(NXentries[0])
         longest = len(NXentries[0])
