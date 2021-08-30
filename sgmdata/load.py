@@ -32,6 +32,11 @@ try:
 except NameError:
     from tqdm import tqdm
 
+slash_type = '/'
+if os.name == 'nt':
+    is_windows = True
+    slash_type = '\\'
+
 sys_has_tab = False
 if 'tabulate' in sys.modules:
     sys_has_tab = True
@@ -326,6 +331,36 @@ class SGMScan(object):
 
         return "\n".join(table)
 
+    # def _repr_console_(self):
+    #     """
+    #     Takes own data and organizes it into a console-friendly table.
+    #     """
+    #     if sys_has_tab:
+    #         i = 1
+    #         list_of_titles = []
+    #         headers = []
+    #         data = []
+    #         for key in self.__dict__.keys():
+    #             while i < 2:
+    #                 # print(key)
+    #                 temp_list = []
+    #                 string_returned = self.__dict__[key]._repr_console_()
+    #                 string_returned_split = string_returned.split()
+    #                 for item in string_returned_split:
+    #                     if ":" in item:
+    #                         if "\'" not in item:
+    #                             print(item)
+    #                             headers.append(item)
+    #                             list_of_titles.append(string_returned_split.index(item))
+    #                 for data_piece in string_returned_split:
+    #                     if string_returned_split.index(data_piece) not in list_of_titles:
+    #                         temp_list.append(data_piece)
+    #                 data.append(temp_list)
+    #                 i += 1
+    #                 print(headers)
+    #                 print(data)
+    #                 print(tabulate(data, headers=headers))
+
     def __getitem__(self, item):
         return self.__dict__[item]
 
@@ -359,7 +394,7 @@ class SGMData(object):
             if not filename:
                 filename = self.sample + ".nxs"
             h5 = h5py.File(filename, "a")
-            NXentries = [int(str(x).split("entry")[1]) for x in h5['/'].keys() if
+            NXentries = [int(str(x).split("entry")[1]) for x in h5[slash_type].keys() if
                          'NXentry' in str(h5[x].attrs.get('NX_class'))]
             if NXentries:
                 NXentries.sort()
@@ -415,7 +450,7 @@ class SGMData(object):
         if not hasattr(self, 'threads'):
             self.threads = 4
         files = [os.path.abspath(file) for file in files]
-        self.scans = {k.split('\\')[-1].split(".")[0]: [] for k in files}
+        self.scans = {k.split(slash_type)[-1].split(".")[0]: [] for k in files}
         self.interp_params = {}
         with ThreadPool(self.threads) as pool:
             L = list(tqdm(pool.imap_unordered(self._load_data, files), total=len(files)))
@@ -452,7 +487,7 @@ class SGMData(object):
         """
         entries = {}
         # Try to open the file locally or from a url provided.
-        file_root = file.split("\\")[-1].split("/")[-1].split(".")[0]
+        file_root = file.split(slash_type)[-1].split(slash_type)[-1].split(".")[0]
         if os.path.exists(file):
             try:
                 h5 = h5py.File(file, 'r')
@@ -467,7 +502,7 @@ class SGMData(object):
                 warnings.warn(f"Could not open file, h5pyd raised: {f}")
                 return {"ERROR": file_root}
         # Find the number of scans within the file
-        NXentries = [str(x) for x in h5['/'].keys() if 'NXentry' in str(h5[x].attrs.get('NX_class'))]
+        NXentries = [str(x) for x in h5["/"].keys() if 'NXentry' in str(h5[x].attrs.get('NX_class'))]
         # Get the commands used to declare the above scans
         independent = []
         if not hasattr(self, 'axes'):

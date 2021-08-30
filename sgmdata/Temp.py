@@ -62,28 +62,14 @@ def check_sample_fitness(list_of_files):
         specified in list_of_files.
     """
     ### Test data for SGMScan
-    # sgm_data = sgmdata.load.SGMData(list_of_files)
-    # test_data = sgm_data.scans['Co-nitrate-N-Bottom9']['entry1']
-    # print(type(test_data))
-
-    ### Test data for DisplayDict
-    testSGMData = sgmdata.load.SGMData(list_of_files)
-    testSGMData = testSGMData.scans['Co-nitrate-N-Bottom9']['entry1']
-    # testSGMData = testSGMData.scans['Bee2-C-Bottom30']['entry1']
-    TestDD = sgmdata.load.DisplayDict(testSGMData)
-    TestDD._repr_console_()
-
-    ### Test data for SGMData
-    # sgm_data = sgmdata.load.SGMData(list_of_files)
-    # test_load_data = sgm_data._load_data(list_of_files[0])
-    # y = sgm_data._find_data(test_load_data)
-    # print(type(sgm_data))
-    # print(list_of_files[0])
-    # interp = sgm_data.interpolate(resolution=0.1)
-    # print(sgm_data._find_data(interp))
+    sgm_data = sgmdata.load.SGMData(list_of_files)
+    test_data = sgm_data.__dict__['scans']
+    # ['Co-nitrate-N-Bottom9'].__dict__['entry1']
+    # test_data.interpolate()
+    # print(test_data.keys())
 
 
-x = file_retrieval('C:/Users/roseh/Desktop/Internship/MyCode/h5Files/*nitrate*Bottom*.hdf5')
+x = file_retrieval('C:/Users/roseh/Desktop/Internship/MyCode/h5Files/*Co-nitrate*.hdf5')
 # x = file_retrieval('C:/Users/roseh/Desktop/Internship/MyCode/h5Files/*bee*.hdf5')
 y = check_sample_fitness(x)
 
