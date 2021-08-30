@@ -63,13 +63,14 @@ def check_sample_fitness(list_of_files):
     """
     ### Test data for SGMScan
     sgm_data = sgmdata.load.SGMData(list_of_files)
-    test_data = sgm_data.__dict__['scans']
-    # ['Co-nitrate-N-Bottom9'].__dict__['entry1']
+    test_data = sgm_data.__dict__['scans']['Co-nitrate-N-Top21'].__dict__
+    print(sgm_data._repr_console_())
+    # print(test_data['entry1'])
     # test_data.interpolate()
     # print(test_data.keys())
 
 
-x = file_retrieval('C:/Users/roseh/Desktop/Internship/MyCode/h5Files/*Co-nitrate*.hdf5')
+x = file_retrieval('C:/Users/roseh/Desktop/Internship/MyCode/h5Files/*Co-nitrate*Top*.hdf5')
 # x = file_retrieval('C:/Users/roseh/Desktop/Internship/MyCode/h5Files/*bee*.hdf5')
 y = check_sample_fitness(x)
 
