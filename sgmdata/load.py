@@ -76,7 +76,7 @@ class DisplayDict(OrderedDict):
         else:
             temp_str = ""
             for key in self.keys():
-                temp_str = (str(temp_str) + str(key) + ": " + str(self[key]) + "\t\t\t")
+                temp_str = (str(temp_str) + str(key) + ": " + str(self[key]) + "\t|\t\t")
             return temp_str
 
 
@@ -180,7 +180,7 @@ class SGMScan(object):
             """
             Takes own data and organizes it into a console-friendly table.
             """
-            if not sys_has_tab:
+            if sys_has_tab:
                 table = []
                 headers = []
                 for key in self.keys():
@@ -190,7 +190,7 @@ class SGMScan(object):
             else:
                 temp_str = ""
                 for key in self.keys():
-                    temp_str = (str(temp_str) + str(key) + ": " + str(self[key]) + "\t\t\t")
+                    temp_str = (str(temp_str) + str(key) + ": " + str(self[key]) + "\t|\t\t")
                 return temp_str
 
         def write(self, filename=None):
@@ -331,35 +331,35 @@ class SGMScan(object):
 
         return "\n".join(table)
 
-    # def _repr_console_(self):
-    #     """
-    #     Takes own data and organizes it into a console-friendly table.
-    #     """
-    #     if sys_has_tab:
-    #         i = 1
-    #         list_of_titles = []
-    #         headers = []
-    #         data = []
-    #         for key in self.__dict__.keys():
-    #             while i < 2:
-    #                 # print(key)
-    #                 temp_list = []
-    #                 string_returned = self.__dict__[key]._repr_console_()
-    #                 string_returned_split = string_returned.split()
-    #                 for item in string_returned_split:
-    #                     if ":" in item:
-    #                         if "\'" not in item:
-    #                             print(item)
-    #                             headers.append(item)
-    #                             list_of_titles.append(string_returned_split.index(item))
-    #                 for data_piece in string_returned_split:
-    #                     if string_returned_split.index(data_piece) not in list_of_titles:
-    #                         temp_list.append(data_piece)
-    #                 data.append(temp_list)
-    #                 i += 1
-    #                 print(headers)
-    #                 print(data)
-    #                 print(tabulate(data, headers=headers))
+    def _repr_console_(self):
+        """
+        Takes own data and organizes it into a console-friendly table.
+        """
+        if sys_has_tab:
+            temp_data = []
+            headers = ['entry']
+            final_data = []
+            for key in self.__dict__.keys():
+                temp_data.append(key)
+                for title in self.__dict__[key].keys():
+                    if title not in headers:
+                        headers.append(str(title))
+                    temp_data.append(self.__dict__[key][title])
+                final_data.append(temp_data.copy())
+                temp_data.clear()
+            return tabulate(final_data, headers=headers)
+        else:
+            temp_data = ''
+            final_data = ''
+            for key in self.__dict__.keys():
+                temp_data = temp_data + 'Entry:\t'
+                temp_data = temp_data + str(key)
+                for title in self.__dict__[key].keys():
+                    temp_data = temp_data + '\t\t|\t\t'
+                    temp_data = temp_data + (str(title) + ":\t" + str(self.__dict__[key][title]))
+                final_data = final_data + ('\n' + str(temp_data))
+                temp_data = ''
+            return final_data
 
     def __getitem__(self, item):
         return self.__dict__[item]
@@ -394,7 +394,7 @@ class SGMData(object):
             if not filename:
                 filename = self.sample + ".nxs"
             h5 = h5py.File(filename, "a")
-            NXentries = [int(str(x).split("entry")[1]) for x in h5[slash_type].keys() if
+            NXentries = [int(str(x).split("entry")[1]) for x in h5['/'].keys() if
                          'NXentry' in str(h5[x].attrs.get('NX_class'))]
             if NXentries:
                 NXentries.sort()
