@@ -745,9 +745,9 @@ class SGMData(object):
                     temp_str = (temp_str + "\t\t\tFile: " + str(key))
                     temp_str = (temp_str + "\t\t\tSample: " + str(self.scans[key].__dict__[subkey].sample))
                     temp_str = (temp_str + "\t\t\tCommand: " + str(self.scans[key].__dict__[subkey].command))
-                    temp_str = (temp_str +"\t\t\tIndependent: " + str(self.scans[key].__dict__[subkey].independent))
-                    temp_str = (temp_str +"\t\t\tSignals: " + str(self.scans[key].__dict__[subkey].signals))
-                    temp_str = (temp_str +"\t\t\tOther: " + str(self.scans[key].__dict__[subkey].other) + "\n")
+                    temp_str = (temp_str + "\t\t\tIndependent: " + str(self.scans[key].__dict__[subkey].independent))
+                    temp_str = (temp_str + "\t\t\tSignals: " + str(self.scans[key].__dict__[subkey].signals))
+                    temp_str = (temp_str + "\t\t\tOther: " + str(self.scans[key].__dict__[subkey].other) + "\n")
                     final_str = str(final_str) + str(temp_str)
                     temp_str = ""
             return final_str
