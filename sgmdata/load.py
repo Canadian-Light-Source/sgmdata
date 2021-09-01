@@ -14,6 +14,8 @@ from sgmdata.plots import eemscan, xrfmap
 from sgmdata.xrffit import fit_peaks
 from sgmdata.interpolate import interpolate, compute_df
 from dask.diagnostics import ProgressBar
+import sys
+from collections import OrderedDict
 
 import warnings
 
@@ -26,6 +28,14 @@ try:
 except NameError:
     from tqdm import tqdm
 
+sys_has_tab = False
+if 'tabulate' in sys.modules:
+    sys_has_tab = True
+
+slash_type = '/'
+if os.name == 'nt':
+    is_windows = True
+    slash_type = '\\'
 
 
 class DisplayDict(dict):
@@ -47,6 +57,24 @@ class DisplayDict(dict):
             table.append(f"<tr><th> {key}</th><th>{value}</th></tr>")
         table.append("</tbody></table>")
         return "\n".join(table)
+
+    def _repr_console_(self):
+        """
+        Takes own data and organizes it into a console-friendly table.
+        """
+        if sys_has_tab:
+            table = []
+            headers = []
+            for key in self.keys():
+                headers.append(str(key))
+                table.append(self[key])
+            return tabulate([table], headers=headers)
+        else:
+            temp_str = ""
+            for key in self.keys():
+                temp_str = (str(temp_str) + str(key) + ": " + str(self[key]) + "\t|\t\t")
+            return temp_str
+
 
 class SGMScan(object):
     """
@@ -143,6 +171,23 @@ class SGMScan(object):
                 "</td>",
             ]
             return " ".join(entry)
+
+        def _repr_console_(self):
+            """
+            Takes own data and organizes it into a console-friendly table.
+            """
+            if sys_has_tab:
+                table = []
+                headers = []
+                for key in self.keys():
+                    headers.append(str(key))
+                    table.append(self[key])
+                return tabulate([table], headers=headers)
+            else:
+                temp_str = ""
+                for key in self.keys():
+                    temp_str = (str(temp_str) + str(key) + ": " + str(self[key]) + "\t|\t\t")
+                return temp_str
 
         def write(self, filename=None):
             """ Write data to NeXuS formatted data file."""
@@ -282,10 +327,38 @@ class SGMScan(object):
 
         return "\n".join(table)
 
+    def _repr_console_(self):
+        """
+        Takes own data and organizes it into a console-friendly table.
+        """
+        if sys_has_tab:
+            temp_data = []
+            headers = ['entry']
+            final_data = []
+            for key in self.__dict__.keys():
+                temp_data.append(key)
+                for title in self.__dict__[key].keys():
+                    if title not in headers:
+                        headers.append(str(title))
+                    temp_data.append(self.__dict__[key][title])
+                final_data.append(temp_data.copy())
+                temp_data.clear()
+            return tabulate(final_data, headers=headers)
+        else:
+            temp_data = ''
+            final_data = ''
+            for key in self.__dict__.keys():
+                temp_data = temp_data + 'Entry:\t'
+                temp_data = temp_data + str(key)
+                for title in self.__dict__[key].keys():
+                    temp_data = temp_data + '\t\t|\t\t'
+                    temp_data = temp_data + (str(title) + ":\t" + str(self.__dict__[key][title]))
+                final_data = final_data + ('\n' + str(temp_data))
+                temp_data = ''
+            return final_data
+
     def __getitem__(self, item):
         return self.__dict__[item]
-
-
 
 
 class SGMData(object):
@@ -373,7 +446,7 @@ class SGMData(object):
         if not hasattr(self, 'threads'):
             self.threads = 4
         files = [os.path.abspath(file) for file in files]
-        self.scans = {k.split('/')[-1].split(".")[0]: [] for k in files}
+        self.scans = {k.split(slash_type)[-1].split(".")[0]: [] for k in files}
         self.interp_params = {}
         with ThreadPool(self.threads) as pool:
             L = list(tqdm(pool.imap_unordered(self._load_data, files), total=len(files)))
@@ -410,7 +483,7 @@ class SGMData(object):
         """
         entries = {}
         # Try to open the file locally or from a url provided.
-        file_root = file.split("\\")[-1].split("/")[-1].split(".")[0]
+        file_root = file.split(slash_type)[-1].split("/")[-1].split(".")[0]
         if os.path.exists(file):
             try:
                 h5 = h5py.File(file, 'r')
@@ -606,3 +679,39 @@ class SGMData(object):
         table.append("</tbody></table>")
 
         return "\n".join(table)
+
+    def _repr_console_(self):
+        """
+        Takes own data and organizes it into a console-friendly table.
+        """
+        if sys_has_tab:
+            table = []
+            temp_list = []
+            for key in self.scans.keys():
+                for subkey in self.scans[key].__dict__:
+                    temp_list.append(key)
+                    temp_list.append(subkey)
+                    temp_list.append(self.scans[key].__dict__[subkey].sample)
+                    temp_list.append(self.scans[key].__dict__[subkey].command)
+                    temp_list.append(self.scans[key].__dict__[subkey].independent)
+                    temp_list.append(self.scans[key].__dict__[subkey].signals)
+                    temp_list.append(self.scans[key].__dict__[subkey].other)
+                    table.append(temp_list)
+                    temp_list = []
+            return tabulate(table, headers=["File", "Entry", "Sample", "Command", "Independent", "Signals", "Other"])
+        else:
+            final_str = ""
+            temp_str = ""
+            for key in self.scans.keys():
+                for subkey in self.scans[key].__dict__:
+                    temp_str = ("Entry:\t" + str(subkey))
+                    temp_str = (temp_str + "\t\t\tFile: " + str(key))
+                    temp_str = (temp_str + "\t\t\tSample: " + str(self.scans[key].__dict__[subkey].sample))
+                    temp_str = (temp_str + "\t\t\tCommand: " + str(self.scans[key].__dict__[subkey].command))
+                    temp_str = (temp_str + "\t\t\tIndependent: " + str(self.scans[key].__dict__[subkey].independent))
+                    temp_str = (temp_str + "\t\t\tSignals: " + str(self.scans[key].__dict__[subkey].signals))
+                    temp_str = (temp_str + "\t\t\tOther: " + str(self.scans[key].__dict__[subkey].other) + "\n")
+                    final_str = str(final_str) + str(temp_str)
+                    temp_str = ""
+            return final_str
+
