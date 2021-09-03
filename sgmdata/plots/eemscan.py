@@ -181,18 +181,12 @@ def plot(**kwargs):
             function superslice(arr, start, stop){
                 return d1.slice
             }
-            d2['proj_x'] = []
-            d2['emission'] = []
             d3['proj_y'] = []
             d3['en'] = []
             ystart = yarr.findIndex(starty)
             yend = yarr.findIndex(endy)
             xstart = xarr.findIndex(startx)
             xend = xarr.findIndex(endx)
-            d2['emission'] = yarr.slice(ystart,yend);
-            for (var i = ystart; i < yend; i++) {
-                d2['proj_x'].push(d1.slice(i*xlength+xstart, i*xlength+xend).reduce((a, b) => a + b, 0))
-            };
             d3['en'] = xarr.slice(xstart, xend);
             temp = d1.slice(ystart*xlength, yend*xlength);
             for(var i=xstart; i < xend; i++){
@@ -302,7 +296,6 @@ def plot(**kwargs):
             var inds = {x0: xarr[0], x1: xarr[xarr.length -1], y0: cent - wid/2, y1: cent + wid/2};
             let max = Math.max(...d2['proj_x']);
             let min = Math.min(...d2['proj_x']);
-            console.log(min, max);
             rect['y'] = [max/2 + min/2];
             rect['x'] = [cent];
             rect['height'] = [wid];
@@ -322,18 +315,12 @@ def plot(**kwargs):
             function superslice(arr, start, stop){
                 return d1.slice
             }
-            d2['proj_x'] = []
-            d2['emission'] = []
             d3['proj_y'] = []
             d3['en'] = []
             ystart = yarr.findIndex(starty)
             yend = yarr.findIndex(endy)
             xstart = xarr.findIndex(startx)
             xend = xarr.findIndex(endx)
-            d2['emission'] = yarr.slice(ystart,yend);
-            for (var i = ystart; i < yend; i++) {
-                d2['proj_x'].push(d1.slice(i*xlength+xstart, i*xlength+xend).reduce((a, b) => a + b, 0))
-            };
             d3['en'] = xarr.slice(xstart, xend);
             temp = d1.slice(ystart*xlength, yend*xlength);
             for(var i=xstart; i < xend; i++){
