@@ -285,15 +285,20 @@ def plot(**kwargs):
     callback_flslider = CustomJS(args=dict(s1=source, xy=xy_source, sel=rect_source, xrf=xrf_source, xas=xas_source, flslider=flslider, wdslider=wdslider), code="""
             var cent = flslider.value;
             var wid = wdslider.value;
+            var rect = sel.data;
+            var xarr = xy.data['xaxis'][0];
+            var yarr = xy.data['yaxis'][0];
             var d1 = s1.data['image'][0];
             var d2 = xrf.data;
             var d3 = xas.data;
-            var xarr = xy.data['xaxis'][0];
-            var yarr = xy.data['yaxis'][0];
             var xlength = xarr.length;
             var ylength = yarr.length;
+            var sum = 0.0;
             var inds = {x0: xarr[0], x1: xarr[xarr.length -1], y0: cent - wid/2, y1: cent + wid/2};
-                        
+            rect['x'] = [xarr[0]/2 +  xarr[xarr.length -1]/2];
+            rect['y'] = cent;
+            rect['height'] = wid;
+            rect['width'] =  xarr[xarr.length -1] - xarr[0];           
             function startx(x) {
               return x >= inds['x0'];
             };
