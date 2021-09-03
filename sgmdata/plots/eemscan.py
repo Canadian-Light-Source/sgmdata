@@ -290,6 +290,8 @@ def plot(**kwargs):
             var d3 = xas.data;
             var xarr = xy.data['xaxis'][0];
             var yarr = xy.data['yaxis'][0];
+            var xlength = xarr.length;
+            var ylength = yarr.length;
             var inds = {x0: xarr[0], x1: xarr[xarr.length -1], y0: cent - wid/2, y1: cent + wid/2};
                         
             function startx(x) {
