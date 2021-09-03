@@ -283,7 +283,11 @@ def plot(**kwargs):
             cl.color_mapper.high = o_max;
     """)
 
-    callback_flslider = CustomJS(args=dict(s1=source, xy=xy_source, fluo=peak_source, xrf=xrf_source, xas=xas_source, flslider=flslider, wdslider=wdslider), code="""
+    callback_flslider = CustomJS(args=dict(s1=source,
+                                           xy=xy_source,
+                                           fluo=peak_source,
+                                           xrf=xrf_source,
+                                           xas=xas_source, flslider=flslider, wdslider=wdslider), code="""
             var cent = flslider.value;
             var wid = wdslider.value;
             var rect = fluo.data;
@@ -337,8 +341,7 @@ def plot(**kwargs):
             };
             xrf.change.emit();
             xas.change.emit();
-            sel.change.emit();
-    
+            fluo.change.emit();   
     """)
 
     flslider.js_on_change('value', callback_flslider)
