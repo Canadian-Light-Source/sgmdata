@@ -323,7 +323,7 @@ def plot(**kwargs):
             rect['x'] = [cent];
             rect['height'] = [wid];
             rect['width'] =  [max];  
-            if(select['x'] !== undefined && select['x'].length == 0){
+            if(select['x'] !== undefined && select['x'].length !== 0){
                      select['y'] = [cent];
                      select['height'] = [wid];
                      inds['x0'] = select['x'] - select['width']/2;
