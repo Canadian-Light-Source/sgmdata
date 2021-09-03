@@ -82,13 +82,13 @@ def plot(**kwargs):
                     palette="Spectral11")
     color_bar = ColorBar(color_mapper=color_mapper, label_standoff=12, border_line_color=None, location=(0, 0))
 
-    xrf = Figure(plot_width=200, plot_height=600, y_range=plot.y_range, tools="save,hover,box_zoom, pan",
+    xrf = Figure(plot_width=300, plot_height=600, y_range=plot.y_range, tools="save,hover,box_zoom, pan",
                  title="XRF Projection")
     xrf.circle('proj_x', 'emission', source=xrf_source, alpha=0.6)
     xrf.yaxis.visible = False
     xrf.xaxis.major_label_orientation = "vertical"
 
-    xas = Figure(plot_width=600, plot_height=225, x_range=plot.x_range, tools="save,hover,box_zoom,wheel_zoom,pan",
+    xas = Figure(plot_width=600, plot_height=300, x_range=plot.x_range, tools="save,hover,box_zoom,wheel_zoom,pan",
                  title="XAS Projection")
     xas.line('en', 'proj_y', source=xas_source, line_color='purple', alpha=0.6, legend_label="EEMs")
     xas.line('en', 'tey', source=aux_source, line_color='black', alpha=0.6, legend_label="TEY")
