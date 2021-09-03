@@ -345,14 +345,14 @@ def plot(**kwargs):
     slider.js_on_change('value', callback_color_range)
 
     select_palette = Select(title="Colormap Select:", options=['Viridis', 'Spectral', 'Inferno'], value='Spectral',
-                            sizing_mode="fixed", height=50, width=300)
+                          )
     select_palette.js_on_change('value', callback_color_palette)
 
     select = CheckboxButtonGroup(name="Detector Select:", labels=['sdd1', 'sdd2', 'sdd3', 'sdd4'], active=[0],
-                                 sizing_mode="fixed", height=50, width=300)
+                                 )
     select.js_on_change('active', callback, select_callback)
 
-    button = Button(label="Download XAS", button_type="success", sizing_mode="fixed", height=50, width=150)
+    button = Button(label="Download XAS", button_type="success", sizing_mode="fixed", height=30, width=150)
 
     download = CustomJS(args=dict(s2=xas_source, aux=aux_source), code="""
         var sdd = s2.data;
