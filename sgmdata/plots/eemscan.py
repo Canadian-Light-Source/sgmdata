@@ -137,8 +137,8 @@ def plot(**kwargs):
                 rect['y'] = [inds['y0']/2 + inds['y1']/2];
                 rect['width'] = [inds['x1'] - inds['x0']];
                 rect['height'] = [inds['y1'] - inds['y0']];
-                flslider.value = rect['y'][0];
-                wdslider.value = rect['height'][0];
+                flslider.value = inds['y0']/2 + inds['y1']/2;
+                wdslider.value = inds['y1'] - inds['y0'];
             }
             else if(rect['x'] && rect['x'].length){
                 var inds = {x0: rect['x'][0] - rect['width'][0]/2, x1: rect['x'][0] + rect['width'][0]/2, y0:rect['y'][0] - rect['height'][0]/2, y1:rect['y'][0] + rect['height'][0]/2};
