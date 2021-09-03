@@ -38,11 +38,11 @@ def plot(**kwargs):
     xrf_source = ColumnDataSource(data=dict(proj_x=np.sum(source.data['image'][0], axis=1),
                                             emission=kwargs['emission'],
                                             proj_x_tot=np.sum(source.data['image'][0], axis=1),
-                                            emission_tot=kwargs['emission']),
+                                            emission_tot=kwargs['emission'],
                                             sdd1=np.sum(source.data['sdd1'][0], axis=1),
                                             sdd2=np.sum(source.data['sdd2'][0], axis=1),
                                             sdd3=np.sum(source.data['sdd3'][0], axis=1),
-                                            sdd4=np.sum(source.data['sdd4'][0], axis=1),
+                                            sdd4=np.sum(source.data['sdd4'][0], axis=1))
                                   )
 
     proj_y = np.sum(source.data['image'][0], axis=0)
