@@ -300,9 +300,11 @@ def plot(**kwargs):
             var ylength = yarr.length;
             var sum = 0.0;
             var inds = {x0: xarr[0], x1: xarr[xarr.length -1], y0: cent - wid/2, y1: cent + wid/2};
-            let max = Math.max(...xrf.data['proj_x']);
-            rect['x'] = [max/2];
-            rect['y'] = [cent];
+            let max = Math.max(...d2['proj_x']);
+            let min = Math.min(...d2['proj_x']);
+            console.log(min, max);
+            rect['y'] = [max/2 + min/2];
+            rect['x'] = [cent];
             rect['height'] = [wid];
             rect['width'] =  [max];           
             function startx(x) {
