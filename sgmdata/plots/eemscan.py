@@ -105,8 +105,8 @@ def plot(**kwargs):
     plot.xaxis.axis_label = 'Incident Energy (eV)'
     plot.yaxis.axis_label = 'Emisison Energy (eV)'
 
-    flslider = Slider(start=10, end=2560, value=0, step=10, title="Line Peak")
-    wdslider = Slider(start=20, end=2560, value=0, step=10, title="Line Width")
+    flslider = Slider(start=10, end=2560, value=1280, step=10, title="Line Peak")
+    wdslider = Slider(start=20, end=2560, value=2560, step=10, title="Line Width")
 
     select_callback = CustomJS(args=dict(s1=source, xrf=xrf_source, xas=xas_source, xy=xy_source, sel=rect_source,
                                          flslider=flslider, wdslider=wdslider), code="""
@@ -340,6 +340,7 @@ def plot(**kwargs):
     """)
 
     flslider.js_on_change('value', callback_flslider)
+    wdslider.js_on_change('value', callback_flslider)
 
     slider = RangeSlider(title="Color Scale:", start=0, end=10000,
                          value=(0, np.amax(kwargs['sdd1'])), step=20, )
