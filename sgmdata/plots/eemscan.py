@@ -237,7 +237,7 @@ def plot(**kwargs):
             var xrf_sdd2 = xrf.data['sdd2'];
             var xrf_sdd3 = xrf.data['sdd3'];
             var xrf_sdd4 = xrf.data['sdd4'];
-            var proj_x = xrf.data['proj_x'];
+            var d2 = xrf.data;
             var d = source.data['image'];
             var sum = new Array();
             var xrf_sum = new Array();
@@ -265,7 +265,7 @@ def plot(**kwargs):
                 xrf_sum.push(xrf_sdd4);
             }
             d[0] = sumArrays(...sum);
-            proj_x = sumArrays(...xrf_sum);
+            d2['proj_x'] = sumArrays(...xrf_sum);
             source.change.emit();
             xrf.change.emit();
     """)
