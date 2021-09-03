@@ -299,7 +299,12 @@ def plot(**kwargs):
                                            xy=xy_source,
                                            fluo=peak_source,
                                            xrf=xrf_source,
-                                           xas=xas_source, flslider=flslider, wdslider=wdslider), code="""
+                                           xas=xas_source,
+                                           flslider=flslider,
+                                           wdslider=wdslider,
+                                           sel=rect_source
+                                           ), code="""
+            var select = sel.data;
             var cent = flslider.value;
             var wid = wdslider.value;
             var rect = fluo.data;
@@ -317,7 +322,11 @@ def plot(**kwargs):
             rect['y'] = [max/2 + min/2];
             rect['x'] = [cent];
             rect['height'] = [wid];
-            rect['width'] =  [max];           
+            rect['width'] =  [max];  
+            if(select['x'] !== undefined || select['x'].length == 0){
+                     select['y'] = [cent];
+                     select['height'] = [wid];
+            }         
             function startx(x) {
               return x >= inds['x0'];
             };
