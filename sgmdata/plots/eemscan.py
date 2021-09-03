@@ -1,7 +1,7 @@
 from bokeh.layouts import column, row, gridplot
 from bokeh.palettes import all_palettes
 from bokeh.models import CustomJS, ColumnDataSource, Select, RangeSlider, ColorBar, LinearColorMapper, Rect, Button, \
-    CheckboxButtonGroup
+    CheckboxButtonGroup, Slider
 from bokeh.plotting import Figure, output_notebook, output_file, show
 from bokeh.embed import json_item
 from bokeh import events
@@ -105,8 +105,11 @@ def plot(**kwargs):
     plot.xaxis.axis_label = 'Incident Energy (eV)'
     plot.yaxis.axis_label = 'Emisison Energy (eV)'
 
-    select_callback = CustomJS(args=dict(s1=source, xrf=xrf_source, xas=xas_source, xy=xy_source, sel=rect_source),
-                               code="""
+    flslider = Slider(start=10, end=2560, value=0, step=10, title="Line Peak")
+    wdslider = Slider(start=20, end=2560, value=0, step=10, title="Line Width")
+
+    select_callback = CustomJS(args=dict(s1=source, xrf=xrf_source, xas=xas_source, xy=xy_source, sel=rect_source,
+                                         flslider=flslider, wdslider=wdslider), code="""
             var rect = sel.data;
             var xarr = xy.data['xaxis'][0];
             var yarr = xy.data['yaxis'][0];
@@ -134,16 +137,18 @@ def plot(**kwargs):
                 rect['y'] = [inds['y0']/2 + inds['y1']/2];
                 rect['width'] = [inds['x1'] - inds['x0']];
                 rect['height'] = [inds['y1'] - inds['y0']];
+                flslider.value = rect['y'][0];
+                wdslider.value = rect['height'][0];
             }
             else if(rect['x'] && rect['x'].length){
                 var inds = {x0: rect['x'][0] - rect['width'][0]/2, x1: rect['x'][0] + rect['width'][0]/2, y0:rect['y'][0] - rect['height'][0]/2, y1:rect['y'][0] + rect['height'][0]/2};
-
+                flslider.value = rect['y'][0];
+                pkslider.value = rect['height'][0];
             }
-            else if('active' in cb_obj && typeof inds !== 'undefined'){
-                inds['y0'] = yarr[0];
-                inds['x0'] = xarr[0];
-                inds['y1'] = yarr[yarr.length - 1];
-                inds['x1'] = xarr[xarr.length - 1];
+            else if('active' in cb_obj ){
+                var inds = {x0: xarr[0], y0: yarr[0], x1: xarr[xarr.length - 1], y1: yarr[yarr.length - 1]}
+                flslider.value[0] = inds['y1']/2 + inds['y0']/2;
+                wdslider.value[1] = inds['y1'] - inds['y0'];
             }
             else{
                 d2['proj_x'] = d2['proj_x_tot'];
@@ -274,6 +279,55 @@ def plot(**kwargs):
             cl.color_mapper.high = o_max;
     """)
 
+    callback_flslider = CustomJS(args=dict(xy=xy_source, sel=rect_source, xrf=xrf_source, xas=xas_source, flslider=flslider, wdslider=wdslider), code="""
+            var cent = flslider.value;
+            var wid = wdslider.value;
+            var xarr = xy.data['xaxis'][0];
+            var yarr = xy.data['yaxis'][0];
+            var inds = {x0: xarr[0], x1: xarr[xarr.length -1], y0: cent - wid/2, y1: cent + wid/2};
+                        
+            function startx(x) {
+              return x >= inds['x0'];
+            };
+            function starty(y){
+                return y >= inds['y0'];
+            };
+            function endx(x){
+                return x >= inds['x1'];
+            };
+            function endy(y){
+                return y >= inds['y1'];
+            };
+            function superslice(arr, start, stop){
+                return d1.slice
+            }
+            d2['proj_x'] = []
+            d2['emission'] = []
+            d3['proj_y'] = []
+            d3['en'] = []
+            ystart = yarr.findIndex(starty)
+            yend = yarr.findIndex(endy)
+            xstart = xarr.findIndex(startx)
+            xend = xarr.findIndex(endx)
+            d2['emission'] = yarr.slice(ystart,yend);
+            for (var i = ystart; i < yend; i++) {
+                d2['proj_x'].push(d1.slice(i*xlength+xstart, i*xlength+xend).reduce((a, b) => a + b, 0))
+            };
+            d3['en'] = xarr.slice(xstart, xend);
+            temp = d1.slice(ystart*xlength, yend*xlength);
+            for(var i=xstart; i < xend; i++){
+                d3['proj_y'].push(
+                    temp.filter(function(value, index, Arr){
+                        return (index -i) % xlength  == 0;}).reduce((a, b) => a + b, 0));
+            };
+            xrf.change.emit();
+            xas.change.emit();
+            sel.change.emit();
+    
+    """)
+
+    flslider.js_on_change('value', callback_flslider)
+
     slider = RangeSlider(title="Color Scale:", start=0, end=10000,
                          value=(0, np.amax(kwargs['sdd1'])), step=20, )
     slider.js_on_change('value', callback_color_range)
@@ -319,7 +373,7 @@ def plot(**kwargs):
 
     button.js_on_event(events.ButtonClick, download)
 
-    options = column(select, button, slider, select_palette)
+    options = column(select, button, slider, flslider, wdslider, select_palette)
     layout = gridplot([[xas, options], [plot, xrf]])
     if kwargs.get('json', False):
         return json_item(layout)
