@@ -82,13 +82,13 @@ def plot(**kwargs):
                     palette="Spectral11")
     color_bar = ColorBar(color_mapper=color_mapper, label_standoff=12, border_line_color=None, location=(0, 0))
 
-    xrf = Figure(plot_width=300, plot_height=600, y_range=plot.y_range, tools="save,hover,box_zoom, pan",
+    xrf = Figure(plot_width=225, plot_height=600, y_range=plot.y_range, tools="save,hover,box_zoom, pan",
                  title="XRF Projection")
     xrf.circle('proj_x', 'emission', source=xrf_source, alpha=0.6)
     xrf.yaxis.visible = False
     xrf.xaxis.major_label_orientation = "vertical"
 
-    xas = Figure(plot_width=600, plot_height=300, x_range=plot.x_range, tools="save,hover,box_zoom,wheel_zoom,pan",
+    xas = Figure(plot_width=600, plot_height=225, x_range=plot.x_range, tools="save,hover,box_zoom,wheel_zoom,pan",
                  title="XAS Projection")
     xas.line('en', 'proj_y', source=xas_source, line_color='purple', alpha=0.6, legend_label="EEMs")
     xas.line('en', 'tey', source=aux_source, line_color='black', alpha=0.6, legend_label="TEY")
@@ -105,8 +105,8 @@ def plot(**kwargs):
     plot.xaxis.axis_label = 'Incident Energy (eV)'
     plot.yaxis.axis_label = 'Emisison Energy (eV)'
 
-    flslider = Slider(start=10, end=2560, value=1280, step=10, title="Line Peak", sizing_mode="fixed", height=50, width=150)
-    wdslider = Slider(start=20, end=2560, value=2560, step=10, title="Line Width",sizing_mode="fixed", height=50, width=150)
+    flslider = Slider(start=10, end=2560, value=1280, step=10, title="Line Peak", sizing_mode="fixed", height=30, width=150)
+    wdslider = Slider(start=20, end=500, value=100, step=10, title="Line Width",sizing_mode="fixed", height=30, width=150)
 
     select_callback = CustomJS(args=dict(s1=source, xrf=xrf_source, xas=xas_source, xy=xy_source, sel=rect_source,
                                          flslider=flslider, wdslider=wdslider), code="""
@@ -341,7 +341,7 @@ def plot(**kwargs):
     wdslider.js_on_change('value', callback_flslider)
 
     slider = RangeSlider(title="Color Scale:", start=0, end=10000,
-                         value=(0, np.amax(kwargs['sdd1'])), step=20, sizing_mode="fixed", height=50, width=150)
+                         value=(0, np.amax(kwargs['sdd1'])), step=20)
     slider.js_on_change('value', callback_color_range)
 
     select_palette = Select(title="Colormap Select:", options=['Viridis', 'Spectral', 'Inferno'], value='Spectral',
@@ -352,7 +352,7 @@ def plot(**kwargs):
                                  )
     select.js_on_change('active', callback, select_callback)
 
-    button = Button(label="Download XAS", button_type="success", sizing_mode="fixed", height=30, width=150)
+    button = Button(label="Download XAS", button_type="success")
 
     download = CustomJS(args=dict(s2=xas_source, aux=aux_source), code="""
         var sdd = s2.data;
