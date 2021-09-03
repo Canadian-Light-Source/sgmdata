@@ -145,8 +145,11 @@ def plot(**kwargs):
                 flslider.value = rect['y'][0];
                 pkslider.value = rect['height'][0];
             }
-            else if('active' in cb_obj ){
-                var inds = {x0: xarr[0], y0: yarr[0], x1: xarr[xarr.length - 1], y1: yarr[yarr.length - 1]}
+            else if('active' in cb_obj && typeof inds !== 'undefined'){
+                inds['y0'] = yarr[0];
+                inds['x0'] = xarr[0];
+                inds['y1'] = yarr[yarr.length - 1];
+                inds['x1'] = xarr[xarr.length - 1];
                 flslider.value[0] = inds['y1']/2 + inds['y0']/2;
                 wdslider.value[1] = inds['y1'] - inds['y0'];
             }
@@ -279,9 +282,12 @@ def plot(**kwargs):
             cl.color_mapper.high = o_max;
     """)
 
-    callback_flslider = CustomJS(args=dict(xy=xy_source, sel=rect_source, xrf=xrf_source, xas=xas_source, flslider=flslider, wdslider=wdslider), code="""
+    callback_flslider = CustomJS(args=dict(s1=source, xy=xy_source, sel=rect_source, xrf=xrf_source, xas=xas_source, flslider=flslider, wdslider=wdslider), code="""
             var cent = flslider.value;
             var wid = wdslider.value;
+            var d1 = s1.data['image'][0];
+            var d2 = xrf.data;
+            var d3 = xas.data;
             var xarr = xy.data['xaxis'][0];
             var yarr = xy.data['yaxis'][0];
             var inds = {x0: xarr[0], x1: xarr[xarr.length -1], y0: cent - wid/2, y1: cent + wid/2};
