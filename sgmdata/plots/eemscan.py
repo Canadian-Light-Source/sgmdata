@@ -66,6 +66,7 @@ def plot(**kwargs):
                                            yaxis=[kwargs['emission']]))
 
     rect_source = ColumnDataSource({'x': [], 'y': [], 'width': [], 'height': []})
+    peak_source = ColumnDataSource({'x': [], 'y': [], 'width': [], 'height': []})
 
     viridis = all_palettes['Viridis'][256]
     inferno = all_palettes['Inferno'][256]
@@ -84,6 +85,8 @@ def plot(**kwargs):
 
     xrf = Figure(plot_width=225, plot_height=600, y_range=plot.y_range, tools="save,hover,box_zoom, pan",
                  title="XRF Projection")
+    fluo = Rect(x='y', y='x', width='width', height='height', fill_alpha=0.1, line_color=None, fill_color='yellow')
+    xrf.add_glyph(peak_source, fluo)
     xrf.circle('proj_x', 'emission', source=xrf_source, alpha=0.6)
     xrf.yaxis.visible = False
     xrf.xaxis.major_label_orientation = "vertical"
@@ -280,10 +283,10 @@ def plot(**kwargs):
             cl.color_mapper.high = o_max;
     """)
 
-    callback_flslider = CustomJS(args=dict(s1=source, xy=xy_source, sel=rect_source, xrf=xrf_source, xas=xas_source, flslider=flslider, wdslider=wdslider), code="""
+    callback_flslider = CustomJS(args=dict(s1=source, xy=xy_source, fluo=peak_source, xrf=xrf_source, xas=xas_source, flslider=flslider, wdslider=wdslider), code="""
             var cent = flslider.value;
             var wid = wdslider.value;
-            var rect = sel.data;
+            var rect = fluo.data;
             var xarr = xy.data['xaxis'][0];
             var yarr = xy.data['yaxis'][0];
             var d1 = s1.data['image'][0];
@@ -293,10 +296,11 @@ def plot(**kwargs):
             var ylength = yarr.length;
             var sum = 0.0;
             var inds = {x0: xarr[0], x1: xarr[xarr.length -1], y0: cent - wid/2, y1: cent + wid/2};
-            rect['x'] = [xarr[0]/2 +  xarr[xarr.length -1]/2];
+            let max = Math.max(...xrf.data['proj_x']);
+            rect['x'] = [max/2];
             rect['y'] = [cent];
             rect['height'] = [wid];
-            rect['width'] =  [xarr[xarr.length -1] - xarr[0]];           
+            rect['width'] =  [max];           
             function startx(x) {
               return x >= inds['x0'];
             };
@@ -340,8 +344,8 @@ def plot(**kwargs):
     flslider.js_on_change('value', callback_flslider)
     wdslider.js_on_change('value', callback_flslider)
 
-    slider = RangeSlider(title="Color Scale:", start=0, end=10000,
-                         value=(0, np.amax(kwargs['sdd1'])), step=20)
+    slider = RangeSlider(title="Color Scale:", start=0, end=4*np.amax(kwargs['sdd1']),
+                         value=(0, np.amax(kwargs['sdd1'])), step=20, height=30)
     slider.js_on_change('value', callback_color_range)
 
     select_palette = Select(title="Colormap Select:", options=['Viridis', 'Spectral', 'Inferno'], value='Spectral',
@@ -388,7 +392,7 @@ def plot(**kwargs):
     button.js_on_event(events.ButtonClick, download)
 
     fluo = row(flslider, wdslider)
-    options = column(select, button, slider, fluo, select_palette)
+    options = column(select, button, fluo, slider, select_palette)
     layout = gridplot([[xas, options], [plot, xrf]])
     if kwargs.get('json', False):
         return json_item(layout)
