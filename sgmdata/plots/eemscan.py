@@ -265,7 +265,7 @@ def plot(**kwargs):
                 xrf_sum.push(xrf_sdd4);
             }
             d[0] = sumArrays(...sum);
-            d2['proj_x'] = sumArrays(...xrf_sum);
+            d2['proj_x_tot'] = sumArrays(...xrf_sum);
             source.change.emit();
             xrf.change.emit();
     """)
