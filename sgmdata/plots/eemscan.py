@@ -323,6 +323,7 @@ def plot(**kwargs):
             rect['x'] = [cent];
             rect['height'] = [wid];
             rect['width'] =  [max];  
+            console.log(select['x']);
             if(select['x'] !== undefined && select['x'].length !== 0){
                      select['y'] = [cent];
                      select['height'] = [wid];
