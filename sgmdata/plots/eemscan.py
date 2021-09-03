@@ -105,8 +105,8 @@ def plot(**kwargs):
     plot.xaxis.axis_label = 'Incident Energy (eV)'
     plot.yaxis.axis_label = 'Emisison Energy (eV)'
 
-    flslider = Slider(start=10, end=2560, value=1280, step=10, title="Line Peak")
-    wdslider = Slider(start=20, end=2560, value=2560, step=10, title="Line Width")
+    flslider = Slider(start=10, end=2560, value=1280, step=10, title="Line Peak", sizing_mode="fixed", height=50, width=100)
+    wdslider = Slider(start=20, end=2560, value=2560, step=10, title="Line Width",sizing_mode="fixed", height=50, width=100)
 
     select_callback = CustomJS(args=dict(s1=source, xrf=xrf_source, xas=xas_source, xy=xy_source, sel=rect_source,
                                          flslider=flslider, wdslider=wdslider), code="""
@@ -341,16 +341,17 @@ def plot(**kwargs):
     wdslider.js_on_change('value', callback_flslider)
 
     slider = RangeSlider(title="Color Scale:", start=0, end=10000,
-                         value=(0, np.amax(kwargs['sdd1'])), step=20, )
+                         value=(0, np.amax(kwargs['sdd1'])), step=20, sizing_mode="fixed", height=50, width=100)
     slider.js_on_change('value', callback_color_range)
 
     select_palette = Select(title="Colormap Select:", options=['Viridis', 'Spectral', 'Inferno'], value='Spectral')
     select_palette.js_on_change('value', callback_color_palette)
 
-    select = CheckboxButtonGroup(name="Detector Select:", labels=['sdd1', 'sdd2', 'sdd3', 'sdd4'], active=[0])
+    select = CheckboxButtonGroup(name="Detector Select:", labels=['sdd1', 'sdd2', 'sdd3', 'sdd4'], active=[0],
+                                 sizing_mode="fixed", height=50, width=200)
     select.js_on_change('active', callback, select_callback)
 
-    button = Button(label="Download XAS Spectrum", button_type="success")
+    button = Button(label="Download XAS Spectrum", button_type="success", sizing_mode="fixed", height=50, width=100)
 
     download = CustomJS(args=dict(s2=xas_source, aux=aux_source), code="""
         var sdd = s2.data;
@@ -388,7 +389,7 @@ def plot(**kwargs):
     fluo = row(flslider, wdslider)
     opt1 = row(button, slider)
     options = column(select, opt1, fluo, select_palette)
-    layout = gridplot([[xas, options], [plot, xrf]])
+    layout = gridplot([[xas, options], [plot, xrf]], plot_width=600, plot_height=600)
     if kwargs.get('json', False):
         return json_item(layout)
     show(layout)
