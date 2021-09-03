@@ -323,13 +323,11 @@ def plot(**kwargs):
             rect['x'] = [cent];
             rect['height'] = [wid];
             rect['width'] =  [max];  
-            console.log(select);
             if(select['x'] !== undefined && select['x'].length !== 0){
                      select['y'] = [cent];
                      select['height'] = [wid];
-                     inds['x0'] = select['x'] - select['width']/2;
-                     inds['x1'] = select['x'] + select['width']/2;
-                     console.log(inds);
+                     inds['x0'] = select['x'][0] - select['width'][0]/2;
+                     inds['x1'] = select['x'][0] + select['width'][0]/2;
             }        
             function startx(x) {
               return x >= inds['x0'];
