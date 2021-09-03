@@ -323,13 +323,14 @@ def plot(**kwargs):
             rect['x'] = [cent];
             rect['height'] = [wid];
             rect['width'] =  [max];  
-            console.log(select['x']);
+            console.log(select);
             if(select['x'] !== undefined && select['x'].length !== 0){
                      select['y'] = [cent];
                      select['height'] = [wid];
                      inds['x0'] = select['x'] - select['width']/2;
                      inds['x1'] = select['x'] + select['width']/2;
-            }         
+                     console.log(inds);
+            }        
             function startx(x) {
               return x >= inds['x0'];
             };
@@ -360,7 +361,8 @@ def plot(**kwargs):
             };
             xrf.change.emit();
             xas.change.emit();
-            fluo.change.emit();   
+            fluo.change.emit();  
+            sel.change.emit(); 
     """)
 
     flslider.js_on_change('value', callback_flslider)
