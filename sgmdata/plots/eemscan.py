@@ -388,8 +388,7 @@ def plot(**kwargs):
     button.js_on_event(events.ButtonClick, download)
 
     fluo = row(flslider, wdslider)
-    opt1 = row(button, slider)
-    options = column(select, opt1, fluo, select_palette)
+    options = column(select, button, slider, fluo, select_palette)
     layout = gridplot([[xas, options], [plot, xrf]])
     if kwargs.get('json', False):
         return json_item(layout)
