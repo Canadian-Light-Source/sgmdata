@@ -351,7 +351,7 @@ def plot(**kwargs):
                                  sizing_mode="fixed", height=50, width=200)
     select.js_on_change('active', callback, select_callback)
 
-    button = Button(label="Download XAS Spectrum", button_type="success", sizing_mode="fixed", height=50, width=100)
+    button = Button(label="Download XAS", button_type="success", sizing_mode="fixed", height=50, width=100)
 
     download = CustomJS(args=dict(s2=xas_source, aux=aux_source), code="""
         var sdd = s2.data;
@@ -389,7 +389,7 @@ def plot(**kwargs):
     fluo = row(flslider, wdslider)
     opt1 = row(button, slider)
     options = column(select, opt1, fluo, select_palette)
-    layout = gridplot([[xas, options], [plot, xrf]], plot_width=600, plot_height=600)
+    layout = gridplot([[xas, options], [plot, xrf]])
     if kwargs.get('json', False):
         return json_item(layout)
     show(layout)
