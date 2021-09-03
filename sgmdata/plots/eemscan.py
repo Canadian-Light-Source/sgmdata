@@ -142,8 +142,6 @@ def plot(**kwargs):
             }
             else if(rect['x'] && rect['x'].length){
                 var inds = {x0: rect['x'][0] - rect['width'][0]/2, x1: rect['x'][0] + rect['width'][0]/2, y0:rect['y'][0] - rect['height'][0]/2, y1:rect['y'][0] + rect['height'][0]/2};
-                flslider.value = rect['y'][0];
-                pkslider.value = rect['height'][0];
             }
             else if('active' in cb_obj && typeof inds !== 'undefined'){
                 inds['y0'] = yarr[0];
