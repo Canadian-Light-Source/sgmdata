@@ -296,9 +296,9 @@ def plot(**kwargs):
             var sum = 0.0;
             var inds = {x0: xarr[0], x1: xarr[xarr.length -1], y0: cent - wid/2, y1: cent + wid/2};
             rect['x'] = [xarr[0]/2 +  xarr[xarr.length -1]/2];
-            rect['y'] = cent;
-            rect['height'] = wid;
-            rect['width'] =  xarr[xarr.length -1] - xarr[0];           
+            rect['y'] = [cent];
+            rect['height'] = [wid];
+            rect['width'] =  [xarr[xarr.length -1] - xarr[0]];           
             function startx(x) {
               return x >= inds['x0'];
             };
