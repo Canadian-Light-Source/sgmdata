@@ -207,7 +207,7 @@ if (alter == 0){
         d3['proj_y'][last] = (diff) / (diff2);
         d3['en'][last] = (add)/ 2;
     }
-    d3['proj_y'].splice(length-1, 1);
+    d3['proj_y'] = d3['proj_y'].filter((element, index) => {return index < length - 1})
     d3['en'] = d3['en'].filter((element, index) => {return index < length - 1});
 }
 if (alter == 1){
@@ -392,7 +392,7 @@ sel.change.emit();
                     d3['proj_y'][last] = (diff) / (diff2);
                     d3['en'][last] = (add)/ 2;
                 };
-                d3['proj_y'].splice(length-1, 1);
+                d3['proj_y'] = d3['proj_y'].filter((element, index) => {return index < length - 1})
                 d3['en'] = d3['en'].filter((element, index) => {return index < length - 1});
             };
             if (alter == 1){
