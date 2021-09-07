@@ -191,8 +191,6 @@ def plot(**kwargs):
             }
             d3['proj_y'] = [];
             d3['en'] = [];
-            d3['en_diff = [];
-            d3['dx_dy'] = [];
             ystart = yarr.findIndex(starty);
             yend = yarr.findIndex(endy);
             xstart = xarr.findIndex(startx);
