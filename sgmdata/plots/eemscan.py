@@ -225,7 +225,7 @@ if (alter == 1){
     var y_max = Math.max(...d3['proj_y_tot']);
     var y_min = Math.min(...d3['proj_y_tot']);
     for(var i = 0; i < d3['proj_y'].length; i++){
-            d3['proj_y'][i] = y_max + Math.abs(y_max - y_min ) * 1.0 / (d3['proj_y'][i] - y_min);
+            d3['proj_y'][i] = y_max + Math.abs(y_max - y_min ) * 1.0 / (d3['proj_y'][i]);
     }
 }
 xrf.change.emit();
@@ -411,7 +411,7 @@ sel.change.emit();
                 var y_max = Math.max(...d3['proj_y']);
                 var y_min = Math.min(...d3['proj_y']);
                 for(var i = 0; i < length; i++){
-                    d3['proj_y'][i] = y_max + Math.abs(y_max - y_min ) * 1.0 / (d3['proj_y'][i] - y_min);
+                    d3['proj_y'][i] = y_max + Math.abs(y_max - y_min ) * 1.0 / (d3['proj_y'][i]);
                 };
             };
             xrf.change.emit();
@@ -422,7 +422,7 @@ sel.change.emit();
 
     flslider.js_on_change('value', callback_flslider)
     wdslider.js_on_change('value', callback_flslider)
-    checkbox_group.js_on_change('active', select_callback)
+    checkbox_group.js_on_change('active', callback_flslider)
 
     slider = RangeSlider(title="Color Scale:", start=0, end=4*np.amax(kwargs['sdd1']),
                          value=(0, np.amax(kwargs['sdd1'])), step=20, height=30)
