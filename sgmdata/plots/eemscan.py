@@ -217,6 +217,7 @@ def plot(**kwargs):
                     d3['en'][last] = (add)/ 2;
                 };
                 d3['proj_y'].splice(length-1, 1);
+                console.log(d3['en']);
                 d3['en'].pop();
             };
             if (alter == 1){
@@ -411,7 +412,7 @@ def plot(**kwargs):
                 var y_max = Math.max(...d3['proj_y']);
                 var y_min = Math.min(...d3['proj_y']);
                 for(var i = 0; i < length; i++){
-                        d3['proj_y'][i] = y_min + Math.abs(y_max - ymin )/ (d3['proj_y'][i] - y_min);
+                        d3['proj_y'][i] = y_min + Math.abs(y_max - y_min )/ (d3['proj_y'][i] - y_min);
                 };
             };
             xrf.change.emit();
