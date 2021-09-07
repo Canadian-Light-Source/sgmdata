@@ -116,9 +116,10 @@ def plot(**kwargs):
 
     flslider = Slider(start=10, end=2560, value=1280, step=10, title="Line Peak", sizing_mode="fixed", height=30, width=150)
     wdslider = Slider(start=20, end=500, value=100, step=10, title="Line Width",sizing_mode="fixed", height=30, width=150)
+    checkbox_group = RadioGroup(labels=["dx/dy", "1/y", "None"], active=2, name="Functions", width = 150)
 
     select_callback = CustomJS(args=dict(s1=source, xrf=xrf_source, xas=xas_source, xy=xy_source, sel=rect_source,
-                                         flslider=flslider, wdslider=wdslider), code="""
+                                         flslider=flslider, wdslider=wdslider, alter=checkbox_group), code="""
             var rect = sel.data;
             var xarr = xy.data['xaxis'][0];
             var yarr = xy.data['yaxis'][0];
@@ -128,6 +129,7 @@ def plot(**kwargs):
             var xlength = xarr.length;
             var ylength = yarr.length;
             var sum = 0.0;
+            var alter = alter.active;
             if ('geometry' in cb_obj){
                 var inds = cb_obj['geometry'];
                 if (inds['x1'] > xarr[xarr.length - 1]){
@@ -330,7 +332,8 @@ def plot(**kwargs):
                                            xas=xas_source,
                                            flslider=flslider,
                                            wdslider=wdslider,
-                                           sel=rect_source
+                                           sel=rect_source,
+                                           alter=checkbox_group
                                            ), code="""
             var select = sel.data;
             var cent = flslider.value;
@@ -347,6 +350,8 @@ def plot(**kwargs):
             var inds = {x0: xarr[0], x1: xarr[xarr.length -1], y0: cent - wid/2, y1: cent + wid/2};
             let max = Math.max(...d2['proj_x']);
             let min = Math.min(...d2['proj_x']);
+            var alter = alter.active;
+
             rect['y'] = [max/2 + min/2];
             rect['x'] = [cent];
             rect['height'] = [wid];
@@ -418,6 +423,7 @@ def plot(**kwargs):
 
     flslider.js_on_change('value', callback_flslider)
     wdslider.js_on_change('value', callback_flslider)
+    checkbox_group.js_on_change('value', select_callback)
 
     slider = RangeSlider(title="Color Scale:", start=0, end=4*np.amax(kwargs['sdd1']),
                          value=(0, np.amax(kwargs['sdd1'])), step=20, height=30)
@@ -466,11 +472,8 @@ def plot(**kwargs):
 
     button.js_on_event(events.ButtonClick, download)
 
-    checkbox_group = RadioGroup(labels=["dx/dy", "1/y", "None"], active=2, name="Functions", width = 150)
 
-    checkbox_group.js_on_change('value', select_callback)
-    select_callback.args['alter'] = checkbox_group
-    callback_flslider.args['alter'] = checkbox_group
+
 
     fluo = row(flslider, wdslider)
     functions = row(button, checkbox_group)
