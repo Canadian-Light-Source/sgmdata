@@ -66,8 +66,6 @@ def plot(**kwargs):
                                             en=kwargs['en'],
                                             en_tot=kwargs['en'],
                                             proj_y_tot=np.sum(source.data['image'][0], axis=0),
-                                            dx_dy=np.diff(proj_y),
-                                            inv_y=np.reciprocal(np.float32(proj_y))
                                             ))
 
     xy_source = ColumnDataSource(data=dict(xaxis=[np.linspace(min(kwargs['en']), max(kwargs['en']), len(kwargs['en']))],
