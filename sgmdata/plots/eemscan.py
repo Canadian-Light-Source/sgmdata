@@ -169,12 +169,27 @@ else{
 }
 
 if (update) {
-    d3['proj_y'] = [];
-    d3['en'] = [];
-    ystart = yarr.findIndex((y) => {return y >= inds['y0']});
-    yend = yarr.findIndex((y) => {return y >= inds['y1']});
-    xstart = xarr.findIndex((x) => {return x >= inds['x0']});
-    xend = xarr.findIndex((x) => {return x >= inds['x1']});
+    function startx(x) {
+      return x >= inds['x0'];
+    };
+    function starty(y){
+        return y >= inds['y0'];
+    };
+    function endx(x){
+        return x >= inds['x1'];
+    };
+    function endy(y){
+        return y >= inds['y1'];
+    };
+    function superslice(arr, start, stop){
+        return d1.slice
+    }
+    d3['proj_y'] = []
+    d3['en'] = []
+    ystart = yarr.findIndex(starty)
+    yend = yarr.findIndex(endy)
+    xstart = xarr.findIndex(startx)
+    xend = xarr.findIndex(endx)
     d3['en'] = xarr.slice(xstart, xend);
     temp = d1.slice(ystart * xlength, yend * xlength);
     for (var i = xstart; i < xend; i++) {
@@ -189,10 +204,6 @@ else{
     d2['emission'] = d2['emission_tot'];
     d3['en'] = d3['en_tot'];
     d3['proj_y'] = d3['proj_y_tot'];
-    xrf.change.emit();
-    xas.change.emit();
-    sel.change.emit();
-
 }
 if (alter == 0){
     for(var i=1; i < d3['proj_y'].length; i++){
@@ -214,7 +225,7 @@ if (alter == 1){
     var y_max = Math.max(...d3['proj_y_tot']);
     var y_min = Math.min(...d3['proj_y_tot']);
     for(var i = 0; i < d3['proj_y'].length; i++){
-            d3['proj_y'][i] = y_max + (Math.abs(y_max - y_min )/(1/y_min)) * 1.0 / (d3['proj_y'][i] - y_min);
+            d3['proj_y'][i] = y_max + Math.abs(y_max - y_min ) * 1.0 / (d3['proj_y'][i] - y_min);
     }
 }
 xrf.change.emit();
@@ -400,7 +411,7 @@ sel.change.emit();
                 var y_max = Math.max(...d3['proj_y']);
                 var y_min = Math.min(...d3['proj_y']);
                 for(var i = 0; i < length; i++){
-                        d3['proj_y'][i] = y_max + (Math.abs(y_max - y_min )/(1/y_min)) * 1.0 / (d3['proj_y'][i] - y_min);
+                    d3['proj_y'][i] = y_max + Math.abs(y_max - y_min ) * 1.0 / (d3['proj_y'][i] - y_min);
                 };
             };
             xrf.change.emit();
