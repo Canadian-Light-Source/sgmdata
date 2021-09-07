@@ -423,7 +423,7 @@ def plot(**kwargs):
 
     flslider.js_on_change('value', callback_flslider)
     wdslider.js_on_change('value', callback_flslider)
-    checkbox_group.js_on_change('value', select_callback)
+    checkbox_group.js_on_change('active', select_callback)
 
     slider = RangeSlider(title="Color Scale:", start=0, end=4*np.amax(kwargs['sdd1']),
                          value=(0, np.amax(kwargs['sdd1'])), step=20, height=30)
@@ -471,7 +471,6 @@ def plot(**kwargs):
         }""" % filename)
 
     button.js_on_event(events.ButtonClick, download)
-
 
 
 
