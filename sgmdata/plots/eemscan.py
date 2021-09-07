@@ -130,7 +130,6 @@ var xlength = xarr.length;
 var ylength = yarr.length;
 var sum = 0.0;
 var alter = alter.active;
-var update = true;
 
 if ('geometry' in cb_obj){
     var inds = cb_obj['geometry'];
@@ -165,69 +164,44 @@ else if('active' in cb_obj && typeof inds !== 'undefined'){
     wdslider.value[1] = inds['y1'] - inds['y0'];
 }
 else{
-    update = false;
-}
-
-if (update) {
-    function startx(x) {
-      return x >= inds['x0'];
-    };
-    function starty(y){
-        return y >= inds['y0'];
-    };
-    function endx(x){
-        return x >= inds['x1'];
-    };
-    function endy(y){
-        return y >= inds['y1'];
-    };
-    function superslice(arr, start, stop){
-        return d1.slice
-    }
-    d3['proj_y'] = []
-    d3['en'] = []
-    ystart = yarr.findIndex(starty)
-    yend = yarr.findIndex(endy)
-    xstart = xarr.findIndex(startx)
-    xend = xarr.findIndex(endx)
-    d3['en'] = xarr.slice(xstart, xend);
-    temp = d1.slice(ystart * xlength, yend * xlength);
-    for (var i = xstart; i < xend; i++) {
-        d3['proj_y'].push(
-            temp.filter(function (value, index, Arr) {
-                return (index - i) % xlength == 0;
-            }).reduce((a, b) => a + b, 0));
-    }
-}
-else{
     d2['proj_x'] = d2['proj_x_tot'];
     d2['emission'] = d2['emission_tot'];
     d3['en'] = d3['en_tot'];
     d3['proj_y'] = d3['proj_y_tot'];
+    return
 }
-if (alter == 0){
-    for(var i=1; i < d3['proj_y'].length; i++){
-        var last = i - 1;
-        var fa = d3['proj_y'][last];
-        var fb = d3['proj_y'][i];
-        var diff = Math.round(fb-fa);
-        a = d3['en'][last];
-        b = d3['en'][i];
-        add = a + b;
-        var diff2 = Math.abs(b - a);
-        d3['proj_y'][last] = (diff) / (diff2);
-        d3['en'][last] = (add)/ 2;
-    }
-    d3['proj_y'] = d3['proj_y'].filter((element, index) => {return index < length - 1})
-    d3['en'] = d3['en'].filter((element, index) => {return index < length - 1});
+
+function startx(x) {
+  return x >= inds['x0'];
+};
+function starty(y){
+    return y >= inds['y0'];
+};
+function endx(x){
+    return x >= inds['x1'];
+};
+function endy(y){
+    return y >= inds['y1'];
+};
+function superslice(arr, start, stop){
+    return d1.slice
 }
-if (alter == 1){
-    var y_max = Math.max(...d3['proj_y_tot']);
-    var y_min = Math.min(...d3['proj_y_tot']);
-    for(var i = 0; i < d3['proj_y'].length; i++){
-            d3['proj_y'][i] = y_max + Math.abs(y_max - y_min ) * 1.0 / (d3['proj_y'][i]);
-    }
+d3['proj_y'] = []
+d3['en'] = []
+ystart = yarr.findIndex(starty)
+yend = yarr.findIndex(endy)
+xstart = xarr.findIndex(startx)
+xend = xarr.findIndex(endx)
+d3['en'] = xarr.slice(xstart, xend);
+temp = d1.slice(ystart * xlength, yend * xlength);
+for (var i = xstart; i < xend; i++) {
+    d3['proj_y'].push(
+        temp.filter(function (value, index, Arr) {
+            return (index - i) % xlength == 0;
+        }).reduce((a, b) => a + b, 0));
 }
+
+
 xrf.change.emit();
 xas.change.emit();
 sel.change.emit();
