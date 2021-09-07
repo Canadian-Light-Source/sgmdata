@@ -1,7 +1,7 @@
 from bokeh.layouts import column, row, gridplot
 from bokeh.palettes import all_palettes
 from bokeh.models import CustomJS, ColumnDataSource, Select, RangeSlider, ColorBar, LinearColorMapper, Rect, Button, \
-    CheckboxButtonGroup, Slider
+    CheckboxButtonGroup, Slider, RadioGroup
 from bokeh.plotting import Figure, output_notebook, output_file, show
 from bokeh.embed import json_item
 from bokeh import events
@@ -65,7 +65,10 @@ def plot(**kwargs):
     xas_source = ColumnDataSource(data=dict(proj_y=proj_y,
                                             en=kwargs['en'],
                                             en_tot=kwargs['en'],
-                                            proj_y_tot=np.sum(source.data['image'][0], axis=0)))
+                                            proj_y_tot=np.sum(source.data['image'][0], axis=0),
+                                            dx_dy=np.diff(proj_y),
+                                            inv_y=np.reciprocal(np.float32(proj_y))
+                                            ))
 
     xy_source = ColumnDataSource(data=dict(xaxis=[np.linspace(min(kwargs['en']), max(kwargs['en']), len(kwargs['en']))],
                                            yaxis=[kwargs['emission']]))
@@ -186,18 +189,45 @@ def plot(**kwargs):
             function superslice(arr, start, stop){
                 return d1.slice
             }
-            d3['proj_y'] = []
-            d3['en'] = []
-            ystart = yarr.findIndex(starty)
-            yend = yarr.findIndex(endy)
-            xstart = xarr.findIndex(startx)
-            xend = xarr.findIndex(endx)
+            d3['proj_y'] = [];
+            d3['en'] = [];
+            d3['en_diff = [];
+            d3['dx_dy'] = [];
+            ystart = yarr.findIndex(starty);
+            yend = yarr.findIndex(endy);
+            xstart = xarr.findIndex(startx);
+            xend = xarr.findIndex(endx);
             d3['en'] = xarr.slice(xstart, xend);
             temp = d1.slice(ystart*xlength, yend*xlength);
             for(var i=xstart; i < xend; i++){
                 d3['proj_y'].push(
                     temp.filter(function(value, index, Arr){
                         return (index -i) % xlength  == 0;}).reduce((a, b) => a + b, 0));
+            };
+            if (alter == 0){
+                var length = d3['proj_y'].length;
+                for(var i=0; i < length; i++){
+                    var last = i - length;
+                    var fa = d3['proj_y'][last];
+                    var fb = d3['proj_y'][i];
+                    var diff = Math.round(fb-fa);
+                    a = d3['en'][last];
+                    b = d3['en'][i];
+                    add = a + b;
+                    var diff2 = Math.abs(b - a);
+                    d3['proj_y'][last] = (diff) / (diff2);
+                    d3['en'][last] = (add)/ 2;
+                };
+                d3['proj_y'].splice(0,1);
+                d3['en'].splice(0,1);
+            };
+            if (alter == 1){
+                var length = d3['proj_y'].length;
+                var y_max = Math.max(...d3['proj_y']);
+                var y_min = Math.min(...d3['proj_y']);
+                for(var i = 0; i < length; i++){
+                        d3['proj_y'][i] = y_min + Math.abs(y_max - ymin )/ (d3['proj_y'][i] - y_min);
+                };
             };
             xrf.change.emit();
             xas.change.emit();
@@ -357,6 +387,31 @@ def plot(**kwargs):
                     temp.filter(function(value, index, Arr){
                         return (index -i) % xlength  == 0;}).reduce((a, b) => a + b, 0));
             };
+            if (alter == 0){
+                var length = d3['proj_y'].length;
+                for(var i=0; i < length; i++){
+                    var last = i - length;
+                    var fa = d3['proj_y'][last];
+                    var fb = d3['proj_y'][i];
+                    var diff = Math.round(fb-fa);
+                    a = d3['en'][last];
+                    b = d3['en'][i];
+                    add = a + b;
+                    var diff2 = Math.abs(b - a);
+                    d3['proj_y'][last] = (diff) / (diff2);
+                    d3['en'][last] = (add)/ 2;
+                };
+                d3['proj_y'].splice(0,1);
+                d3['en'].splice(0,1);
+            };
+            if (alter == 1){
+                var length = d3['proj_y'].length;
+                var y_max = Math.max(...d3['proj_y']);
+                var y_min = Math.min(...d3['proj_y']);
+                for(var i = 0; i < length; i++){
+                        d3['proj_y'][i] = y_min + Math.abs(y_max - ymin )/ (d3['proj_y'][i] - y_min);
+                };
+            };
             xrf.change.emit();
             xas.change.emit();
             fluo.change.emit();  
@@ -378,7 +433,7 @@ def plot(**kwargs):
                                  )
     select.js_on_change('active', callback, select_callback)
 
-    button = Button(label="Download XAS", button_type="success")
+    button = Button(label="Download XAS", button_type="success", width=150)
 
     download = CustomJS(args=dict(s2=xas_source, aux=aux_source), code="""
         var sdd = s2.data;
@@ -413,8 +468,15 @@ def plot(**kwargs):
 
     button.js_on_event(events.ButtonClick, download)
 
+    checkbox_group = RadioGroup(labels=["dx/dy", "1/y", "None"], active=2, name="Functions", width = 150)
+
+    checkbox_group.js_on_change('value', select_callback)
+    select_callback.args['alter'] = checkbox_group
+    callback_flslider.args['alter'] = checkbox_group
+
     fluo = row(flslider, wdslider)
-    options = column(select, button, fluo, slider, select_palette)
+    functions = row(download, checkbox_group)
+    options = column(select, functions, fluo, slider, select_palette)
     layout = gridplot([[xas, options], [plot, xrf]])
     if kwargs.get('json', False):
         return json_item(layout)
