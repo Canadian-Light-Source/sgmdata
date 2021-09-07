@@ -217,8 +217,7 @@ def plot(**kwargs):
                     d3['en'][last] = (add)/ 2;
                 };
                 d3['proj_y'].splice(length-1, 1);
-                console.log(d3['en']);
-                d3['en'].pop();
+                d3['en'] = d3['en'].filter((element, index) +> {return index < length - 1});
             };
             if (alter == 1){
                 var length = d3['proj_y'].length;
@@ -404,8 +403,7 @@ def plot(**kwargs):
                     d3['en'][last] = (add)/ 2;
                 };
                 d3['proj_y'].splice(length-1, 1);
-                console.log(d3['en']);
-                d3['en'].pop();
+                d3['en'] = d3['en'].filter((element, index) +> {return index < length - 1});
             };
             if (alter == 1){
                 var length = d3['proj_y'].length;
