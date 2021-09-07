@@ -385,7 +385,7 @@ sel.change.emit();
                 var y_max = Math.max(...d3['proj_y']);
                 var y_min = Math.min(...d3['proj_y']);
                 for(var i = 0; i < length; i++){
-                    d3['proj_y'][i] = y_max + Math.abs(y_max - y_min ) * 1.0 / (d3['proj_y'][i]);
+                    d3['proj_y'][i] = y_max + (Math.abs(y_max - y_min )/ (1/y_min)) * 1.0 / (d3['proj_y'][i]);
                 };
             };
             xrf.change.emit();
