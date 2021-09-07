@@ -473,7 +473,7 @@ def plot(**kwargs):
     callback_flslider.args['alter'] = checkbox_group
 
     fluo = row(flslider, wdslider)
-    functions = row(download, checkbox_group)
+    functions = row(button, checkbox_group)
     options = column(select, functions, fluo, slider, select_palette)
     layout = gridplot([[xas, options], [plot, xrf]])
     if kwargs.get('json', False):
