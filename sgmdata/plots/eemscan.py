@@ -238,13 +238,21 @@ xas.change.emit();
 sel.change.emit();
         """)
 
-    reset_callback = CustomJS(args=dict(s1=source, xrf=xrf_source, xas=xas_source, xy=xy_source, sel=rect_source, alter=checkbox_group, det=select), code="""
+    reset_callback = CustomJS(args=dict(s1=source,
+                                        xrf=xrf_source,
+                                        xas=xas_source,
+                                        xy=xy_source,
+                                        sel=rect_source,
+                                        alter=checkbox_group,
+                                        det=select,
+                                        fluo=fluo), code="""
             var xarr = xy.data['xaxis'][0];
             var yarr = xy.data['yaxis'][0];
             var d1 = s1.data['image'][0];
             var d2 = xrf.data;
             var d3 = xas.data;
             var rect = sel.data;
+            var peak = fluo.data;
             rect['x'] = [];
             rect['y'] = [];
             rect['width'] = [];
@@ -253,11 +261,16 @@ sel.change.emit();
             d2['emission'] = d2['emission_tot'];
             d3['en'] = d3['en_tot'];
             d3['proj_y'] = d3['proj_y_tot'];
+            peak['x'] = [];
+            peak['y'] = [];
+            peak['width'] = [];
+            peak['height'] = [];
             det.active = [0];
             alter.active = 2;
             xrf.change.emit();
             xas.change.emit();
             sel.change.emit();
+            fluo.change.emit();
     """)
 
     plot.js_on_event(events.SelectionGeometry, select_callback)
