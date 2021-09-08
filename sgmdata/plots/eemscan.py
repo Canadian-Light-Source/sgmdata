@@ -265,9 +265,9 @@ sel.change.emit();
             peak['width'] = [];
             peak['height'] = [];
             fluo.change.emit();
-            xrf.change.emit();
+            sel.change.emit();            
             xas.change.emit();
-            sel.change.emit();
+            xrf.change.emit();
             det.active = [0];
             alter.active = 2;
     """)
@@ -452,7 +452,7 @@ sel.change.emit();
     select_palette.js_on_change('value', callback_color_palette)
 
 
-    select.js_on_change('active', callback, select_callback, callback_flslider)
+    select.js_on_change('active', callback, callback_flslider)
 
     button = Button(label="Download XAS", button_type="success", width=150)
 
