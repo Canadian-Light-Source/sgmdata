@@ -155,7 +155,10 @@ if ('geometry' in cb_obj){
 else if(rect['x'] && rect['x'].length){
     var inds = {x0: rect['x'][0] - rect['width'][0]/2, x1: rect['x'][0] + rect['width'][0]/2, y0:rect['y'][0] - rect['height'][0]/2, y1:rect['y'][0] + rect['height'][0]/2};
 }
-else if('active' in cb_obj && typeof inds !== 'undefined'){
+else if('active' in cb_obj){
+    if (typeof inds == 'undefined'){
+        var inds == {};
+    }
     inds['y0'] = yarr[0];
     inds['x0'] = xarr[0];
     inds['y1'] = yarr[yarr.length - 1];
