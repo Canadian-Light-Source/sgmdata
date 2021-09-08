@@ -168,7 +168,6 @@ else if('active' in cb_obj){
     wdslider.value[1] = inds['y1'] - inds['y0'];
 }
 else{
-    console.log(det.active);
     det.active = [0];
     alter = 2;
     d2['proj_x'] = d2['proj_x_tot'];
