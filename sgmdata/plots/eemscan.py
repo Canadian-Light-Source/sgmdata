@@ -157,7 +157,7 @@ else if(rect['x'] && rect['x'].length){
 }
 else if('active' in cb_obj){
     if (typeof inds == 'undefined'){
-        var inds == {};
+        var inds = {};
     }
     inds['y0'] = yarr[0];
     inds['x0'] = xarr[0];
