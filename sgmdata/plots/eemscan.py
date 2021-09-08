@@ -452,7 +452,7 @@ sel.change.emit();
     select_palette.js_on_change('value', callback_color_palette)
 
 
-    select.js_on_change('active', callback, select_callback)
+    select.js_on_change('active', callback, select_callback, callback_flslider)
 
     button = Button(label="Download XAS", button_type="success", width=150)
 
