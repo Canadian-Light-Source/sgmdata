@@ -264,12 +264,12 @@ sel.change.emit();
             peak['y'] = [];
             peak['width'] = [];
             peak['height'] = [];
-            det.active = [0];
-            alter.active = 2;
+            fluo.change.emit();
             xrf.change.emit();
             xas.change.emit();
             sel.change.emit();
-            fluo.change.emit();
+            det.active = [0];
+            alter.active = 2;
     """)
 
     plot.js_on_event(events.SelectionGeometry, select_callback)
