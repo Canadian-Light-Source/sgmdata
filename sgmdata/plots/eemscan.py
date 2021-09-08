@@ -117,9 +117,10 @@ def plot(**kwargs):
     flslider = Slider(start=10, end=2560, value=1280, step=10, title="Line Peak", sizing_mode="fixed", height=30, width=150)
     wdslider = Slider(start=20, end=500, value=100, step=10, title="Line Width",sizing_mode="fixed", height=30, width=150)
     checkbox_group = RadioGroup(labels=["dx/dy", "1/y", "None"], active=2, name="Functions", width = 150)
-
+    select = CheckboxButtonGroup(name="Detector Select:", labels=['sdd1', 'sdd2', 'sdd3', 'sdd4'], active=[0],
+                                 )
     select_callback = CustomJS(args=dict(s1=source, xrf=xrf_source, xas=xas_source, xy=xy_source, sel=rect_source,
-                                         flslider=flslider, wdslider=wdslider, alter=checkbox_group), code="""
+                                         flslider=flslider, wdslider=wdslider, alter=checkbox_group, det=select), code="""
 var rect = sel.data;
 var xarr = xy.data['xaxis'][0];
 var yarr = xy.data['yaxis'][0];
@@ -167,6 +168,7 @@ else if('active' in cb_obj){
     wdslider.value[1] = inds['y1'] - inds['y0'];
 }
 else{
+    det.active = [0];
     d2['proj_x'] = d2['proj_x_tot'];
     d2['emission'] = d2['emission_tot'];
     d3['en'] = d3['en_tot'];
@@ -433,8 +435,7 @@ sel.change.emit();
                           )
     select_palette.js_on_change('value', callback_color_palette)
 
-    select = CheckboxButtonGroup(name="Detector Select:", labels=['sdd1', 'sdd2', 'sdd3', 'sdd4'], active=[0],
-                                 )
+
     select.js_on_change('active', callback, select_callback)
 
     button = Button(label="Download XAS", button_type="success", width=150)
