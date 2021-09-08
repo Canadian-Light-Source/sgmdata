@@ -244,7 +244,7 @@ sel.change.emit();
                                         sel=rect_source,
                                         alter=checkbox_group,
                                         det=select,
-                                        fluo=fluo), code="""
+                                        fluo=peak_source), code="""
             var xarr = xy.data['xaxis'][0];
             var yarr = xy.data['yaxis'][0];
             var d1 = s1.data['image'][0];
