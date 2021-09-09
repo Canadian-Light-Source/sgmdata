@@ -835,9 +835,9 @@ to the relevant subsection of the report.}
                 except Exception as e:
                     print("Couldn't get sample positions: %s" % e)
                     positions = []
-
-                image = [entry for k1, scan in holder_data.scans.items() for k2, entry in scan.__dict__.items() if
-                         entry['sample'] == k][0]
+                scans = sorted([(date, v) for date, v in holder_data.scans.items()], key=lambda x: x[0])
+                image = [entry for k1, scan in scans for k2, entry in scan.__dict__.items() if
+                         entry['sample'] == k][-1]
                 command = image['command']
                 self.holder_command.update({k: command})
                 xrange = (float(command[2]), float(command[3]))
