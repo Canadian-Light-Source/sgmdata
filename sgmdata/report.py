@@ -837,7 +837,7 @@ to the relevant subsection of the report.}
                     positions = []
                 scans = sorted([(date, v) for date, v in holder_data.scans.items()], key=lambda x: x[0])
                 self.image = [entry for k1, scan in scans for k2, entry in scan.__dict__.items() if
-                         entry['sample'] == k][-1]
+                         entry['sample'] == k][0]
                 command = self.image['command']
                 self.holder_command.update({k: command})
                 xrange = (float(command[2]), float(command[3]))
