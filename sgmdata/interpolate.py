@@ -39,9 +39,9 @@ def make_df(independent, signals, labels):
 
 def dask_max(value):
     if hasattr(value, 'compute'):
-        return int(np.unique(np.floor(value.compute() * 100)).shape[0] / 1.1)
+        return int(np.unique(np.floor(value.compute() * 1000)).shape[0] / 1.1)
     else:
-        return int(np.unique(np.floor(value * 100)).shape[0] / 1.1)
+        return int(np.unique(np.floor(value * 1000)).shape[0] / 1.1)
 
 def dask_unique(value):
     if hasattr(value, 'compute'):
@@ -76,7 +76,9 @@ def interpolate(independent, signals, command=None, **kwargs):
             if 'scan' in command[0]:
                 start = [round(float(command[2]))]
             elif 'mesh' in command[0]:
-                start = [float(command[2]), float(command[6])]
+                xstart = min((float(command[2]), float(command[3])))
+                ystart = min((float(command[6]), float(command[7])))
+                start = [xstart, ystart]
         else:
             start = [round(v.min()) for k, v in axis.items()]
     else:
@@ -86,7 +88,9 @@ def interpolate(independent, signals, command=None, **kwargs):
             if 'scan' in command[0]:
                 stop = [round(float(command[3]))]
             elif 'mesh' in command[0]:
-                stop = [float(command[3]), float(command[7])]
+                xstop = max((float(command[2]), float(command[3])))
+                ystop = max((float(command[6]), float(command[7])))
+                stop = [xstop, ystop]
         else:
             stop = [round(v.max()) + 1 for k, v in axis.items()]
     else:
@@ -107,10 +111,10 @@ def interpolate(independent, signals, command=None, **kwargs):
         resolution = kwargs['resolution']
         if not isinstance(kwargs['resolution'], list):
             resolution = [resolution for i, _ in enumerate(axis.keys())]
-        max_res = [dask_max(v)  for k, v in axis.items() ]
+        max_res = [dask_max(v) for k, v in axis.items()]
         bin_num = [int(abs(stop[i] - start[i]) / resolution[i]) for i, _ in enumerate(axis.keys())]
         for i, l in enumerate(max_res):
-            if l < bin_num[i]:
+            if l < bin_num[i] and l > 0:
                 warnings.warn(
                     "Resolution setting can't be higher than experimental resolution, setting resolution for axis %s to %f" % (
                         i, abs(stop[i] - start[i]) / l), UserWarning)
