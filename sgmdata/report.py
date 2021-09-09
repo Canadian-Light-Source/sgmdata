@@ -803,7 +803,9 @@ to the relevant subsection of the report.}
         for k, v in holders.items():
             print("Creating report for %s" % k)
             sgmq = SGMQuery(sample=k, user=self.account, data=False)
-            paths = [sgmq.paths[0]]
+            paths = [sorted(sgmq.paths,
+                            key=lambda x: datetime.datetime.strptime(x.split('/')[-1].split('.')[0], "%Y-%m-%dt%H-%M-%S%z")
+                            )[-1]]
             init = datetime.datetime.strptime(paths[0].split('/')[-1].split('.')[0], "%Y-%m-%dt%H-%M-%S%z")
             self.holder_time_init.update({k: init})
             paths2 = list()
@@ -835,7 +837,6 @@ to the relevant subsection of the report.}
                 except Exception as e:
                     print("Couldn't get sample positions: %s" % e)
                     positions = []
-
                 image = [entry for k1, scan in holder_data.scans.items() for k2, entry in scan.__dict__.items() if
                          entry['sample'] == k][0]
                 command = image['command']
@@ -844,8 +845,8 @@ to the relevant subsection of the report.}
                 yrange = (float(command[6]), float(command[7]))
                 dx = abs(xrange[0] - xrange[1])/(int(command[4]) * 15)
                 dy = abs(yrange[0] - yrange[1])/(int(command[-1]))
-                self.df = image.interpolate(resolution=[dx, dy], start=[min(xrange), min(yrange)], stop=[max(xrange), max(yrange)])
-                img_data = self.make_data(self.df)
+                self.df = image.interpolate(resolution=[dx, dy])
+                img_data = self.make_data(self.df.fillna(0))
                 self.make_plot(img_data, positions, k, iter(sample_list))
                 del img_data, holder_data, image
             self.sample_lists.update({k: sample_list})
