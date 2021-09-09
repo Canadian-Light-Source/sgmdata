@@ -836,18 +836,18 @@ to the relevant subsection of the report.}
                     print("Couldn't get sample positions: %s" % e)
                     positions = []
                 scans = sorted([(date, v) for date, v in holder_data.scans.items()], key=lambda x: x[0])
-                image = [entry for k1, scan in scans for k2, entry in scan.__dict__.items() if
+                self.image = [entry for k1, scan in scans for k2, entry in scan.__dict__.items() if
                          entry['sample'] == k][-1]
-                command = image['command']
+                command = self.image['command']
                 self.holder_command.update({k: command})
                 xrange = (float(command[2]), float(command[3]))
                 yrange = (float(command[6]), float(command[7]))
                 dx = abs(xrange[0] - xrange[1])/(int(command[4]) * 15)
                 dy = abs(yrange[0] - yrange[1])/(int(command[-1]))
-                self.df = image.interpolate(resolution=[dx, dy], start=[min(xrange), min(yrange)], stop=[max(xrange), max(yrange)])
-                img_data = self.make_data(self.df)
+                self.df = self.image.interpolate(resolution=[dx, dy])
+                img_data = self.make_data(self.df.fillna(0))
                 self.make_plot(img_data, positions, k, iter(sample_list))
-                del img_data, holder_data, image
+                del img_data, holder_data
             self.sample_lists.update({k: sample_list})
         self.make_scan_figures(*self.get_or_process_data(process=process, key=key, **kwargs), plots=plots, key=key)
         self.make_holder_table(key=key)
