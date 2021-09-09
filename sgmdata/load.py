@@ -246,6 +246,17 @@ class SGMScan(object):
                         data.update({"image": data['sdd1']})
                     kwargs.update(data)
                     xrfmap.plot(**kwargs)
+                elif 'binned' in self.keys():
+                    print("Plotting Interpolated Data")
+                    df = self['binned']['dataframe']
+                    roi_cols = df.filter(regex="sdd[1-4]_[0-2].*").columns
+                    df.drop(columns=roi_cols, inplace=True)
+                    data = {k: df.filter(regex=("%s.*" % k), axis=1).to_numpy() for k in keys}
+                    data = {k: v for k, v in data.items() if v.size}
+                    data.update({n: df.index.levels[i] for i, n in enumerate(list(df.index.names))})
+                    data.update({'emission': np.linspace(0, 2560, 256)})
+                    kwargs.update(data)
+                    xrfmap.plot_interp(**kwargs)
                 else:
                     print("Plotting Raw Data")
                     ds = int(self.independent['xp'].shape[0] / 10000) + 1
