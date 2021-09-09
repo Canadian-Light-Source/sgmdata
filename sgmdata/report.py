@@ -805,7 +805,7 @@ to the relevant subsection of the report.}
             sgmq = SGMQuery(sample=k, user=self.account, data=False)
             paths = [sorted(sgmq.paths,
                             key=lambda x: datetime.datetime.strptime(x.split('/')[-1].split('.')[0], "%Y-%m-%dt%H-%M-%S%z")
-                            )[0]]
+                            )[-1]]
             init = datetime.datetime.strptime(paths[0].split('/')[-1].split('.')[0], "%Y-%m-%dt%H-%M-%S%z")
             self.holder_time_init.update({k: init})
             paths2 = list()
