@@ -39,9 +39,9 @@ def make_df(independent, signals, labels):
 
 def dask_max(value):
     if hasattr(value, 'compute'):
-        return int(np.unique(np.floor(value.compute() * 1000)).shape[0] / 1.1)
+        return int(np.unique(np.floor(value.compute() * 100)).shape[0] / 1.1)
     else:
-        return int(np.unique(np.floor(value * 1000)).shape[0] / 1.1)
+        return int(np.unique(np.floor(value * 100)).shape[0] / 1.1)
 
 def dask_unique(value):
     if hasattr(value, 'compute'):
