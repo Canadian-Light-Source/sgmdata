@@ -803,7 +803,9 @@ to the relevant subsection of the report.}
         for k, v in holders.items():
             print("Creating report for %s" % k)
             sgmq = SGMQuery(sample=k, user=self.account, data=False)
-            paths = [sgmq.paths[0]]
+            paths = [sorted(sgmq.paths,
+                            key=lambda x: datetime.datetime.strptime(x.split('/')[-1].split('.')[0], "%Y-%m-%dt%H-%M-%S%z")
+                            )[0]]
             init = datetime.datetime.strptime(paths[0].split('/')[-1].split('.')[0], "%Y-%m-%dt%H-%M-%S%z")
             self.holder_time_init.update({k: init})
             paths2 = list()
@@ -835,19 +837,18 @@ to the relevant subsection of the report.}
                 except Exception as e:
                     print("Couldn't get sample positions: %s" % e)
                     positions = []
-                scans = sorted([(date, v) for date, v in holder_data.scans.items()], key=lambda x: x[0])
-                self.image = [entry for k1, scan in scans for k2, entry in scan.__dict__.items() if
+                image = [entry for k1, scan in holder_data.scans.items() for k2, entry in scan.__dict__.items() if
                          entry['sample'] == k][0]
-                command = self.image['command']
+                command = image['command']
                 self.holder_command.update({k: command})
                 xrange = (float(command[2]), float(command[3]))
                 yrange = (float(command[6]), float(command[7]))
                 dx = abs(xrange[0] - xrange[1])/(int(command[4]) * 15)
                 dy = abs(yrange[0] - yrange[1])/(int(command[-1]))
-                self.df = self.image.interpolate(resolution=[dx, dy])
+                self.df = image.interpolate(resolution=[dx, dy])
                 img_data = self.make_data(self.df.fillna(0))
                 self.make_plot(img_data, positions, k, iter(sample_list))
-                del img_data, holder_data
+                del img_data, holder_data, image
             self.sample_lists.update({k: sample_list})
         self.make_scan_figures(*self.get_or_process_data(process=process, key=key, **kwargs), plots=plots, key=key)
         self.make_holder_table(key=key)
