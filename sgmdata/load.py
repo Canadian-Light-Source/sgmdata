@@ -226,7 +226,7 @@ class SGMScan(object):
                     if 'image' in keys:
                         data.update({'image': self.signals['sdd1'][::ds].compute(), 'filename': str(self.sample)})
                     kwargs.update(data)
-                    return eemscan.plot(kwargs)
+                    return eemscan.plot(**kwargs)
             elif dim == 2:
                 keys = xrfmap.required
                 if 'fit' in self.keys():
