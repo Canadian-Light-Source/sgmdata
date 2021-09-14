@@ -26,7 +26,7 @@ setup(
         "blosc==1.10.2",
         "lz4==3.1.3",
         "dask[complete]==2021.08.0",
-        "msgpack==1.0.0",
+        "msgpack==1.0.2",
         "pandas==1.3.2",
         "h5py>=2.10.0",
         "h5pyd",
