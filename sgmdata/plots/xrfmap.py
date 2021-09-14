@@ -192,9 +192,8 @@ def plot(**kwargs):
     """)
 
     ##Change Pallette Selectbox
-    palette_select = Select(title="Colormap Select:", options=['Viridis', 'Spectral', 'Inferno'], value='Spectral',
-                            callback=callback_color_palette)
-
+    palette_select = Select(title="Colormap Select:", options=['Viridis', 'Spectral', 'Inferno'], value='Spectral')
+    palette_select.js_on_change('value', callback_color_palette)
     ##Change Color Intensity Slider
     intensity_slider = RangeSlider(title="Color Scale:", start=0, end=2 * np.amax(im1),
                                    value=(0, np.amax(im1)), step=20, )
@@ -230,8 +229,7 @@ def plot(**kwargs):
                 source.change.emit();
         """)
         roi_menu = [(i, "%.1f" % e) for i, e in enumerate(kwargs['peaks'])]
-        roi_slider = Select(title="Fluorescence Line:", options=roi_menu, value="%.1f" % kwargs['peaks'][max_var],
-                            callback=callback_roi_select)
+        roi_slider = Select(title="Fluorescence Line:", options=roi_menu, value="%.1f" % kwargs['peaks'][max_var])
         roi_slider.js_on_change('value', callback_roi_select)
 
         ##Layout and display
@@ -433,9 +431,8 @@ def plot_interp(**kwargs):
     """)
 
     # Change Pallette Selectbox
-    palette_select = Select(title="Colormap Select:", options=['Viridis', 'Spectral', 'Inferno'], value='Viridis',
-                            callback=callback_color_palette)
-
+    palette_select = Select(title="Colormap Select:", options=['Viridis', 'Spectral', 'Inferno'], value='Viridis')
+    palette_select.js_on_change('value', callback_color_palette)
     # Change Color Intensity Slider
     color_max = np.max([np.amax(np.add.reduceat(x, np.arange(0, 256, 10), axis=-1)) for x in [sdd1, sdd2, sdd3, sdd4]])
     intensity_slider = RangeSlider(title="Color Scale:", start=0, end=2 * color_max,
@@ -782,9 +779,8 @@ def plot_xyz(shift=False, table=False, **kwargs):
     """)
 
     # Change Pallette Selectbox
-    palette_select = Select(title="Colormap Select:", options=['Viridis', 'Spectral', 'Inferno'], value='Viridis',
-                            callback=callback_color_palette)
-
+    palette_select = Select(title="Colormap Select:", options=['Viridis', 'Spectral', 'Inferno'], value='Viridis')
+    palette_select.js_on_change('value', callback_color_palette)
     # Change Color Intensity Slider
     color_max = np.max([np.amax(x, axis=1) for x in [sdd1, sdd2, sdd3, sdd4]])
     intensity_slider = RangeSlider(title="Color Scale:", start=0, end=2 * color_max,
