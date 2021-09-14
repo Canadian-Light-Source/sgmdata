@@ -54,7 +54,7 @@ def compute_df(df, idx, method = 'nearest'):
     if len(idx.shape) == 1:
         return df.compute().reindex(idx).interpolate()
     elif len(idx.shape) == 2:
-        return df.compute().unstack().interpolate(method=method).fillna(0).stack().reindex(idx)
+        return df.compute().unstack().interpolate(method=method).fillna(0).stack().reindex(idx).fillna(0)
 
 def interpolate(independent, signals, command=None, **kwargs):
     """
