@@ -37,11 +37,12 @@ def make_df(independent, signals, labels):
         df = df.merge(dd.from_dask_array(v, columns=columns))
     return df.groupby(c).mean()
 
-def dask_max(value):
+def dask_max(value, sig_digits=2):
+    res = 10**sig_digits
     if hasattr(value, 'compute'):
-        return int(np.unique(np.floor(value.compute() * 100)).shape[0] / 1.1)
+        return int(np.unique(np.floor(value.compute() * res)).shape[0] / 1.1)
     else:
-        return int(np.unique(np.floor(value * 100)).shape[0] / 1.1)
+        return int(np.unique(np.floor(value * res)).shape[0] / 1.1)
 
 def dask_unique(value):
     if hasattr(value, 'compute'):
@@ -65,10 +66,12 @@ def interpolate(independent, signals, command=None, **kwargs):
                    bins (type: list of numbers or arrays) --  this can be an array of bin values for each axes,
                                                               or can be the number of bins desired.
                    resolution (type: list or number) -- used instead of bins to define the bin to bin distance.
+                   sig_digits (type: int) -- used to overide the default uncertainty of the interpolation axis of 2 (e.g. 0.01)
     """
     compute = kwargs.get('compute', True)
     method = kwargs.get('method', 'nearest')
     npartitions = kwargs.get('npartitions', 3)
+    accuracy = kwargs.get('sig_digits', 2)
     axis = independent
     dim = len(axis.keys())
     if 'start' not in kwargs.keys():
@@ -111,7 +114,7 @@ def interpolate(independent, signals, command=None, **kwargs):
         resolution = kwargs['resolution']
         if not isinstance(kwargs['resolution'], list):
             resolution = [resolution for i, _ in enumerate(axis.keys())]
-        max_res = [dask_max(v) for k, v in axis.items()]
+        max_res = [dask_max(v, sig_digits=accuracy) for k, v in axis.items()]
         bin_num = [int(abs(stop[i] - start[i]) / resolution[i]) for i, _ in enumerate(axis.keys())]
         for i, l in enumerate(max_res):
             if l < bin_num[i] and l > 0:
