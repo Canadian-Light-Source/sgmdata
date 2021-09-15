@@ -405,7 +405,7 @@ class SGMData(object):
         self.entries = self.scans.items
 
     def _shift_cmesh(self, data, shift=0.5):
-        shifted_data = np.zeros(data.shape())
+        shifted_data = np.zeros(data.shape)
         for i in range(1, len(data)):
             shifted_data[i] = data[i] + shift * (data[i] - data[i - 1])
         return shifted_data
