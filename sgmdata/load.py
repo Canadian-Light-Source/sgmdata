@@ -404,11 +404,8 @@ class SGMData(object):
         self.scans.update({k: SGMScan(**v) for d in L for k, v in d.items()})
         self.entries = self.scans.items
 
-    def _shift_cmesh(self, data, shift=0.5):
-        shifted_data = np.zeros(data.shape)
-        for i in range(1, len(data)):
-            shifted_data[i] = data[i] + shift * (data[i] - data[i - 1])
-        return shifted_data
+    def _shift_cmesh(self, x, shift=0.5):
+        return shift * (x - np.roll(x, -1))
 
     def _find_data(self, node, indep=None, other=False):
         data = {}
@@ -515,7 +512,9 @@ class SGMData(object):
             try:
                 scan = {"command": commands[i]}
                 if self.shift and 'cmesh' in scan['command'][0]:
-                    indep[i][scan['command'][1]] = self._shift_cmesh(indep[i][scan['command'][1]], self.shift)
+                    indep[i][scan['command'][1]] = indep[i][scan['command'][1]].map_overlap(self._shift_cmesh,
+                                                                                            depth=1,
+                                                                                            boundary='reflect')
             except IndexError:
                 scan = {}
             if "sample" in h5[entry].keys():
