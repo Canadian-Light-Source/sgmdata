@@ -57,7 +57,7 @@ def compute_df(df, idx, method = 'nearest'):
         return df.compute().unstack().interpolate(method=method).fillna(0).stack().reindex(idx)
 
 def shift_cmesh(x, shift=0.5):
-    return shift * (x - np.roll(x, -1))
+    return shift * (x + np.roll(x, -1))
 
 def interpolate(independent, signals, command=None, **kwargs):
     """
