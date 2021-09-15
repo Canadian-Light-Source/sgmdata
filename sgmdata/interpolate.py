@@ -54,7 +54,7 @@ def compute_df(df, idx, method = 'nearest'):
     if len(idx.shape) == 1:
         return df.compute().reindex(idx).interpolate()
     elif len(idx.shape) == 2:
-        return df.compute().unstack().interpolate(method=method).fillna(0).stack().reindex(idx)
+        return df.compute().unstack().interpolate(method=method).fillna(0).stack().reindex(idx).fillna(0, inplace=True)
 
 def shift_cmesh(x, shift=0.5):
     return shift * (x + np.roll(x, -1))
@@ -156,8 +156,6 @@ def interpolate(independent, signals, command=None, **kwargs):
     if compute:
         try:
             df = compute_df(df, idx, method=method)
-            if df.isnull().values.any():
-                df.fillna(0)
         except Exception as e:
             print("Trouble computing dataframe, error msg: %s" % e)
             return None, None
