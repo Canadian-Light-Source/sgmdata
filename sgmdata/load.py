@@ -311,6 +311,11 @@ class SGMData(object):
                             scheduler (type: str) -- use dask cluster for operations, e.g. 'dscheduler:8786'
                             axes (type: list(str)) -- names of the axes to use as independent axis and ignore
                                                     spec command issued
+                            threads (type: int) -- set the number of threads in threadpool used to load in data.
+                            scan_type (type: str) -- used to filter the type of scan loaded, e.g. 'cmesh', '
+                            shift (type: float)  -- default 0.5.  Shifting 'x' axis data on consecutive passes of stage
+                                                    for cmesh scans.
+
     """
 
     class Processed(DisplayDict):
@@ -384,6 +389,7 @@ class SGMData(object):
             self.npartitions = 3
         if not hasattr(self, 'threads'):
             self.threads = 4
+        self.shift = kwargs.get('shift', 0.5)
         files = [os.path.abspath(file) for file in files]
         self.scans = {k.split('/')[-1].split(".")[0]: [] for k in files}
         self.interp_params = {}
@@ -397,6 +403,12 @@ class SGMData(object):
                 del self.scans[e]
         self.scans.update({k: SGMScan(**v) for d in L for k, v in d.items()})
         self.entries = self.scans.items
+
+    def _shift_cmesh(self, data, shift=0.5):
+        shifted_data = np.zeros(data.shape())
+        for i in range(1, len(data)):
+            shifted_data[i] = data[i] + shift * (data[i] - data[i - 1])
+        return shifted_data
 
     def _find_data(self, node, indep=None, other=False):
         data = {}
@@ -502,6 +514,8 @@ class SGMData(object):
         for i, entry in enumerate(NXentries):
             try:
                 scan = {"command": commands[i]}
+                if self.shift and 'cmesh' in scan['command'][0]:
+                    indep[i][scan['command'][1]] = self._shift_cmesh(indep[i][scan['command'][1]], self.shift)
             except IndexError:
                 scan = {}
             if "sample" in h5[entry].keys():
