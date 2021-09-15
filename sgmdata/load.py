@@ -389,8 +389,12 @@ class SGMData(object):
             self.npartitions = 3
         if not hasattr(self, 'threads'):
             self.threads = 4
+        self.user = kwargs.get('user', os.environ.get('JUPYTERHUB_USER'))
         self.shift = kwargs.get('shift', 0.5)
         files = [os.path.abspath(file) for file in files]
+        #Not sure if this is important/works, but trying to make sure that dask workers have the right path for non-admin users.
+        if not any([os.path.exists(f) for f in files]) and os.path.exists(f'/home/jovyan/{self.user}/'):
+            files = [file.replace('/home/jovyan/', f'/home/jovyan/{self.user}/') for file in files]
         self.scans = {k.split('/')[-1].split(".")[0]: [] for k in files}
         self.interp_params = {}
         with ThreadPool(self.threads) as pool:
