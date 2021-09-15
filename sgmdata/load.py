@@ -12,7 +12,7 @@ from multiprocessing.pool import ThreadPool
 from functools import partial
 from sgmdata.plots import eemscan, xrfmap
 from sgmdata.xrffit import fit_peaks
-from sgmdata.interpolate import interpolate, compute_df
+from sgmdata.interpolate import interpolate, shift_cmesh
 from dask.diagnostics import ProgressBar
 
 import warnings
@@ -404,8 +404,7 @@ class SGMData(object):
         self.scans.update({k: SGMScan(**v) for d in L for k, v in d.items()})
         self.entries = self.scans.items
 
-    def _shift_cmesh(self, x, shift=0.5):
-        return shift * (x - np.roll(x, -1))
+
 
     def _find_data(self, node, indep=None, other=False):
         data = {}
@@ -512,7 +511,7 @@ class SGMData(object):
             try:
                 scan = {"command": commands[i]}
                 if self.shift and 'cmesh' in scan['command'][0]:
-                    indep[i][scan['command'][1]] = indep[i][scan['command'][1]].map_overlap(self._shift_cmesh,
+                    indep[i][scan['command'][1]] = indep[i][scan['command'][1]].map_overlap(shift_cmesh,
                                                                                             depth=1,
                                                                                             boundary='reflect')
             except IndexError:
