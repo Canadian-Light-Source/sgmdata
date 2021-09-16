@@ -128,21 +128,29 @@ class ReportBuilder(object):
                 samples.append(sample)
                 edges.append(items[columns['edges']])
                 notes.append(items[columns['notes']])
-                positions.append(repr(items[columns['holder']]))
+                positions.append(re.sub(r'<(.*?>)', "", repr(items[columns['holder']])))
             else:
                 annotations.append((i, items[0]))
         for note in annotations:
             annotes = []
+            holder_found = False
             for p in note[1].find_all('p'):
                 if 'note' in repr(p.string).lower():
                     annotes.append(repr(p.string).replace('\\xa0', ' '))
-            for h in note[1].find_all('h3'):
-                if 'holder' in repr(h.string).lower():
-                    holder.append((note[0], h.string.strip(), annotes))
+            for h in note[1].find_all(re.compile('^h[1-6]$')):
+                string = re.sub(r'<(.*?>)', "", repr(h))
+                if 'holder' in string.lower():
+                    holder.append((note[0], string, annotes))
+                    holder_found = True
+            if not holder_found:
+                for h in note[1].find_all('b'):
+                    string = re.sub(r'<(.*?>)', "", repr(h))
+                    if 'holder' in string.lower():
+                        holder.append((note[0], string, annotes))
         holders = list()
         for i, p in enumerate(positions):
             try:
-                alpha = re.findall(r'^<td.*>.*([A-Za-z])-[0-9]+.*</td>', p)[0]
+                alpha = re.findall(r'^([A-Za-z])-[0-9]+.*', p)[0]
             except:
                 print("No position in", p)
                 del edges[i]
@@ -153,12 +161,13 @@ class ReportBuilder(object):
             find = [(h[1], h[2]) for h in holder if alpha in re.findall(r'^\bHolder\s([A-Za-z])\s*-', h[1])]
             if find:
                 holders.append(find[0][0])
+            else:
+                print(f"Couldn't locate {alpha} in {find}")
         positions = [p for j, p in enumerate(positions) if j in index]
         edges = [re.sub(r'<(.*?>)', "", str(e)) for e in edges]
         notes = [re.sub(r'<(.*?>)', "", str(n)) for n in notes]
         edges = [tuple([j.strip() for j in e.split('\xa0')[0].strip().replace(';', ',').split(',')]) for e in edges]
         edges = [tuple([t for t in e if t]) for e in edges]
-        boilerplate = []
         self.exp_info.update({
             "bp": header,
             "samples": samples,
@@ -252,15 +261,13 @@ class ReportBuilder(object):
 \\newcommand{\\beamtime}{%d }
 \\newcommand{\\projectsummary}{
 \\normalsize Project \\reporttitle, initiated by %s
-
 \\begin{center}
     \\begin{tabular}{cc}
         \\textbf{Total Samples:}  &  \\numsamples\\\\
         \\textbf{Total Measurements:}  &  \\numscans \\\\
         \\textbf{Shifts:} & \\beamtime  \\\\
     \\end{tabular}
-\\end{center} \\\\
-
+\\end{center} \\
 In total, there were %d holders measured,  each section that follows represents one of these holders,
 all subsections correspond to the samples on these holders.  Representations and links to the data corresponding
 to those samples will be contained therein. 
