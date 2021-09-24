@@ -17,6 +17,21 @@ from dask.distributed import Client
 
 
 class ReportBuilder(object):
+    """
+    ### Description
+        LaTeX document builder for SGMData mail-in program.  Requires connection to CLS internal confluence site, and
+        assembles documents from the experimental logs saved therein.
+
+    ### Args
+        > proposal -- Project proprosal number (in the title of the confluence page)
+        > principal -- The last name of the PI for the project, included in the title of the confluence page.
+        > cycle -- The cycle for which the report data was collected.
+        > session -- The experiment number from SGMLive
+        > shifts -- The number of shifts used to collected this data (information can be found in SGMLive usage data)
+
+    ### Functions
+        > create_sample_report -- If initialization has gone smoothly, you can create the sample report.
+    """
 
     def __init__(self, proposal, principal, cycle, session, shifts, **kwargs):
         self.__dict__.update(kwargs)
@@ -719,9 +734,11 @@ to the relevant subsection of the report.}
     def get_or_process_data(self, process=False, key=None, **kwargs):
         """
             User SGMQuery to find if EEMs and averaged (processed) files exist in SGMLive database.
-            Optional Keyword:
-                    process (type: bool) - Default=False. If True, and attempt is made to preprocess scans for which no
-                                            averaged file currently exists.
+            ### Keyword:
+                >**process** *(bool: False)* -- If True, and attempt is made to preprocess scans for which no
+                                                averaged file currently exists.
+                >**key** *(str: None)* -- Holder name to make report for 1 holder.
+                >**kwargs** *(dict)* -- kwargs for preprocess command.
         """
         holder_processed = dict()
         process_count = 0
@@ -797,6 +814,16 @@ to the relevant subsection of the report.}
     def create_sample_report(self, key=None, plots=True, process=False, **kwargs):
         """
             Core logic to create LaTeX report from confluence experimental log.
+            ### Keywords
+                >**key** *(str: None)* -- This is the holder name, if you want to create the report for a single holder.
+
+                >**plots** *(bool: True)* -- Toggle creating the figures for the report.
+
+                >**process** *(bool: False)* -- Run preprocess on scans that have not already been averaged while building
+                                                the report. If no averaged data exists, the sample will be skipped.
+
+                >**kwargs**  *(dict)  --  Any keyword arguments that need to be passed to preprocess.
+
         """
         self.setup_tex()
         if key:

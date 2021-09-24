@@ -21,6 +21,38 @@ except ImportError:
 
 # Get file path list from SGMLive database
 class SGMQuery(object):
+    """
+    ### Description:
+        You can find your data in the SGMLive database by using the SGMQuery module (when using the [SGM JupyterHub](
+        https://sgm-hub.lightsource.ca) ). The following documentation details the keywords that you can use to customize your
+         search.
+
+    ### Keywords:
+        >**sample** *(str:required)* -- At minimum you'll need to provide the keyword "sample", corresponding the sample
+                                        name in the database as a default this will grab all the data under that sample
+                                        name.
+
+        >**daterange** *(tuple:optional)* -- This can be used to sort through sample data by the day that it was
+                                            acquired. This is designed to take a tuple of the form ("start-date",
+                                            "end-date") where the strings are of the form "YYYY-MM-DD". You can also
+                                            just use a single string of the same form, instead of a tuple, this will
+                                            make the assumption that "end-date" == now().
+
+        >**data** *(bool:optional)* -- As a default (True) the SGMQuery object will try to load the the data from disk,
+                                        if this is not the desired behaviour set data=False.
+
+        >**user** *(str:optional:staffonly)* -- Can be used to select the username in SGMLive from which the sample query is
+                                                performed. Not available to non-staff.
+
+        >**processed** *(bool:optional)* -- Can be used to return the paths for the processed data (already interpolated) instead
+                                            of the raw. You would generally set data = False for this option.
+
+    ### Attributes
+        >**data** *(object)* --  By default the query will create an SGMData object containing your data, this can be turned off
+                                 with the data keyword.
+
+        >**paths** *(list)* -- Contains the local paths to your data (or processed_data if processed=True).
+    """
 
     def __init__(self, **kwargs):
         self.__dict__.update(kwargs)
@@ -63,6 +95,7 @@ class SGMQuery(object):
         self.processed_ids = []
         self.domains = []
         self.avg_id = []
+        self.raw_paths = []
         self.date_hash = ""
         self.get_paths()
         if self.paths:
@@ -72,8 +105,17 @@ class SGMQuery(object):
             elif os.path.exists("/".join(self.paths[0].split('/')[:-1]).replace('/home/jovyan', "/SpecData")):
                 local_paths = [p.replace('/home/jovyan', '/SpecData') for p in self.paths]
                 self.paths = local_paths
-        if self.data:
+        if self.data and not self.processed:
             self.data = SGMData(self.paths, **kwargs)
+        elif self.data and self.processed:
+            self.data = SGMData(self.raw_paths, **kwargs)
+            if hasattr(self, 'avg_path'):
+                processed = SGMData.Processed(sample=self.sample)
+                out = processed.read(filename=self.avg_path)
+                self.data.averaged = out
+            if len(self.paths):
+                pass
+
 
     def get_paths(self):
         self.cursor.execute("SELECT id, name from lims_project WHERE name IN ('%s');" % self.user)
@@ -149,6 +191,11 @@ class SGMQuery(object):
             self.avg_domain = self.cursor.fetchone()
             if self.avg_domain:
                 self.avg_domain = [self.avg_domain[0]]
+                if self.admin:
+                    self.avg_path = "/home/jovyan/data/" + self.avg_domain[0].split('.')[1] + "/" \
+                                    + self.avg_domain[0].split('.')[0] + '.nxs'
+                else:
+                    self.avg_path = "/home/jovyan/data/" + self.avg_domain[0].split('.')[0] + '.nxs'
             else:
                 print(f"Average scan for {self.sample}, is in a different account.")
                 return []
@@ -158,6 +205,12 @@ class SGMQuery(object):
                               procdomains]
             else:
                 self.paths = ["/home/jovyan/data/" + d.split('.')[0] + '.nxs' for d in procdomains]
+
+            if self.admin:
+                self.raw_paths = ["/home/jovyan/data/" + d[1].split('.')[1] + "/" + d[1].split('.')[0] + '.nxs' for d in domains]
+            else:
+                self.raw_paths = ["/home/jovyan/data/" + d[1].split('.')[0] + '.nxs' for d in domains]
+
 
         else:
             if self.admin:
@@ -398,16 +451,13 @@ class SGMQuery(object):
 
 def badscans(interp, **kwargs):
     """
-    Description:
-    ----
+    ### Description:
     Batch calculation of sgmdata.utilities.scan_health for list of interpolated dataframes.
 
-    Args:
-    ____
+    ### Args:
         interp (list) :  list of SGMScan binned dataframes.
 
-    Returns:
-    ____
+    ### Returns:
         List of indexes for bad scans in interp.
 
     """
@@ -427,25 +477,29 @@ def badscans(interp, **kwargs):
 
 def preprocess(sample, **kwargs):
     """
-    Description:
-    ----
-    Utility for automating the interpolation and averaging of a sample in the SGMLive website.
+    ### Description:
+        Utility for automating the interpolation and averaging of a sample in the SGMLive website.
 
-    Args:
-    ----
-        sample (str):  The name of the sample in your account that you wish to preprocess.
-        kwargs: user (str) - name of user account to limit search to (for use by staff).
-                resolution - to be passed to interpolation function, this is histogram bin width.
-                start (float) -  start energy to be passed to interpolation function.
-                stop (float) - stop energy to be passed to interpolation function.
-                sdd_max (int) - threshold value to determine saturation in SDDs, to determine scan_health (default
+    ### Args:
+        >**sample** *(str)*:  The name of the sample in your account that you wish to preprocess.
+
+    ### Keywords:
+    All of the below are optional.
+        >**user** *(str)* -- name of user account to limit search to (for use by staff).
+
+        >**resolution** *(float)* -- to be passed to interpolation function, this is histogram bin width.
+
+        >**start** *(float)* --  start energy to be passed to interpolation function.
+
+        >**stop** *(float)* -- stop energy to be passed to interpolation function.
+
+        >**sdd_max** *(int)* -- threshold value to determine saturation in SDDs, to determine scan_health (default
                                 is 105000).
-                bscan_thresh (tuple) - (continuous, dumped, and saturated)  these are the threshold percentages from
+        >**bscan_thresh** *(tuple)* -- (continuous, dumped, and saturated)  these are the threshold percentages from
                                     scan_health that will label a scan as 'bad'.
 
-    Returns:
-    ----
-         (HTML) hyperlink for preprocessed data stored in SGMLive
+    ### Returns:
+        (HTML) hyperlink for preprocessed data stored in SGMLive
     """
     user = kwargs['user'] = kwargs.get('user', False)
     bs_args = kwargs.get('bscan_thresh', dict(cont=55, dump=30, sat=60))
