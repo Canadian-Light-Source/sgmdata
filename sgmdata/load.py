@@ -61,6 +61,21 @@ class SGMScan(DisplayDict):
 
     class DataDict(DisplayDict):
 
+        def get_arr(self, detector):
+            """
+            ### Description:
+                Function to return a numpy array from the internal pandas dataframe, for a given detector.
+            ### Args:
+                >**detector** *(str)* -- Name of detector.
+            ### Returns:
+                >**detector** *(ndarray)*
+            """
+            if isinstance(detector, str):
+                try:
+                    return self['binned']['dataframe'].filter(regex=f'{detector}.*').to_numpy()
+                except (AttributeError, KeyError):
+                    warnings.warn(f"No dataframe loaded in scan dictionary. Have you run interpolate yet?")
+
         def interpolate(self, **kwargs):
             f"""{interpolate.__doc__}"""
             independent = self['independent']
@@ -347,6 +362,14 @@ class SGMData(object):
     """
 
     class Processed(DisplayDict):
+
+        def get_arr(self, detector):
+            f"""{SGMScan.DataDict.get_arr.__doc__}"""
+            if isinstance(detector, str):
+                try:
+                    return self.data.filter(regex=f'{detector}.*').to_numpy()
+                except AttributeError:
+                    warnings.warn(f"No dataframe loaded in processed dictionary.")
 
         def read(self, filename=None):
             if not filename:
