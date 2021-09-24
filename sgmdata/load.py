@@ -30,7 +30,10 @@ except NameError:
 
 class DisplayDict(dict):
     def __getattr__(self, name):
-        return self[name]
+        try:
+            return self[name]
+        except KeyError:
+            raise AttributeError
 
     def __setattr__(self, name, value):
         self[name] = value
@@ -347,11 +350,11 @@ class SGMData(object):
 
         def read(self, filename=None):
             if not filename:
-                if hasattr(self, 'filename'):
+                try:
                     filename = self.filename
-                elif hasattr(self, 'sample'):
+                except AttributeError:
                     filename = self.sample + ".nxs"
-                else:
+                except:
                     return []
             if os.path.exists(filename):
                 try:
@@ -434,16 +437,18 @@ class SGMData(object):
             if 'type' in self.__dict__.keys():
                 scantype = self['type']
             else:
-                if hasattr(self, 'command'):
+                try:
                     if 'scan' in self.command[0] and "en" == self.command[1]:
                         scantype = 'EEMS'
                     elif 'mesh' in self.command[0]:
                         scantype = 'XRF'
-                elif hasattr(self, 'df'):
+                except AttributeError:
                     if len(self.df.index.names) == 1:
                         scantype == 'EEMS'
                     elif len(self.df.index.names) == 2:
                         scantype == 'XRF'
+                except:
+                    return
             if scantype == 'EEMS':
                 keys = eemscan.required
                 df = self.data
