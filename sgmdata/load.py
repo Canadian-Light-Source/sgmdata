@@ -446,9 +446,9 @@ class SGMData(object):
                 except AttributeError:
                     try:
                         if len(self.data.index.names) == 1:
-                            scantype == 'EEMS'
+                            scantype = 'EEMS'
                         elif len(self.data.index.names) == 2:
-                            scantype == 'XRF'
+                            scantype = 'XRF'
                     except AttributeError:
                         return
             if scantype == 'EEMS':
