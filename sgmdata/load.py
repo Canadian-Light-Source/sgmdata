@@ -137,13 +137,7 @@ class SGMScan(DisplayDict):
                 >**filename** *(str)* -- path to file on disk.
             """
             if not filename:
-                try:
-                    filename = self.filename
-                except AttributeError:
-                    try:
-                        filename = self.sample + ".nxs"
-                    except AttributeError:
-                        return []
+                return []
             if os.path.exists(filename):
                 try:
                     h5 = h5py.File(filename, 'r')
@@ -171,8 +165,7 @@ class SGMScan(DisplayDict):
                 {k: v for k,v, in data[i].items() if len(v.shape) < 2}).join(df_sdds[i]).groupby(axes[i]).mean()
                        for i, _ in enumerate(NXdata)]
             if len(df_scas) == 1:
-                self.__setattr__('binned', {"dataframe": df_scas[0], "index": idx})
-                self.data = df_scas[0]
+                self.__setattr__('binned', {"dataframe": df_scas[0], "index": df_scas[0].index})
             return df_scas
 
         def write(self, filename=None):

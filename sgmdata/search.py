@@ -113,8 +113,10 @@ class SGMQuery(object):
                 processed = SGMData.Processed(sample=self.sample)
                 processed.read(filename=self.avg_path)
                 self.data.averaged = [processed]
-            if len(self.paths):
-                pass
+            if len(self.paths) == len(self.raw_paths):
+                for i, sgmscan in enumerate(self.data.scans.values()):
+                    for entry in list(sgmscan.__dict__.values()):
+                        entry.read(filename=self.paths[i])
 
 
     def get_paths(self):
