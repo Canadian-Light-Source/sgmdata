@@ -111,8 +111,8 @@ class SGMQuery(object):
             self.data = SGMData(self.raw_paths, **kwargs)
             if hasattr(self, 'avg_path'):
                 processed = SGMData.Processed(sample=self.sample)
-                out = processed.read(filename=self.avg_path)
-                self.data.averaged = out
+                processed.read(filename=self.avg_path)
+                self.data.averaged = [processed]
             if len(self.paths):
                 pass
 
