@@ -353,9 +353,10 @@ class SGMData(object):
                 try:
                     filename = self.filename
                 except AttributeError:
-                    filename = self.sample + ".nxs"
-                except:
-                    return []
+                    try:
+                        filename = self.sample + ".nxs"
+                    except AttributeError:
+                        return []
             if os.path.exists(filename):
                 try:
                     h5 = h5py.File(filename, 'r')
@@ -443,12 +444,13 @@ class SGMData(object):
                     elif 'mesh' in self.command[0]:
                         scantype = 'XRF'
                 except AttributeError:
-                    if len(self.df.index.names) == 1:
-                        scantype == 'EEMS'
-                    elif len(self.df.index.names) == 2:
-                        scantype == 'XRF'
-                except:
-                    return
+                    try:
+                        if len(self.data.index.names) == 1:
+                            scantype == 'EEMS'
+                        elif len(self.data.index.names) == 2:
+                            scantype == 'XRF'
+                    except AttributeError:
+                        return
             if scantype == 'EEMS':
                 keys = eemscan.required
                 df = self.data
