@@ -636,7 +636,7 @@ def create_csv(sample, mcas=None, **kwargs):
         if isinstance(i0, pd.DataFrame):
             df = df.join(i0)
         elif isinstance(i0, pd.Series):
-
+            df['i0'] = i0
         df.to_csv(out + '/' + slugify(s) + f'_ROI-{roi[0]}_{roi[1]}.csv')
         dfs.append(df)
     return dfs
