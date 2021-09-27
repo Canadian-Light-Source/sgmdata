@@ -631,6 +631,7 @@ def create_csv(sample, mcas=None, **kwargs):
             df.drop(columns=list(df.filter(regex=det+".*")), inplace=True)
             df[det] = temp
             sdd_tot.append(temp)
+        ## Should this be averaged?
         df['sdd_total'] = np.nansum(sdd_tot, axis=0)
         if isinstance(i0, pd.DataFrame):
             df = df.join(i0)
