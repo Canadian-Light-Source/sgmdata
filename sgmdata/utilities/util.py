@@ -616,7 +616,8 @@ def create_csv(sample, mcas=None, **kwargs):
         ## get or create processed data.
         try:
             averaged = data.averaged[s]
-        except AttributeError:
+        except AttributeError as a:
+            print("Attribute Error: %s" % a)
             data.interpolate(resolution=0.1)
             data.mean()
             averaged = data.averaged[s]
@@ -625,7 +626,7 @@ def create_csv(sample, mcas=None, **kwargs):
         for det in mcas:
             mca = averaged.get_arr(det)
             temp = sumROI(mca, start=roi[0], stop=roi[1])
-            df.columns.drop(list(df.filter(regex=det+".*")), inplace=True)
+            df.drop(list(df.filter(regex=det+".*")), inplace=True)
             df[det] = temp
         if isinstance(i0, pd.DataFrame):
             df = df.join(i0)
