@@ -624,11 +624,14 @@ def create_csv(sample, mcas=None, **kwargs):
             averaged = data.averaged[s]
         ## extract SDDs
         df = averaged['data']
+        sdd_tot = []
         for det in mcas:
             mca = averaged.get_arr(det)
             temp = sumROI(mca, start=roi[0], stop=roi[1])
             df.drop(columns=list(df.filter(regex=det+".*")), inplace=True)
             df[det] = temp
+            sdd_tot.append(temp)
+        df['sdd_total'] = np.nansum(sdd_tot, axis=0)
         if isinstance(i0, pd.DataFrame):
             df = df.join(i0)
         df.to_csv(out + '/' + slugify(s) + '.csv')
