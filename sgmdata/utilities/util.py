@@ -611,7 +611,7 @@ def create_csv(sample, mcas=None, **kwargs):
 
     ## Find and collect data.
     for s in sample:
-        sgmq = SGMQuery(sample=s, user=user)
+        sgmq = SGMQuery(sample=s, user=user, processed=True)
         data = sgmq.data
         ## get or create processed data.
         try:
@@ -626,7 +626,7 @@ def create_csv(sample, mcas=None, **kwargs):
         for det in mcas:
             mca = averaged.get_arr(det)
             temp = sumROI(mca, start=roi[0], stop=roi[1])
-            df.drop(list(df.filter(regex=det+".*")), inplace=True)
+            df.drop(columns=list(df.filter(regex=det+".*")), inplace=True)
             df[det] = temp
         if isinstance(i0, pd.DataFrame):
             df = df.join(i0)
