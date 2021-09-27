@@ -635,6 +635,8 @@ def create_csv(sample, mcas=None, **kwargs):
         df['sdd_total'] = np.nansum(sdd_tot, axis=0)
         if isinstance(i0, pd.DataFrame):
             df = df.join(i0)
-        df.to_csv(out + '/' + slugify(s) + '.csv')
+        elif isinstance(i0, pd.Series):
+
+        df.to_csv(out + '/' + slugify(s) + f'_ROI-{roi[0]}_{roi[1]}.csv')
         dfs.append(df)
     return dfs
