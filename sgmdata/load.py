@@ -3,7 +3,6 @@ import h5py
 
 from . import config
 import h5pyd
-from dask import delayed
 import dask.array as da
 import dask.dataframe as dd
 import pandas as pd
@@ -13,7 +12,6 @@ from functools import partial
 from sgmdata.plots import eemscan, xrfmap
 from sgmdata.xrffit import fit_peaks
 from sgmdata.interpolate import interpolate, shift_cmesh
-from dask.diagnostics import ProgressBar
 
 import warnings
 
@@ -63,6 +61,7 @@ class DisplayDict(dict):
 class SGMScan(DisplayDict):
     """
     ### Description:
+    -----
         Data class for storing dask arrays for SGM data files that have been grouped into 'NXentry',
         and then divided into signals, independent axes, and other data.  Contains convenience classes
         for interpolation.
@@ -73,10 +72,13 @@ class SGMScan(DisplayDict):
         def get_arr(self, detector):
             """
             ### Description:
+            -----
                 Function to return a numpy array from the internal pandas dataframe, for a given detector.
             ### Args:
+            -----
                 >**detector** *(str)* -- Name of detector.
             ### Returns:
+            -----
                 >**detector** *(ndarray)*
             """
             if isinstance(detector, str):
@@ -141,8 +143,10 @@ class SGMScan(DisplayDict):
         def read(self, filename=None):
             """
             ### Description
+            -----
                 Function to load in already processed data from file.
             ### Keywords
+            -----
                 >**filename** *(str)* -- path to file on disk.
             """
             if not filename:
@@ -180,8 +184,10 @@ class SGMScan(DisplayDict):
         def write(self, filename=None):
             """
             ### Description:
+            -----
                 Write data to NeXuS formatted data file.
             ### Keyword:
+            -----
                 >**filename** *(str / os.path)* -- path/name of file for output.
             """
             if 'sdd3' in self['signals']:
@@ -236,6 +242,7 @@ class SGMScan(DisplayDict):
         def plot(self, **kwargs):
             """
             ### Description
+            -----
                 Determines the appropriate plot based on independent axis number and name.
             """
             dim = len(self.independent)
@@ -381,6 +388,7 @@ class SGMScan(DisplayDict):
 class SGMData(object):
     """
     ### Description:
+    -----
         Class for loading in data from h5py or h5pyd files for raw SGM data.
         To substantiate pass the class pass a single (or list of) system file paths
         (or hsds path).  e.g. data = SGMData('/path/to/my/file.nxs') or SGMData(['1.h5', '2.h5'])
@@ -388,9 +396,11 @@ class SGMData(object):
         You can view the data dictionary representation in a Jupyter cell by just invoking the SGMData() object.
 
     ### Args:
+    -----
         >**file_paths** *(str or list)* List of file names to be loaded in by the data module.
 
     ### Keywords:
+    -----
         >**npartitions** *(type: integer)* -- choose how many divisions (threads)
                                        to split the file data arrays into.
         >**scheduler** *(type: str)* -- use specific dask cluster for operations, e.g. 'dscheduler:8786'
@@ -402,12 +412,14 @@ class SGMData(object):
                                 for cmesh scans.
 
     ### Functions:
+    -----
         >**interpolate()** -- takes in same parameters as SGMScan.entry.interpolate()
 
         >**mean()** -- averages all interpolated data together (organized by sample, scan type & range), returns list, saves data
                   under a dictionary in SGMData().averaged
 
     Attributes
+    -----
         >**scans** *(SGMScan)* By default the query will create an SGMData object containing your data, this can be turned off with the data keyword.
 
         >**averaged** *(list)*. Contains the averaged data from all interpolated datasets contained in the scan.
@@ -598,6 +610,7 @@ class SGMData(object):
     def _load_data(self, file):
         """
         ### Description:
+        -----
             Function loads data in from SGM data file, and using the command value groups the data as
             either independent, signal or other.
         """

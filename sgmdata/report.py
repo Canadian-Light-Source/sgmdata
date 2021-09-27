@@ -4,7 +4,8 @@ import getpass
 from bs4 import BeautifulSoup
 import re
 from .load import SGMData
-from .search import preprocess, SGMQuery
+from .search import SGMQuery
+from .utilities import preprocess
 import os
 import matplotlib.pyplot as plt
 import numpy as np
@@ -19,18 +20,22 @@ from dask.distributed import Client
 class ReportBuilder(object):
     """
     ### Description
+    -----
         LaTeX document builder for SGMData mail-in program.  Requires connection to CLS internal confluence site, and
         assembles documents from the experimental logs saved therein.
 
     ### Args
-        > proposal -- Project proprosal number (in the title of the confluence page)
-        > principal -- The last name of the PI for the project, included in the title of the confluence page.
-        > cycle -- The cycle for which the report data was collected.
-        > session -- The experiment number from SGMLive
-        > shifts -- The number of shifts used to collected this data (information can be found in SGMLive usage data)
+    -----
+        > **proposal** *(str)* -- Project proprosal number (in the title of the confluence page)
+        > **principal** *(str)* -- The last name of the PI for the project, included in the title of the confluence page.
+        > **cycle** *(int)* -- The cycle for which the report data was collected.
+        > **session** *(int)* -- The experiment number from SGMLive
+        > **shifts** *(int)* -- The number of shifts used to collected this data (information can be found in SGMLive
+                                usage data)
 
     ### Functions
-        > create_sample_report -- If initialization has gone smoothly, you can create the sample report.
+        > **create_sample_report(plots=True, key=None, process=True)** -- If initialization has gone smoothly, you can
+                                                                        create the sample report.
     """
 
     def __init__(self, proposal, principal, cycle, session, shifts, **kwargs):
@@ -456,7 +461,9 @@ to the relevant subsection of the report.}
 
     def make_eem_png(self, holder, title, eems):
         """
-            Creates EEMs and XRF projection plots from fluorescence data in eems (dict)
+            ### Description:
+            -----
+                Creates EEMs and XRF projection plots from fluorescence data in eems (dict)
         """
         fig = plt.figure(constrained_layout=True, figsize=(8, 5))
         gs = fig.add_gridspec(2, 3, width_ratios=[2, 2, 1])
@@ -552,8 +559,11 @@ to the relevant subsection of the report.}
         return "/".join(path.split('/')[-2:])[:-4]
 
     def make_scan_figures(self, eems, processed, plots=True, key=None):
-        """ Function to open EEMs and Averaged files and if they exist,
-        call plotting routines.  Populates self.eems_log (dict), with structure:
+        """
+        ### Description:
+        -----
+            Function to open EEMs and Averaged files and if they exist,
+            call plotting routines.  Populates self.eems_log (dict), with structure:
                 eems_log = {'Holder A - uuid' :
                                 {"SampleName": {
                                                 "image" : './path/to/plot/eems'
@@ -561,7 +571,7 @@ to the relevant subsection of the report.}
                                                 }
                                 ...}
                             ...}
-        and populates self.scans_log (dict):
+            and populates self.scans_log (dict):
                 scans_log = {'Holder A - uuid' :
                                 {"SampleName": {
                                                 "image" : './path/to/plot/scan'
@@ -569,6 +579,9 @@ to the relevant subsection of the report.}
                                                 }
                                 ...}
                             ...}
+        ### Returns:
+        -----
+            > **None**
         """
         sgmdata_avg_url = "https://sgmdata.lightsource.ca/users/xasexperiment/useravg/"
         sgmdata_scan_url = "https://sgmdata.lightsource.ca/users/xasexperiment/userscan/"
@@ -733,12 +746,21 @@ to the relevant subsection of the report.}
 
     def get_or_process_data(self, process=False, key=None, **kwargs):
         """
+            ### Description:
+            -----
             User SGMQuery to find if EEMs and averaged (processed) files exist in SGMLive database.
+
             ### Keyword:
+            -----
                 >**process** *(bool: False)* -- If True, and attempt is made to preprocess scans for which no
                                                 averaged file currently exists.
                 >**key** *(str: None)* -- Holder name to make report for 1 holder.
                 >**kwargs** *(dict)* -- kwargs for preprocess command.
+
+            ### Returns:
+            -----
+                >**holder_eems, holder_processed** -- tuple of dictionaries containing EEMs and averaged data for a
+                                                    holder.
         """
         holder_processed = dict()
         process_count = 0
@@ -813,8 +835,12 @@ to the relevant subsection of the report.}
 
     def create_sample_report(self, key=None, plots=True, process=False, **kwargs):
         """
+            ### Description:
+            _____
             Core logic to create LaTeX report from confluence experimental log.
-            ### Keywords
+
+            ### Keywords:
+            -----
                 >**key** *(str: None)* -- This is the holder name, if you want to create the report for a single holder.
 
                 >**plots** *(bool: True)* -- Toggle creating the figures for the report.
@@ -824,6 +850,8 @@ to the relevant subsection of the report.}
 
                 >**kwargs**  *(dict)  --  Any keyword arguments that need to be passed to preprocess.
 
+            ### Returns:
+                >**None**
         """
         self.setup_tex()
         if key:
@@ -886,4 +914,5 @@ to the relevant subsection of the report.}
             self.sample_lists.update({k: sample_list})
         self.make_scan_figures(*self.get_or_process_data(process=process, key=key, **kwargs), plots=plots, key=key)
         self.make_holder_table(key=key)
+
 

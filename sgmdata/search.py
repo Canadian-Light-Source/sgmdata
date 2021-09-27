@@ -3,16 +3,20 @@ from . import config
 from slugify import slugify
 import hashlib
 import psycopg2
-import sgmdata
 import h5pyd
 import numpy as np
 from collections import Counter
-from dask.distributed import Client
-from .utilities import h5tree, scan_health
 from .load import SGMData
 import datetime
-import warnings
-from tqdm.notebook import tqdm
+
+try:
+    shell = get_ipython().__class__.__name__
+    if shell == 'ZMQInteractiveShell':
+        from tqdm.notebook import tqdm  # Jupyter notebook or qtconsole
+    else:
+        from tqdm import tqdm  # Other type (?)
+except NameError:
+    from tqdm import tqdm
 
 try:
     from IPython.display import display, HTML, clear_output
@@ -23,11 +27,13 @@ except ImportError:
 class SGMQuery(object):
     """
     ### Description:
+    -----
         You can find your data in the SGMLive database by using the SGMQuery module (when using the [SGM JupyterHub](
         https://sgm-hub.lightsource.ca) ). The following documentation details the keywords that you can use to customize your
          search.
 
     ### Keywords:
+    -----
         >**sample** *(str:required)* -- At minimum you'll need to provide the keyword "sample", corresponding the sample
                                         name in the database as a default this will grab all the data under that sample
                                         name.
@@ -48,6 +54,7 @@ class SGMQuery(object):
                                             of the raw. You would generally set data = False for this option.
 
     ### Attributes
+    -----
         >**data** *(object)* --  By default the query will create an SGMData object containing your data, this can be turned off
                                  with the data keyword.
 
@@ -451,101 +458,6 @@ class SGMQuery(object):
         h5.close()
 
 
-def badscans(interp, **kwargs):
-    """
-    ### Description:
-    Batch calculation of sgmdata.utilities.scan_health for list of interpolated dataframes.
 
-    ### Args:
-        interp (list) :  list of SGMScan binned dataframes.
 
-    ### Returns:
-        List of indexes for bad scans in interp.
 
-    """
-    cont = kwargs.get('cont', 55)
-    dump = kwargs.get('dump', 30)
-    sat = kwargs.get('sat', 60)
-    sdd_max = kwargs.get('sdd_max', 50000)
-    bad_scans = []
-    health = [scan_health(i, sdd_max=sdd_max) for i in interp]
-    pbar = tqdm(health)
-    for i,t in enumerate(pbar):
-        pbar.set_description("Finding bad scans...")
-        if t[0] > cont or t[1] > dump or t[2] > sat:
-            print(i, t)
-            bad_scans.append(i)
-    return bad_scans
-
-def preprocess(sample, **kwargs):
-    """
-    ### Description:
-        Utility for automating the interpolation and averaging of a sample in the SGMLive website.
-
-    ### Args:
-        >**sample** *(str)*:  The name of the sample in your account that you wish to preprocess.
-
-    ### Keywords:
-    All of the below are optional.
-        >**user** *(str)* -- name of user account to limit search to (for use by staff).
-
-        >**resolution** *(float)* -- to be passed to interpolation function, this is histogram bin width.
-
-        >**start** *(float)* --  start energy to be passed to interpolation function.
-
-        >**stop** *(float)* -- stop energy to be passed to interpolation function.
-
-        >**sdd_max** *(int)* -- threshold value to determine saturation in SDDs, to determine scan_health (default
-                                is 105000).
-        >**bscan_thresh** *(tuple)* -- (continuous, dumped, and saturated)  these are the threshold percentages from
-                                    scan_health that will label a scan as 'bad'.
-
-    ### Returns:
-        (HTML) hyperlink for preprocessed data stored in SGMLive
-    """
-    user = kwargs['user'] = kwargs.get('user', False)
-    bs_args = kwargs.get('bscan_thresh', dict(cont=55, dump=30, sat=60))
-    sdd_max = kwargs.get('sdd_max', 105000)
-    clear = kwargs.get('clear', True)
-    query_return = kwargs.get('query', False)
-    client = kwargs.get('client', False)
-    if isinstance(bs_args, tuple):
-        bs_args = dict(cont=bs_args[0], dump=bs_args[1], sat=bs_args[2], sdd_max=sdd_max)
-    resolution = kwargs.get('resolution', 0.1)
-    kwargs.update({'resolution':resolution})
-    if user:
-        sgmq = SGMQuery(sample=sample, data=False, **kwargs)
-    else:
-        sgmq = SGMQuery(sample=sample, data=False, **kwargs)
-    if len(sgmq.paths):
-        print("Found %d scans matching sample: %s, for user: %s" % (len(sgmq.paths), sample, user))
-        sgm_data = sgmdata.SGMData(sgmq.paths, **kwargs)
-        print("Interpolating...", end=" ")
-        interp = sgm_data.interpolate(**kwargs)
-        sgmq.write_proc(sgm_data.scans)
-        bscans = badscans(interp, **bs_args)
-        if len(bscans) != len(sgm_data.scans):
-            print("Removed %d bad scan(s) from average. Averaging..." % len(bscans), end=" ")
-            if any(bscans):
-                sgm_data.mean(bad_scans=bscans)
-                _, http = sgmq.write_avg(sgm_data.averaged, bad_scans=bscans)
-            else:
-                sgm_data.mean()
-                _, http = sgmq.write_avg(sgm_data.averaged)
-
-            html = "\n".join([
-                                 '<button onclick="window.open(\'%s\',\'processed\',\'width=1000,height=700\'); return false;">Open %s</button>' % (
-                                 l, sgmq.sample) for i, l in enumerate(http)])
-            if clear:
-                clear_output()
-            if client:
-                client.restart()
-            print(f"Averaged {len(sgm_data.scans) - len(bscans)} scans for {sample}")
-            del sgm_data
-            if query_return:
-                return sgmq
-            return HTML(html)
-        else:
-            if clear:
-                clear_output()
-            warnings.warn(f"There were no scans that passed the health check for {sample}.")
