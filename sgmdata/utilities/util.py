@@ -3,8 +3,7 @@ import h5pyd
 import numpy as np
 from bokeh.io import show
 from bokeh.plotting import figure
-from sgmdata.search import SGMQuery
-from sgmdata.load import SGMData
+
 import pandas as pd
 import os
 import warnings
@@ -500,6 +499,9 @@ def preprocess(sample, **kwargs):
     -----
         (HTML) hyperlink for preprocessed data stored in SGMLive
     """
+    from sgmdata.search import SGMQuery
+    from sgmdata.load import SGMData
+
     user = kwargs['user'] = kwargs.get('user', False)
     bs_args = kwargs.get('bscan_thresh', dict(cont=55, dump=30, sat=60))
     sdd_max = kwargs.get('sdd_max', 105000)
@@ -575,6 +577,7 @@ def create_csv(sample, mcas=None, **kwargs):
         >**str** -- Path to tarball including all csv files created.
     """
     from slugify import slugify
+    from sgmdata.search import SGMQuery
 
     ## Set default detector list for ROI summing.
     if mcas is None:
