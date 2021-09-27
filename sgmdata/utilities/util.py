@@ -547,7 +547,11 @@ def preprocess(sample, **kwargs):
                 clear_output()
             warnings.warn(f"There were no scans that passed the health check for {sample}.")
 
-def create_csv(sample, **kwargs):
+
+def sumROI(arr, start, stop):
+    return np.nansum(arr[:, start:stop], axis=1)
+
+def create_csv(sample, mcas=None, **kwargs):
     """
     ### Description:
     -----
@@ -558,6 +562,7 @@ def create_csv(sample, **kwargs):
 
     ### Keywords:
     -----
+        >**mcas** *(list(str))* -- list of detector names for which the ROI summation should take place.
         >**user** *(str)* -- SGMLive account name, defaults to current jupyterhub user.
         >**out** *(os.path / str)* -- System path to output directory for csv file(s)
         >**I0** *(pandas.DataFrame)** -- Dataframe including an incoming flux profile to be joined to the sample
@@ -569,6 +574,12 @@ def create_csv(sample, **kwargs):
     -----
         >**str** -- Path to tarball including all csv files created.
     """
+    from slugify import slugify
+
+    ## Set default detector list for ROI summing.
+    if mcas is None:
+        mcas = ['sdd1', 'sdd2', 'sdd3', 'sdd4']
+
     ## Prepare data output directory.
     out = kwargs.get('out', './data_out/')
     if not os.path.exists(out):
@@ -597,13 +608,22 @@ def create_csv(sample, **kwargs):
 
     ## Find and collect data.
     for s in sample:
-        sgmq = SGMQuery(s, user=user)
+        sgmq = SGMQuery(sample=s, user=user)
         data = sgmq.data
+        ## get or create processed data.
         try:
-            averaged = list(data.averaged.values())[0]
+            averaged = data.averaged[s]
         except AttributeError:
             data.interpolate(resolution=0.1)
-            averaged = data.mean()
+            data.mean()
+            averaged = data.averaged[s]
+        ## extract SDDs
+        df = averaged['data']
+        for det in mcas:
+            mca = averaged.get_arr(det)
+            temp = sumROI(mca, start=roi[0], stop=roi[1])
+            df.columns.drop(list(df.filter(regex=det+".*")), inplace=True)
+            df[det] = temp
         if isinstance(i0, pd.DataFrame):
-            data = data.join(i0)
-
+            df = df.join(i0)
+        df.to_csv(out + '/' + slugify(s) + '.csv')
