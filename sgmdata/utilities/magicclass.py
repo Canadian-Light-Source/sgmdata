@@ -1,4 +1,4 @@
-class OneList(list):
+class OneList(object):
     def __init__(self, iterable, **kwargs):
         self.l = list(iterable)
         if hasattr(self, 'value'):
