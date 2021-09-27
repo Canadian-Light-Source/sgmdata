@@ -574,7 +574,7 @@ def create_csv(sample, mcas=None, **kwargs):
 
     ### Returns:
     -----
-        >**str** -- Path to tarball including all csv files created.
+        >**list(pd.DataFrame)** -- list of dataframes created.
     """
     from slugify import slugify
     from sgmdata.search import SGMQuery
@@ -610,6 +610,7 @@ def create_csv(sample, mcas=None, **kwargs):
         sample = [sample]
 
     ## Find and collect data.
+    dfs = []
     for s in sample:
         sgmq = SGMQuery(sample=s, user=user, processed=True)
         data = sgmq.data
@@ -631,3 +632,5 @@ def create_csv(sample, mcas=None, **kwargs):
         if isinstance(i0, pd.DataFrame):
             df = df.join(i0)
         df.to_csv(out + '/' + slugify(s) + '.csv')
+        dfs.append(df)
+    return dfs
