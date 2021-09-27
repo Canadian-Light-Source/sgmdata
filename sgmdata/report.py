@@ -65,8 +65,6 @@ class ReportBuilder(object):
         else:
             self.username = input("Enter username:")
 
-        if "client" not in kwargs.keys():
-            self.client = Client()
         self.exp_info = {}
         self.sample_lists = {}
         self.holders = {}
