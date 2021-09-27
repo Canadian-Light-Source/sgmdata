@@ -1,6 +1,8 @@
-class OneList(object):
+class OneList(list):
     def __init__(self, iterable, **kwargs):
         self.l = list(iterable)
+        for i in range(0, len(self.l)):
+            self.__setitem__(i, self.l[i])
         if hasattr(self, 'value'):
             class_name = type(self.value)
             dr = dir(class_name)
