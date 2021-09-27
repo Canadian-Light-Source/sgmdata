@@ -29,6 +29,11 @@ except NameError:
 
 
 class DisplayDict(dict):
+
+    def __init__(self, *args, **kwargs):
+        super(DisplayDict, self).__init__(*args, **kwargs)
+        self.update(*args, **kwargs)
+
     def __getattr__(self, name):
         try:
             return self[name]
@@ -50,6 +55,10 @@ class DisplayDict(dict):
             table.append(f"<tr><th> {key}</th><th>{value}</th></tr>")
         table.append("</tbody></table>")
         return "\n".join(table)
+
+    def update(self, *args, **kwargs):
+        for k, v in dict(*args, **kwargs).items():
+            self[k] = v
 
 class SGMScan(DisplayDict):
     """
@@ -336,7 +345,8 @@ class SGMScan(DisplayDict):
 
 
 
-    def __init__(self, **kwargs):
+    def __init__(self, *args, **kwargs):
+        super(SGMScan, self).__init__(*args, **kwargs)
         self.__dict__.update(kwargs)
         for key, value in kwargs.items():
             value.update({'name': key})
