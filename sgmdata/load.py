@@ -12,6 +12,7 @@ from functools import partial
 from sgmdata.plots import eemscan, xrfmap
 from sgmdata.xrffit import fit_peaks
 from sgmdata.interpolate import interpolate, shift_cmesh
+from .utilities.magicclass import OneList
 
 import warnings
 
@@ -23,7 +24,6 @@ try:
         from tqdm import tqdm  # Other type (?)
 except NameError:
     from tqdm import tqdm
-
 
 
 class DisplayDict(dict):
@@ -791,8 +791,8 @@ class SGMData(object):
                         SGMData.Processed(command=command.split('_'), data=df, signals=v['signals'], sample=key)]
                     average.update({key: l})
                 else:
-                    average.update({key: [
-                        SGMData.Processed(command=command.split('_'), data=df, signals=v['signals'], sample=key)]})
+                    average.update({key: OneList([
+                        SGMData.Processed(command=command.split('_'), data=df, signals=v['signals'], sample=key)])})
         self.averaged = average
         return average
 

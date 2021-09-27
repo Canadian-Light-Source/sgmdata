@@ -7,6 +7,7 @@ import h5pyd
 import numpy as np
 from collections import Counter
 from .load import SGMData
+from .utilities.magicclass import OneList
 import datetime
 
 try:
@@ -119,7 +120,7 @@ class SGMQuery(object):
             if hasattr(self, 'avg_path'):
                 processed = SGMData.Processed(sample=self.sample)
                 processed.read(filename=self.avg_path)
-                self.data.averaged = [processed]
+                self.data.averaged = {processed['sample']: OneList(processed)}
             if len(self.paths) == len(self.raw_paths):
                 for i, sgmscan in enumerate(self.data.scans.values()):
                     for entry in list(sgmscan.__dict__.values()):

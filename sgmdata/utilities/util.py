@@ -5,6 +5,8 @@ from bokeh.io import show
 from bokeh.plotting import figure
 from sgmdata.search import SGMQuery
 from sgmdata.load import SGMData
+import pandas as pd
+import os
 import warnings
 
 try:
@@ -545,12 +547,63 @@ def preprocess(sample, **kwargs):
                 clear_output()
             warnings.warn(f"There were no scans that passed the health check for {sample}.")
 
-def create_csv(sample_list, **kwargs):
+def create_csv(sample, **kwargs):
     """
     ### Description:
     -----
         Make CSV file from sample(s)
+    ### Args:
+    -----
+        >**sample** *(str or list(str))*  -- Sample(s) name(s) from SGMLive that you want to process.
+
     ### Keywords:
     -----
-        >out (str) --
+        >**user** *(str)* -- SGMLive account name, defaults to current jupyterhub user.
+        >**out** *(os.path / str)* -- System path to output directory for csv file(s)
+        >**I0** *(pandas.DataFrame)** -- Dataframe including an incoming flux profile to be joined to the sample
+                                        dataframe and included in the each CSV file.
+        >**ROI** *(tuple)** --  Set the upper and lower bin number for the Region-of-Interest integration to be used in
+                                reducing the dimensionality of energy MCA data.
+
+    ### Returns:
+    -----
+        >**str** -- Path to tarball including all csv files created.
     """
+    ## Prepare data output directory.
+    out = kwargs.get('out', './data_out/')
+    if not os.path.exists(out):
+        os.makedirs(out)
+
+    ## Load in I0 if exists:
+    i0 = kwargs.get('I0', None)
+
+    ## Get ROI bounds:
+    roi = kwargs.get('ROI', (0, 255))
+
+    ## Get user account name.
+    try:
+        admin = os.environ['JHUB_ADMIN']
+    except KeyError:
+        raise Exception("SGMQuery can only be run inside sgm-hub.lightsource.ca at the moment.")
+    admin = int(admin)
+    if admin:
+        user = kwargs.get('user', os.environ['JUPYTERHUB_USER'])
+    else:
+        user = os.environ['JUPYTERHUB_USER']
+
+    ## Ensure sample name is list if singular.
+    if isinstance(sample, str):
+        sample = [sample]
+
+    ## Find and collect data.
+    for s in sample:
+        sgmq = SGMQuery(s, user=user)
+        data = sgmq.data
+        try:
+            averaged = list(data.averaged.values())[0]
+        except AttributeError:
+            data.interpolate(resolution=0.1)
+            averaged = data.mean()
+        if isinstance(i0, pd.DataFrame):
+            data = data.join(i0)
+
