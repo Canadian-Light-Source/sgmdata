@@ -61,7 +61,7 @@ class OneList(list):
         self.l.__imul__(value)
 
     def __iter__(self):
-        self.l.__iter__()
+        return self.l.__iter__()
 
     def __le__(self, value):
         return self.l.__le__(value)

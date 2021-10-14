@@ -49,7 +49,7 @@ class DisplayDict(dict):
             "  </thead>",
             "  <tbody>",
         ]
-        for key, value in self.__dict__.items():
+        for key, value in self.items():
             table.append(f"<tr><th> {key}</th><th>{value}</th></tr>")
         table.append("</tbody></table>")
         return "\n".join(table)
@@ -579,7 +579,7 @@ class SGMData(object):
         self.scans = {k.split('/')[-1].split(".")[0]: [] for k in files}
         self.interp_params = {}
         with ThreadPool(self.threads) as pool:
-            L = list(tqdm(pool.imap_unordered(self._load_data, files), total=len(files)))
+            L = list(tqdm(pool.imap_unordered(self._load_data, files), total=len(files), leave=False))
         err = [l['ERROR'] for l in L if 'ERROR' in l.keys()]
         L = [l for l in L if 'ERROR' not in l.keys()]
         if len(err):
@@ -788,8 +788,8 @@ class SGMData(object):
                 command = k.split(":")[-1]
                 df = df_concat.groupby(df_concat.index).mean()
                 if key in average.keys():
-                    l = average[key] + [
-                        SGMData.Processed(command=command.split('_'), data=df, signals=v['signals'], sample=key)]
+                    l = average[key] + OneList([
+                        SGMData.Processed(command=command.split('_'), data=df, signals=v['signals'], sample=key)])
                     average.update({key: l})
                 else:
                     average.update({key: OneList([
