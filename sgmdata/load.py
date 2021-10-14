@@ -12,7 +12,7 @@ from functools import partial
 from sgmdata.plots import eemscan, xrfmap
 from sgmdata.xrffit import fit_peaks
 from sgmdata.interpolate import interpolate, shift_cmesh
-from .utilities.magicclass import OneList
+from .utilities.magicclass import OneList, DisplayDict
 
 import warnings
 
@@ -26,37 +26,6 @@ except NameError:
     from tqdm import tqdm
 
 
-class DisplayDict(dict):
-
-    def __init__(self, *args, **kwargs):
-        super(DisplayDict, self).__init__(*args, **kwargs)
-        self.update(*args, **kwargs)
-
-    def __getattr__(self, name):
-        try:
-            return self[name]
-        except KeyError:
-            raise AttributeError
-
-    def __setattr__(self, name, value):
-        self[name] = value
-
-    def _repr_html_(self):
-        table = [
-            "<table>",
-            "  <thead>",
-            "    <tr><td> </td><th>Key</th><th>Value</th></tr>",
-            "  </thead>",
-            "  <tbody>",
-        ]
-        for key, value in self.items():
-            table.append(f"<tr><th> {key}</th><th>{value}</th></tr>")
-        table.append("</tbody></table>")
-        return "\n".join(table)
-
-    def update(self, *args, **kwargs):
-        for k, v in dict(*args, **kwargs).items():
-            self[k] = v
 
 class SGMScan(DisplayDict):
     """
