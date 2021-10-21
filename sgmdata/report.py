@@ -646,7 +646,7 @@ to the relevant subsection of the report.}
             for sample, v in processed[k].items():
                 try:
                     d = v.avg_domain[0]
-                except AttributeError:
+                except AttributeError or TypeError:
                     continue
                 avg_path = "/home/jovyan/data/" + d.split('.')[1] + "/" + d.split('.')[0] + '.nxs'
                 if not plots:
