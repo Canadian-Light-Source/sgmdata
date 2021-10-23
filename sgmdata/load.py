@@ -18,7 +18,7 @@ from dask.diagnostics import ProgressBar
 import warnings
 
 ###
-from tabulate import tabulate
+# from tabulate import tabulate
 import sys
 from collections import OrderedDict
 ###
