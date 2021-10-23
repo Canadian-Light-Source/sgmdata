@@ -4,6 +4,24 @@ import numpy as np
 from bokeh.io import show
 from bokeh.plotting import figure
 
+# Below is new to issue 33, not in any otheer version.
+import pandas as pd
+import os
+import warnings
+try:
+    shell = get_ipython().__class__.__name__
+    if shell == 'ZMQInteractiveShell':
+        from tqdm.notebook import tqdm  # Jupyter notebook or qtconsole
+    else:
+        from tqdm import tqdm  # Other type (?)
+except NameError:
+    from tqdm import tqdm
+try:
+    from IPython.display import display, HTML, clear_output
+except ImportError:
+    pass
+
+
 
 
 #Utility for visualizing HDF5 layout.
@@ -35,15 +53,17 @@ def printTree(name, node):
 
 def h5tree(h5):
     """
-    Description:
+    ### Description:
     -----
     A function to output the data-tree from an hdf5 file object.
 
-    Args:
+    ### Args:
     -----
-        h5 - Any H5File object, from h5py.
+        >**h5** *(h5py.File)* -- Any H5File object, from h5py.
 
-    returns None
+    ### Returns:
+    -----
+        >**None**
 
     """
     h5.visititems(printTree)
@@ -53,18 +73,18 @@ def h5tree(h5):
 
 def get_moving_average(data, window_size=4):
     """ 
-    Description:
+    ### Description:
     -----
     A function to calculate the moving average of data using numpy's implementation of convolution
     
-    Args:
+    ### Args:
     -----
-        data (numpy.ndarray): A 1d numpy array of the data on which to calculate the moving average
+        > **data** *(numpy.ndarray)* -- A 1d numpy array of the data on which to calculate the moving average
         window_size (int): An integer value of the number of samples to consider when averaging 
         
-    Returns:
+    ## Returns:
     -----
-        m_average (numpy.ndarray): A 1d numpy array of the calculated moving average. The size of
+        > **m_average** *(numpy.ndarray)* -- A 1d numpy array of the calculated moving average. The size of
                                    "m_average" is the same as the size of input "data"
     """ 
     
@@ -381,16 +401,16 @@ def scan_health(df, verbose=False, sdd_max=105000):
 
 def plot1d(xarr,yarr, title="Plot", labels=[]):
     """
-    Description:
+    ### Description:
     -----
     Convenience function for plotting a bokeh lineplot, assumes Bokeh is already loaded.
 
-    Args:
+    ### Args:
     -----
-        xarr:  Independent array-like object, or list of array-like objects.
-        yarr: Dependent array-like object, or list of array-like objects, same shape as xarr
-        title: Plot title (str)
-        labels:  Legend labels for multiple objects, defaults to Curve0, Curve1, etc.
+        >**xarr** *(array-like)* --  Independent array-like object, or list of array-like objects.
+        >**yarr** *(array-like)* -- Dependent array-like object, or list of array-like objects, same shape as xarr
+        >**title** *(str)* -- Plot title
+        >**labels** *(list(str))* --  Legend labels for multiple objects, defaults to Curve0, Curve1, etc.
 
     returns None
     """
@@ -420,4 +440,204 @@ def plot1d(xarr,yarr, title="Plot", labels=[]):
     fig.legend.click_policy="hide"
     show(fig)
 
+# All following code is new to issue 33.
 
+def badscans(interp, **kwargs):
+    """
+    ### Description:
+    Batch calculation of sgmdata.utilities.scan_health for list of interpolated dataframes.
+
+    ### Args:
+        interp (list) :  list of SGMScan binned dataframes.
+
+    ### Returns:
+        List of indexes for bad scans in interp.
+
+    """
+    cont = kwargs.get('cont', 55)
+    dump = kwargs.get('dump', 30)
+    sat = kwargs.get('sat', 60)
+    sdd_max = kwargs.get('sdd_max', 50000)
+    bad_scans = []
+    health = [scan_health(i, sdd_max=sdd_max) for i in interp]
+    pbar = tqdm(health)
+    for i,t in enumerate(pbar):
+        pbar.set_description("Finding bad scans...")
+        if t[0] > cont or t[1] > dump or t[2] > sat:
+            print(i, t)
+            bad_scans.append(i)
+    return bad_scans
+
+
+
+def preprocess(sample, **kwargs):
+    """
+    ### Description:
+    -----
+        Utility for automating the interpolation and averaging of a sample in the SGMLive website.
+
+    ### Args:
+    -----
+        >**sample** *(str)*:  The name of the sample in your account that you wish to preprocess.
+
+    ### Keywords:
+    -----
+    All of the below are optional.
+        >**user** *(str)* -- name of user account to limit search to (for use by staff).
+
+        >**resolution** *(float)* -- to be passed to interpolation function, this is histogram bin width.
+
+        >**start** *(float)* --  start energy to be passed to interpolation function.
+
+        >**stop** *(float)* -- stop energy to be passed to interpolation function.
+
+        >**sdd_max** *(int)* -- threshold value to determine saturation in SDDs, to determine scan_health (default
+                                is 105000).
+        >**bscan_thresh** *(tuple)* -- (continuous, dumped, and saturated)  these are the threshold percentages from
+                                    scan_health that will label a scan as 'bad'.
+
+    ### Returns:
+    -----
+        (HTML) hyperlink for preprocessed data stored in SGMLive
+    """
+    from sgmdata.search import SGMQuery
+    from sgmdata.load import SGMData
+
+    user = kwargs['user'] = kwargs.get('user', False)
+    bs_args = kwargs.get('bscan_thresh', dict(cont=55, dump=30, sat=60))
+    sdd_max = kwargs.get('sdd_max', 105000)
+    clear = kwargs.get('clear', True)
+    query_return = kwargs.get('query', False)
+    client = kwargs.get('client', False)
+    if isinstance(bs_args, tuple):
+        bs_args = dict(cont=bs_args[0], dump=bs_args[1], sat=bs_args[2], sdd_max=sdd_max)
+    resolution = kwargs.get('resolution', 0.1)
+    kwargs.update({'resolution':resolution})
+    if user:
+        sgmq = SGMQuery(sample=sample, data=False, **kwargs)
+    else:
+        sgmq = SGMQuery(sample=sample, data=False, **kwargs)
+    if len(sgmq.paths):
+        print("Found %d scans matching sample: %s, for user: %s" % (len(sgmq.paths), sample, user))
+        sgm_data = SGMData(sgmq.paths, **kwargs)
+        print("Interpolating...", end=" ")
+        interp = sgm_data.interpolate(**kwargs)
+        sgmq.write_proc(sgm_data.scans)
+        bscans = badscans(interp, **bs_args)
+        if len(bscans) != len(sgm_data.scans):
+            print("Removed %d bad scan(s) from average. Averaging..." % len(bscans), end=" ")
+            if any(bscans):
+                sgm_data.mean(bad_scans=bscans)
+                _, http = sgmq.write_avg(sgm_data.averaged, bad_scans=bscans)
+            else:
+                sgm_data.mean()
+                _, http = sgmq.write_avg(sgm_data.averaged)
+
+            html = "\n".join([
+                                 '<button onclick="window.open(\'%s\',\'processed\',\'width=1000,height=700\'); return false;">Open %s</button>' % (
+                                 l, sgmq.sample) for i, l in enumerate(http)])
+            if clear:
+                clear_output()
+            if client:
+                client.restart()
+            print(f"Averaged {len(sgm_data.scans) - len(bscans)} scans for {sample}")
+            del sgm_data
+            if query_return:
+                return sgmq
+            return HTML(html)
+        else:
+            if clear:
+                clear_output()
+            warnings.warn(f"There were no scans that passed the health check for {sample}.")
+
+
+def sumROI(arr, start, stop):
+    return np.nansum(arr[:, start:stop], axis=1)
+
+def create_csv(sample, mcas=None, **kwargs):
+    """
+    ### Description:
+    -----
+        Make CSV file from sample(s)
+    ### Args:
+    -----
+        >**sample** *(str or list(str))*  -- Sample(s) name(s) from SGMLive that you want to process.
+
+    ### Keywords:
+    -----
+        >**mcas** *(list(str))* -- list of detector names for which the ROI summation should take place.
+        >**user** *(str)* -- SGMLive account name, defaults to current jupyterhub user.
+        >**out** *(os.path / str)* -- System path to output directory for csv file(s)
+        >**I0** *(pandas.DataFrame)** -- Dataframe including an incoming flux profile to be joined to the sample
+                                        dataframe and included in the each CSV file.
+        >**ROI** *(tuple)** --  Set the upper and lower bin number for the Region-of-Interest integration to be used in
+                                reducing the dimensionality of energy MCA data.
+
+    ### Returns:
+    -----
+        >**list(pd.DataFrame)** -- list of dataframes created.
+    """
+    from slugify import slugify
+    from sgmdata.search import SGMQuery
+
+    ## Set default detector list for ROI summing.
+    if mcas is None:
+        mcas = ['sdd1', 'sdd2', 'sdd3', 'sdd4']
+
+    ## Prepare data output directory.
+    out = kwargs.get('out', './data_out/')
+    if not os.path.exists(out):
+        os.makedirs(out)
+
+    ## Load in I0 if exists:
+    i0 = kwargs.get('I0', None)
+
+    ## Get ROI bounds:
+    roi = kwargs.get('ROI', (0, 255))
+
+    ## Get user account name.
+    try:
+        admin = os.environ['JHUB_ADMIN']
+    except KeyError:
+        raise Exception("SGMQuery can only be run inside sgm-hub.lightsource.ca at the moment.")
+    admin = int(admin)
+    if admin:
+        user = kwargs.get('user', os.environ['JUPYTERHUB_USER'])
+    else:
+        user = os.environ['JUPYTERHUB_USER']
+
+    ## Ensure sample name is list if singular.
+    if isinstance(sample, str):
+        sample = [sample]
+
+    ## Find and collect data.
+    dfs = []
+    for s in sample:
+        sgmq = SGMQuery(sample=s, user=user, processed=True)
+        data = sgmq.data
+        ## get or create processed data.
+        try:
+            averaged = data.averaged[s]
+        except AttributeError as a:
+            print("Attribute Error: %s" % a)
+            data.interpolate(resolution=0.1)
+            data.mean()
+            averaged = data.averaged[s]
+        ## extract SDDs
+        df = averaged['data']
+        sdd_tot = []
+        for det in mcas:
+            mca = averaged.get_arr(det)
+            temp = sumROI(mca, start=roi[0], stop=roi[1])
+            df.drop(columns=list(df.filter(regex=det+".*")), inplace=True)
+            df[det] = temp
+            sdd_tot.append(temp)
+        ## Should this be averaged?
+        df['sdd_total'] = np.nansum(sdd_tot, axis=0)
+        if isinstance(i0, pd.DataFrame):
+            df = df.join(i0)
+        elif isinstance(i0, pd.Series):
+            df['i0'] = i0
+        df.to_csv(out + '/' + slugify(s) + f'_ROI-{roi[0]}_{roi[1]}.csv')
+        dfs.append(df)
+    return dfs
