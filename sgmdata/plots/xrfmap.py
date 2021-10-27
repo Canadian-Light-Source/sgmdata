@@ -240,7 +240,7 @@ def plot(**kwargs):
 
     layout = gridplot([[plot, options]])
     if kwargs.get('json', False):
-        return json_item(layout)
+        return json.dumps(json_item(layout, "xrf"))
     show(layout)
 
 
