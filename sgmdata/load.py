@@ -259,7 +259,7 @@ class SGMScan(DisplayDict):
                     if 'image' in keys:
                         data.update({"image": data['sdd1']})
                     kwargs.update(data)
-                    xrfmap.plot(**kwargs)
+                    return xrfmap.plot(**kwargs)
                 elif 'binned' in self.keys():
                     print("Plotting Interpolated Data")
                     df = self['binned']['dataframe']
@@ -270,7 +270,7 @@ class SGMScan(DisplayDict):
                     data.update({n: df.index.levels[i] for i, n in enumerate(list(df.index.names))})
                     data.update({'emission': np.linspace(0, 2560, 256)})
                     kwargs.update(data)
-                    xrfmap.plot_interp(**kwargs)
+                    return xrfmap.plot_interp(**kwargs)
                 else:
                     print("Plotting Raw Data")
                     ds = int(self.independent['xp'].shape[0] / 10000) + 1
@@ -281,7 +281,7 @@ class SGMScan(DisplayDict):
                          k in s})
                     data.update({k: self.other[s].compute() for s in self.other.keys() for k in keys if s in k})
                     kwargs.update(data)
-                    xrfmap.plot_xyz(**kwargs)
+                    return xrfmap.plot_xyz(**kwargs)
 
         def __repr__(self):
             represent = ""
