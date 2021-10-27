@@ -8,6 +8,7 @@ from bokeh import events
 
 from sgmdata.utilities.lib import scan_lib, elements
 from sgmdata.xrffit import gaussians
+import json
 import numpy as np
 
 required = ['image', 'sdd1', 'sdd2', 'sdd3', 'sdd4', 'tey', 'xp', 'yp', 'emission']
@@ -443,7 +444,7 @@ def plot_interp(**kwargs):
 
     layout = gridplot([[plot, options]])
     if kwargs.get('json', False):
-        return json_item(layout)
+        return json.dumps(json_item(layout, "xrf"))
     show(layout)
 
 
@@ -794,5 +795,5 @@ def plot_xyz(shift=False, table=False, **kwargs):
     else:
         layout = gridplot([[plot, options]])
     if kwargs.get('json', False):
-        return json_item(layout)
+        return json.dumps(json_item(layout, "xrf"))
     show(layout)
