@@ -37,11 +37,12 @@ def make_df(independent, signals, labels):
         df = df.merge(dd.from_dask_array(v, columns=columns))
     return df.groupby(c).mean()
 
-def dask_max(value):
+def dask_max(value, sig_digits=2):
+    res = 10**sig_digits
     if hasattr(value, 'compute'):
-        return int(np.unique(np.floor(value.compute() * 100)).shape[0] / 1.1)
+        return int(np.unique(np.floor(value.compute() * res)).shape[0] / 1.1)
     else:
-        return int(np.unique(np.floor(value * 100)).shape[0] / 1.1)
+        return int(np.unique(np.floor(value * res)).shape[0] / 1.1)
 
 def dask_unique(value):
     if hasattr(value, 'compute'):
@@ -53,22 +54,33 @@ def compute_df(df, idx, method = 'nearest'):
     if len(idx.shape) == 1:
         return df.compute().reindex(idx).interpolate()
     elif len(idx.shape) == 2:
-        return df.compute().unstack().interpolate(method=method).fillna(0).stack().reindex(idx)
+        return df.compute().unstack().interpolate(method=method).fillna(0).stack().reindex(idx).fillna(0, inplace=True)
+
+def shift_cmesh(x, shift=0.5):
+    return shift * (x + np.roll(x, -1))
 
 def interpolate(independent, signals, command=None, **kwargs):
     """
+    ### Description:
         Creates the bins required for each independent axes to be histogrammed into for interpolation,
         then uses dask dataframe groupby commands to perform a linear interpolation.
-        Optional Keywords:
-                   start (type: list or number) -- starting position of the new array
-                   stop  (type: list or number) -- ending position of the new array
-                   bins (type: list of numbers or arrays) --  this can be an array of bin values for each axes,
-                                                              or can be the number of bins desired.
-                   resolution (type: list or number) -- used instead of bins to define the bin to bin distance.
+
+    ### Args:
+        >**independent** *(dict)* -- Dictionary of independent axes from SGMScan.entry
+        >**signals** *(dict)* -- Dictionary of signals from SGMScan.entry
+
+    ### Keywords:
+        >**start** *(list or number)* -- starting position of the new array
+        >**stop**  *(list or number)* -- ending position of the new array
+        >**bins** *(list of numbers or arrays)* --  this can be an array of bin values for each axes,
+                                                  or can be the number of bins desired.
+        >**resolution** *(list or number)* -- used instead of bins to define the bin to bin distance.
+        >**sig_digits** *(int)* -- used to overide the default uncertainty of the interpolation axis of 2 (e.g. 0.01)
     """
     compute = kwargs.get('compute', True)
     method = kwargs.get('method', 'nearest')
     npartitions = kwargs.get('npartitions', 3)
+    accuracy = kwargs.get('sig_digits', 2)
     axis = independent
     dim = len(axis.keys())
     if 'start' not in kwargs.keys():
@@ -76,7 +88,9 @@ def interpolate(independent, signals, command=None, **kwargs):
             if 'scan' in command[0]:
                 start = [round(float(command[2]))]
             elif 'mesh' in command[0]:
-                start = [float(command[2]), float(command[6])]
+                xstart = min((float(command[2]), float(command[3])))
+                ystart = min((float(command[6]), float(command[7])))
+                start = [xstart, ystart]
         else:
             start = [round(v.min()) for k, v in axis.items()]
     else:
@@ -86,7 +100,9 @@ def interpolate(independent, signals, command=None, **kwargs):
             if 'scan' in command[0]:
                 stop = [round(float(command[3]))]
             elif 'mesh' in command[0]:
-                stop = [float(command[3]), float(command[7])]
+                xstop = max((float(command[2]), float(command[3])))
+                ystop = max((float(command[6]), float(command[7])))
+                stop = [xstop, ystop]
         else:
             stop = [round(v.max()) + 1 for k, v in axis.items()]
     else:
@@ -107,10 +123,10 @@ def interpolate(independent, signals, command=None, **kwargs):
         resolution = kwargs['resolution']
         if not isinstance(kwargs['resolution'], list):
             resolution = [resolution for i, _ in enumerate(axis.keys())]
-        max_res = [dask_max(v)  for k, v in axis.items() ]
+        max_res = [dask_max(v, sig_digits=accuracy) for k, v in axis.items()]
         bin_num = [int(abs(stop[i] - start[i]) / resolution[i]) for i, _ in enumerate(axis.keys())]
         for i, l in enumerate(max_res):
-            if l < bin_num[i]:
+            if l < bin_num[i] and l > 0:
                 warnings.warn(
                     "Resolution setting can't be higher than experimental resolution, setting resolution for axis %s to %f" % (
                         i, abs(stop[i] - start[i]) / l), UserWarning)
@@ -144,7 +160,11 @@ def interpolate(independent, signals, command=None, **kwargs):
     else:
         raise ValueError("Too many independent axis for interpolation")
     if compute:
-        df = compute_df(df, idx, method=method)
+        try:
+            df = compute_df(df, idx, method=method)
+        except Exception as e:
+            print("Trouble computing dataframe, error msg: %s" % e)
+            return None, None
     return df, idx
 
 
