@@ -1,4 +1,4 @@
-# entirely from issue 33. File doesn't exist in other branches
+
 class DisplayDict(dict):
 
     def __init__(self, *args, **kwargs):
@@ -26,6 +26,18 @@ class DisplayDict(dict):
             table.append(f"<tr><th> {key}</th><th>{value}</th></tr>")
         table.append("</tbody></table>")
         return "\n".join(table)
+
+    def _repr_console_(self):
+        """
+        Takes own data and organizes it into a console-friendly table.
+        """
+        needed_info = ['entry', 'sample', 'command', 'independent', 'signals', 'other']
+        final_data = ''
+        for key, value in self.items():
+            if key in needed_info:
+                final_data = final_data + str(key) + ":\t"
+                final_data = final_data + str(value) + "\t\t|\t\t"
+        return final_data
 
     def update(self, *args, **kwargs):
         for k, v in dict(*args, **kwargs).items():

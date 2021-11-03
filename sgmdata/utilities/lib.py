@@ -14,5 +14,3 @@ scan_lib.update({'EEMs': "run_eems 1 544", 'C': "gscan 270 320 col 320", 'N': "g
                  'Ni': "gscan 840 890 col 852.5", 'Cu': "gscan 920 970 col 934", 'Zn': "gscan 1000 1080 col 1060",
                  'Ge': "", 'Se': "gscan 1420 1500 col 1500", 'Br': "gscan 1500 1650 col 1565"
                  })
-
-

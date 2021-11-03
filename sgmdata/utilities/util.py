@@ -4,10 +4,10 @@ import numpy as np
 from bokeh.io import show
 from bokeh.plotting import figure
 
-# Below is new to issue 33, not in any otheer version.
 import pandas as pd
 import os
 import warnings
+
 try:
     shell = get_ipython().__class__.__name__
     if shell == 'ZMQInteractiveShell':
@@ -16,6 +16,7 @@ try:
         from tqdm import tqdm  # Other type (?)
 except NameError:
     from tqdm import tqdm
+
 try:
     from IPython.display import display, HTML, clear_output
 except ImportError:
@@ -104,22 +105,22 @@ def get_moving_slope(dep, indep, window_size=4):
 
 def test_abrupt_change(detector, sigma=10.0, tolerance=1000.0): 
     """ 
-    Description:
+    ### Description:
     -----
     A function to detect the percentage of abrupt change in a single detector data
     
-    Args:
+    ### Args:
     -----
-        detector (tuple): A python tuple in the form (detector_name, data). The detector_name is a
+        >**detector** *(tuple)*: A python tuple in the form (detector_name, data). The detector_name is a
                           string, while data is a numpy array of the data to detect abrupt change
-        sigma (float): A float value for standard deviation. This number define how different a specific 
+        >**sigma** *(float)*: A float value for standard deviation. This number define how different a specific
                        count should be from the standard deviation to be considered abrupt change 
-        tolerance (float): A float value specifying the absolute tolerance parameter for detecting if
+        >**tolerance** *(float)*: A float value specifying the absolute tolerance parameter for detecting if
                            two numbers should be considered close to each other
         
-    Returns:
+    ### Returns:
     -----
-        String: Percentage of the data that is normal count and the percentage the fuction think might be abrupt change
+        >**str**: Percentage of the data that is normal count and the percentage the fuction think might be abrupt change
     """
     
     # Get the detector name and the actual data
@@ -165,24 +166,24 @@ def test_abrupt_change(detector, sigma=10.0, tolerance=1000.0):
     
 def test_detector_count_rates(detector, scalar_range=(5000, 500000), sdds_range=(1000, 30000)): 
     """ 
-    Description:
+    ### Description:
     -----
     A function to detect if count rates of a specific detector are within a defined range
     
-    Args:
+    ### Args:
     -----
-        detector (tuple): A python tuple in the form (detector_name, data). The detector_name is a
+        >**detector** *(tuple)*: A python tuple in the form (detector_name, data). The detector_name is a
                           string, while data is a numpy array of the data to detect the count rates 
-        tey_range (tuple): A python tuple defining the normal count range for the tey detector 
+        >**tey_range** *(tuple)*: A python tuple defining the normal count range for the tey detector
                            in the form (min_normal_count, max_normal_count)
-        io_range (tuple): A python tuple defining the normal count range for the io detector 
+        >**io_range** *(tuple)* -- A python tuple defining the normal count range for the io detector
                           in the form (min_normal_count, max_normal_count)
-        sdds_range (tuple): A python tuple defining the normal count range for the sdd[1-4] 
+        >**sdds_range** *(tuple)* --  A python tuple defining the normal count range for the sdd[1-4]
                             detectors in the form (min_normal_count, max_normal_count)
                            
-    Returns:
+    ### Returns:
     -----
-        String: Percentage of the data that is within normal count range and the percentage 
+        >**str** -- Percentage of the data that is within normal count range and the percentage
                 that is outside the defined normal count range
     """
 
@@ -224,20 +225,20 @@ def test_detector_count_rates(detector, scalar_range=(5000, 500000), sdds_range=
 
 def test_beam_dump(detector, indep):
     """ 
-    Description:
+    ### Description:
     -----
     A function to detect the percentage of beam dump in a single detector data
     
-    Args:
+    ### Args:
     -----
-        detector (tuple): A python tuple in the form (detector_name, data). 
+        >**detector** *(tuple)* -- A python tuple in the form (detector_name, data).
                           The detector_name is a string, while data is a numpy 
                           array of the data to detect beam dump
-        indep (numpy.ndarray): A numpy array of the independent variable data
+        >**indep** *(numpy.ndarray)* -- A numpy array of the independent variable data
         
-    Returns:
+    ### Returns:
     -----
-        String: Percentage of the data that is normal count and the percentage 
+        >*str* -- Percentage of the data that is normal count and the percentage
                 the fuction think is a beam dump
     """
     
@@ -352,15 +353,15 @@ def test_beam_dump(detector, indep):
 
 def scan_health(df, verbose=False, sdd_max=105000):
     """
-    Description:
+    ### Description:
     -----
     Function takes in a interpolated scan (a pandas DataFrame), and returns the overall health.
 
-    Args:
+    ### Args:
     -----
-        df :  pandas dataframe from SGMScan.binned.
-        verbose: Explain the returned output in plain text.
-        sdd_max (int): 105000 (default) - saturation value for total SDD counts/s
+        >**df** *(DataFrame)* --  pandas dataframe from SGMScan.binned.
+        >**verbose** *(bool)* -- Explain the returned output in plain text.
+        >**sdd_max** *(int)* -- 105000 (default) - saturation value for total SDD counts/s
 
 
     returns (tuple):  (Discontiunty %,  Beam-dump %,  Saturation %)
@@ -439,8 +440,6 @@ def plot1d(xarr,yarr, title="Plot", labels=[]):
     fig.legend.location = "top_left"
     fig.legend.click_policy="hide"
     show(fig)
-
-# All following code is new to issue 33.
 
 def badscans(interp, **kwargs):
     """
