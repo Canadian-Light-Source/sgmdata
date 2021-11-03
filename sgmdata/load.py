@@ -263,7 +263,7 @@ class SGMScan(DisplayDict):
                     if 'image' in keys:
                         data.update({"image": data['sdd1']})
                     kwargs.update(data)
-                    xrfmap.plot(**kwargs)
+                    return xrfmap.plot(**kwargs)
                 elif 'binned' in self.keys():
                     print("Plotting Interpolated Data")
                     df = self['binned']['dataframe']
@@ -274,7 +274,7 @@ class SGMScan(DisplayDict):
                     data.update({n: df.index.levels[i] for i, n in enumerate(list(df.index.names))})
                     data.update({'emission': np.linspace(0, 2560, 256)})
                     kwargs.update(data)
-                    xrfmap.plot_interp(**kwargs)
+                    return xrfmap.plot_interp(**kwargs)
                 else:
                     print("Plotting Raw Data")
                     ds = int(self.independent['xp'].shape[0] / 10000) + 1
@@ -285,7 +285,8 @@ class SGMScan(DisplayDict):
                          k in s})
                     data.update({k: self.other[s].compute() for s in self.other.keys() for k in keys if s in k})
                     kwargs.update(data)
-                    xrfmap.plot_xyz(**kwargs)
+                    return xrfmap.plot_xyz(**kwargs)
+                  
 
         def __repr__(self):
             represent = ""
@@ -302,6 +303,7 @@ class SGMScan(DisplayDict):
                 else:
                     represent += f"{val} \n\t"
             return represent
+
 
         def _repr_html_(self):
             entry = [
@@ -323,6 +325,7 @@ class SGMScan(DisplayDict):
             ]
             return " ".join(entry)
 
+
         def _repr_console_(self):
             final_data = 'sample:\t' + str(self.sample) + '\t\t|\t\t'
             final_data = final_data + 'command:\t' + str(self.command) + '\t\t|\t\t'
@@ -330,6 +333,7 @@ class SGMScan(DisplayDict):
             final_data = final_data + 'signals:\t' + str(self.signals.keys()) + '\t\t|\t\t'
             final_data = final_data + 'other:\t' + str(self.other.keys()) + '\t\t|\t\t'
             return final_data
+
 
     def __init__(self, *args, **kwargs):
         super(SGMScan, self).__init__(*args, **kwargs)
@@ -555,7 +559,7 @@ class SGMData(object):
                 data.update({df.index.name: np.array(df.index), 'emission': np.linspace(0, 2560, 256)})
                 data.update({'image': data['sdd1']})
                 kwargs.update(data)
-                return eemscan.plot(**data)
+                return eemscan.plot(**kwargs)
             elif scantype == 'XRF':
                 keys = xrfmap.required
                 df = self.data

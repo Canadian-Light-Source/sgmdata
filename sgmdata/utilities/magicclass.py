@@ -27,6 +27,7 @@ class DisplayDict(dict):
         table.append("</tbody></table>")
         return "\n".join(table)
 
+
     def _repr_console_(self):
         """
         Takes own data and organizes it into a console-friendly table.

@@ -4,7 +4,8 @@ import getpass
 from bs4 import BeautifulSoup
 import re
 from .load import SGMData
-from .search import preprocess, SGMQuery
+from .search import SGMQuery
+from .utilities import preprocess
 import os
 import matplotlib.pyplot as plt
 import numpy as np
@@ -17,6 +18,25 @@ from dask.distributed import Client
 
 
 class ReportBuilder(object):
+    """
+    ### Description
+    -----
+        LaTeX document builder for SGMData mail-in program.  Requires connection to CLS internal confluence site, and
+        assembles documents from the experimental logs saved therein.
+
+    ### Args
+    -----
+        > **proposal** *(str)* -- Project proprosal number (in the title of the confluence page)
+        > **principal** *(str)* -- The last name of the PI for the project, included in the title of the confluence page.
+        > **cycle** *(int)* -- The cycle for which the report data was collected.
+        > **session** *(int)* -- The experiment number from SGMLive
+        > **shifts** *(int)* -- The number of shifts used to collected this data (information can be found in SGMLive
+                                usage data)
+
+    ### Functions
+        > **create_sample_report(plots=True, key=None, process=True)** -- If initialization has gone smoothly, you can
+                                                                        create the sample report.
+    """
 
     def __init__(self, proposal, principal, cycle, session, shifts, **kwargs):
         self.__dict__.update(kwargs)
@@ -45,11 +65,10 @@ class ReportBuilder(object):
         else:
             self.username = input("Enter username:")
 
-        if "client" not in kwargs.keys():
-            self.client = Client()
         self.exp_info = {}
         self.sample_lists = {}
         self.holders = {}
+        self.holder_command = {}
         self.holder_time_init = {}
         self.holder_notes = {}
         self.holder_edges = {}
@@ -127,21 +146,29 @@ class ReportBuilder(object):
                 samples.append(sample)
                 edges.append(items[columns['edges']])
                 notes.append(items[columns['notes']])
-                positions.append(repr(items[columns['holder']]))
+                positions.append(re.sub(r'<(.*?>)', "", repr(items[columns['holder']])))
             else:
                 annotations.append((i, items[0]))
         for note in annotations:
             annotes = []
+            holder_found = False
             for p in note[1].find_all('p'):
                 if 'note' in repr(p.string).lower():
                     annotes.append(repr(p.string).replace('\\xa0', ' '))
-            for h in note[1].find_all('h3'):
-                if 'holder' in repr(h.string).lower():
-                    holder.append((note[0], h.string.strip(), annotes))
+            for h in note[1].find_all(re.compile('^h[1-6]$')):
+                string = re.sub(r'<(.*?>)', "", repr(h))
+                if 'holder' in string.lower():
+                    holder.append((note[0], string, annotes))
+                    holder_found = True
+            if not holder_found:
+                for h in note[1].find_all('b'):
+                    string = re.sub(r'<(.*?>)', "", repr(h))
+                    if 'holder' in string.lower():
+                        holder.append((note[0], string, annotes))
         holders = list()
         for i, p in enumerate(positions):
             try:
-                alpha = re.findall(r'^<td.*>.*([A-Za-z])-[0-9]+.*</td>', p)[0]
+                alpha = re.findall(r'^([A-Za-z])-[0-9]+.*', p)[0]
             except:
                 print("No position in", p)
                 del edges[i]
@@ -152,12 +179,13 @@ class ReportBuilder(object):
             find = [(h[1], h[2]) for h in holder if alpha in re.findall(r'^\bHolder\s([A-Za-z])\s*-', h[1])]
             if find:
                 holders.append(find[0][0])
+            else:
+                print(f"Couldn't locate {alpha} in {find}")
         positions = [p for j, p in enumerate(positions) if j in index]
         edges = [re.sub(r'<(.*?>)', "", str(e)) for e in edges]
         notes = [re.sub(r'<(.*?>)', "", str(n)) for n in notes]
         edges = [tuple([j.strip() for j in e.split('\xa0')[0].strip().replace(';', ',').split(',')]) for e in edges]
         edges = [tuple([t for t in e if t]) for e in edges]
-        boilerplate = []
         self.exp_info.update({
             "bp": header,
             "samples": samples,
@@ -189,9 +217,11 @@ class ReportBuilder(object):
                      data.items()})
         data.update({n: df.index.levels[i] for i, n in enumerate(list(df.index.names))})
         levels = [max(df.index.levels[0]), min(df.index.levels[0]), max(df.index.levels[1]), min(df.index.levels[1])]
-        avg = np.mean([data['sdd1'], data['sdd2'], data['sdd3'], data['sdd4']], axis=0)
-        avg = np.sum(avg[:, :, 45:55], axis=2)
-        data.update({"extent": levels, "image": np.flip(avg.T, axis=1)})
+        sdds = [v for k, v in data.items() if 'sdd' in k and len(v.shape) == 3 and v.shape[-1] > 0]
+        if sdds:
+            avg = np.mean(sdds, axis=0)
+            avg = np.sum(avg[:, :, 45:55], axis=2)
+            data.update({"extent": levels, "image": np.flip(avg.T, axis=1)})
         return data
 
     def get_sample_positions(self, paths, entries):
@@ -249,15 +279,13 @@ class ReportBuilder(object):
 \\newcommand{\\beamtime}{%d }
 \\newcommand{\\projectsummary}{
 \\normalsize Project \\reporttitle, initiated by %s
-
 \\begin{center}
     \\begin{tabular}{cc}
         \\textbf{Total Samples:}  &  \\numsamples\\\\
         \\textbf{Total Measurements:}  &  \\numscans \\\\
         \\textbf{Shifts:} & \\beamtime  \\\\
     \\end{tabular}
-\\end{center} \\\\
-
+\\end{center} \\
 In total, there were %d holders measured,  each section that follows represents one of these holders,
 all subsections correspond to the samples on these holders.  Representations and links to the data corresponding
 to those samples will be contained therein. 
@@ -372,12 +400,19 @@ to those samples will be contained therein.
         string = string.replace("}", "\\}")
         return string
 
-    def make_holder_table(self):
+    def make_holder_table(self, key=None):
         """
             LaTeX creation of table for samples on holder
         """
+        if key:
+            if isinstance(key, str):
+                holders = {key: self.holders[key]}
+            elif isinstance(key, list):
+                holders = {k: v for k, v in self.holders.items() if any(l in k for l in key)}
+        else:
+            holders = self.holders
         tex = ""
-        holders = sorted([h for h in self.holders.keys()])
+        holders = sorted([h for h in holders.keys()])
         for h in holders:
             table = "\\\\\n\t".join(
                 ["%s & %s & %s & \\ref{ssec:%s_%d}" % (self.texcrub(self.holders[h][j]), ",".join(s),
@@ -424,7 +459,9 @@ to the relevant subsection of the report.}
 
     def make_eem_png(self, holder, title, eems):
         """
-            Creates EEMs and XRF projection plots from fluorescence data in eems (dict)
+            ### Description:
+            -----
+                Creates EEMs and XRF projection plots from fluorescence data in eems (dict)
         """
         fig = plt.figure(constrained_layout=True, figsize=(8, 5))
         gs = fig.add_gridspec(2, 3, width_ratios=[2, 2, 1])
@@ -520,8 +557,11 @@ to the relevant subsection of the report.}
         return "/".join(path.split('/')[-2:])[:-4]
 
     def make_scan_figures(self, eems, processed, plots=True, key=None):
-        """ Function to open EEMs and Averaged files and if they exist,
-        call plotting routines.  Populates self.eems_log (dict), with structure:
+        """
+        ### Description:
+        -----
+            Function to open EEMs and Averaged files and if they exist,
+            call plotting routines.  Populates self.eems_log (dict), with structure:
                 eems_log = {'Holder A - uuid' :
                                 {"SampleName": {
                                                 "image" : './path/to/plot/eems'
@@ -529,7 +569,7 @@ to the relevant subsection of the report.}
                                                 }
                                 ...}
                             ...}
-        and populates self.scans_log (dict):
+            and populates self.scans_log (dict):
                 scans_log = {'Holder A - uuid' :
                                 {"SampleName": {
                                                 "image" : './path/to/plot/scan'
@@ -537,6 +577,9 @@ to the relevant subsection of the report.}
                                                 }
                                 ...}
                             ...}
+        ### Returns:
+        -----
+            > **None**
         """
         sgmdata_avg_url = "https://sgmdata.lightsource.ca/users/xasexperiment/useravg/"
         sgmdata_scan_url = "https://sgmdata.lightsource.ca/users/xasexperiment/userscan/"
@@ -603,7 +646,7 @@ to the relevant subsection of the report.}
             for sample, v in processed[k].items():
                 try:
                     d = v.avg_domain[0]
-                except AttributeError:
+                except AttributeError or TypeError:
                     continue
                 avg_path = "/home/jovyan/data/" + d.split('.')[1] + "/" + d.split('.')[0] + '.nxs'
                 if not plots:
@@ -616,10 +659,10 @@ to the relevant subsection of the report.}
                     continue
                 if os.path.exists(avg_path):
                     fpath = avg_path
-                elif os.path.exists(avg_path.replace('/home/jovyan/', '.')):
-                    fpath = avg_path.replace('/home/jovyan/', '.')
+                elif os.path.exists(avg_path.replace('/home/jovyan/', './')):
+                    fpath = avg_path.replace('/home/jovyan/', './')
                 else:
-                    fpath = avg_path.replace('/home/jovyan/', '.')
+                    fpath = avg_path.replace('/home/jovyan/', './')
                     raise OSError(1, "No such file for sample average %s" % fpath)
 
                 with h5py.File(fpath, 'r') as h5:
@@ -701,10 +744,21 @@ to the relevant subsection of the report.}
 
     def get_or_process_data(self, process=False, key=None, **kwargs):
         """
+            ### Description:
+            -----
             User SGMQuery to find if EEMs and averaged (processed) files exist in SGMLive database.
-            Optional Keyword:
-                    process (type: bool) - Default=False. If True, and attempt is made to preprocess scans for which no
-                                            averaged file currently exists.
+
+            ### Keyword:
+            -----
+                >**process** *(bool: False)* -- If True, and attempt is made to preprocess scans for which no
+                                                averaged file currently exists.
+                >**key** *(str: None)* -- Holder name to make report for 1 holder.
+                >**kwargs** *(dict)* -- kwargs for preprocess command.
+
+            ### Returns:
+            -----
+                >**holder_eems, holder_processed** -- tuple of dictionaries containing EEMs and averaged data for a
+                                                    holder.
         """
         holder_processed = dict()
         process_count = 0
@@ -741,6 +795,7 @@ to the relevant subsection of the report.}
                                       resolution=resolution,
                                       client=self.client,
                                       query=True,
+                                      daterange=(init, datetime.datetime.utcnow()),
                                       **kwargs
                                       )
                     try:
@@ -778,7 +833,23 @@ to the relevant subsection of the report.}
 
     def create_sample_report(self, key=None, plots=True, process=False, **kwargs):
         """
+            ### Description:
+            _____
             Core logic to create LaTeX report from confluence experimental log.
+
+            ### Keywords:
+            -----
+                >**key** *(str: None)* -- This is the holder name, if you want to create the report for a single holder.
+
+                >**plots** *(bool: True)* -- Toggle creating the figures for the report.
+
+                >**process** *(bool: False)* -- Run preprocess on scans that have not already been averaged while building
+                                                the report. If no averaged data exists, the sample will be skipped.
+
+                >**kwargs**  *(dict)  --  Any keyword arguments that need to be passed to preprocess.
+
+            ### Returns:
+                >**None**
         """
         self.setup_tex()
         if key:
@@ -792,7 +863,9 @@ to the relevant subsection of the report.}
         for k, v in holders.items():
             print("Creating report for %s" % k)
             sgmq = SGMQuery(sample=k, user=self.account, data=False)
-            paths = [sgmq.paths[0]]
+            paths = [sorted(sgmq.paths,
+                            key=lambda x: datetime.datetime.strptime(x.split('/')[-1].split('.')[0], "%Y-%m-%dt%H-%M-%S%z")
+                            )[-1]]
             init = datetime.datetime.strptime(paths[0].split('/')[-1].split('.')[0], "%Y-%m-%dt%H-%M-%S%z")
             self.holder_time_init.update({k: init})
             paths2 = list()
@@ -816,27 +889,28 @@ to the relevant subsection of the report.}
                         sample_list.append(q[0][2])
             paths += paths2
             if plots:
-                data = SGMData(paths)
+                holder_data = SGMData(paths)
                 try:
-                    entries = [k2 for k1, scan in data.scans.items()
+                    entries = [k2 for k1, scan in holder_data.scans.items()
                                for k2, entry in scan.__dict__.items() if entry['sample'] != k]
                     positions = self.get_sample_positions(paths2, entries)
                 except Exception as e:
                     print("Couldn't get sample positions: %s" % e)
                     positions = []
-
-                image = [entry for k1, scan in data.scans.items() for k2, entry in scan.__dict__.items() if
-                         entry['sample'] == k][0]
+                image = [entry for k1, scan in holder_data.scans.items() for k2, entry in scan.__dict__.items() if
+                         entry['sample'] in k][0]
                 command = image['command']
+                self.holder_command.update({k: command})
                 xrange = (float(command[2]), float(command[3]))
                 yrange = (float(command[6]), float(command[7]))
-                dx = abs(xrange[0] - xrange[1])/(int(command[4])* 20)
-                dy = abs(yrange[0] - yrange[1])/50
-                df = image.interpolate(resolution=[dx, dy], start=[min(xrange),min(yrange)], stop=[max(xrange), max(yrange)])
-                img_data = self.make_data(df)
+                dx = abs(xrange[0] - xrange[1])/(int(command[4]) * 15)
+                dy = abs(yrange[0] - yrange[1])/(int(command[-1]))
+                self.df = image.interpolate(resolution=[dx, dy])
+                img_data = self.make_data(self.df.fillna(0))
                 self.make_plot(img_data, positions, k, iter(sample_list))
-                del img_data, data, image, df
+                del img_data, holder_data, image
             self.sample_lists.update({k: sample_list})
-        self.make_scan_figures(*self.get_or_process_data(process=process, key=key, **kwargs), plots=plots)
-        self.make_holder_table()
+        self.make_scan_figures(*self.get_or_process_data(process=process, key=key, **kwargs), plots=plots, key=key)
+        self.make_holder_table(key=key)
+
 
