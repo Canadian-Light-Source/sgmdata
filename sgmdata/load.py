@@ -130,7 +130,7 @@ class SGMScan(DisplayDict):
                 except Exception as f:
                     warnings.warn(f"Could not open file, h5py raised: {f}")
                     return
-            elif os.path.exist('./data/'):
+            elif os.path.exists('./data/'):
                 try:
                     h5 = h5py.File(filename.replace('/home/jovyan/', './'), 'r')
                 except Exception as f:
@@ -469,7 +469,7 @@ class SGMData(object):
                 except Exception as f:
                     warnings.warn(f"Could not open file, h5py raised: {f}")
                     return
-            elif os.path.exist('./data/'):
+            elif os.path.exists('./data/'):
                 try:
                     h5 = h5py.File(filename.replace('/home/jovyan/','./'), 'r')
                 except Exception as f:
