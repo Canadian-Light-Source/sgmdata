@@ -586,8 +586,9 @@ class SGMData(object):
         #Not sure if this is important/works, but trying to make sure that dask workers have the right path for non-admin users.
         if not any([os.path.exists(f) for f in files]) and not os.path.exists(f'/home/jovyan/data/{self.user}/'):
             files = [file.replace(f'/home/jovyan/data/{self.user}/', '/home/jovyan/data/') for file in files]
-        if not any([os.path.exists(f) for f in files]) and os.path.exists(f'./data/{self.user}'):
+        if not any([os.path.exists(f) for f in files]) and os.path.exists(f'./data/'):
             files = [file.replace(f'/home/jovyan/', './') for file in files]
+            print(f'Looking for {files} instead')
         # Following line modified so that self.scans will have the same contents regardless of OS.
         self.scans = {(os.path.normpath(k)).split('\\')[-1].split(".")[0]: [] for k in files}
         self.interp_params = {}
