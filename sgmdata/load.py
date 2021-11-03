@@ -497,7 +497,7 @@ class SGMData(object):
                        for i, _ in enumerate(NXdata)]
             processed_axes = [[ax.replace('_processed', '') for ax in x] for x in axes]
             df_scas = [pd.DataFrame.from_dict(
-                {k.replace('_processed', ''): v for k,v, in data[i].items() if len(v.shape) < 2}).join(df_sdds[i]).groupby(processed_axes).mean()
+                {k.replace('_processed', ''): v for k,v, in data[i].items() if len(v.shape) < 2}).join(df_sdds[i]).groupby(processed_axes[i]).mean()
                        for i, _ in enumerate(NXdata)]
             if len(df_scas) == 1:
                 self.data = df_scas[0]
