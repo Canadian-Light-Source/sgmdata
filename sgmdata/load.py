@@ -543,8 +543,10 @@ class SGMData(object):
         self.shift = kwargs.get('shift', 0.5)
         files = [os.path.abspath(file) for file in files]
         #Not sure if this is important/works, but trying to make sure that dask workers have the right path for non-admin users.
-        if not any([os.path.exists(f) for f in files]) and os.path.exists(f'/home/jovyan/{self.user}/'):
-            files = [file.replace('/home/jovyan/', f'/home/jovyan/{self.user}/') for file in files]
+        if not any([os.path.exists(f) for f in files]) and os.path.exists(f'/home/jovyan/data/'):
+            files = [file.replace(f'/home/jovyan/data/{self.user}', f'/home/jovyan/data/') for file in files]
+        if not any([os.path.exists(f) for f in files]) and os.path.exists(f'./data/{self.user}/'):
+            files = [file.replace('/home/jovyan/data/', f'./data/') for file in files]
         self.scans = {k.split('/')[-1].split(".")[0]: [] for k in files}
         self.interp_params = {}
         with ThreadPool(self.threads) as pool:
