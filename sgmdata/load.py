@@ -129,12 +129,20 @@ class SGMScan(DisplayDict):
                     h5 = h5py.File(filename, 'r')
                 except Exception as f:
                     warnings.warn(f"Could not open file, h5py raised: {f}")
+                    return
+            elif os.path.exist('./data/'):
+                try:
+                    h5 = h5py.File(filename.replace('/home/jovyan/', './'), 'r')
+                except Exception as f:
+                    warnings.warn(f"Could not open file, h5py raised: {f}")
+                    return
             else:
                 try:
                     h5 = h5pyd.File(filename, "r", config.get("h5endpoint"), username=config.get("h5user"),
                                     password=config.get("h5pass"))
                 except Exception as f:
                     warnings.warn(f"Could not open file, h5pyd raised: {f}")
+                    return
             NXentries = [str(x) for x in h5['/'].keys()
                          if 'NXentry' in str(h5[x].attrs.get('NX_class')) and str(x) in self['name']]
             NXdata = [entry + "/" + str(x) for entry in NXentries for x in h5['/' + entry].keys()
@@ -460,12 +468,20 @@ class SGMData(object):
                     h5 = h5py.File(filename, 'r')
                 except Exception as f:
                     warnings.warn(f"Could not open file, h5py raised: {f}")
+                    return
+            elif os.path.exist('./data/'):
+                try:
+                    h5 = h5py.File(filename.replace('/home/jovyan/','./'), 'r')
+                except Exception as f:
+                    warnings.warn(f"Could not open file, h5py raised: {f}")
+                    return
             else:
                 try:
                     h5 = h5pyd.File(filename, "r", config.get("h5endpoint"), username=config.get("h5user"),
                                     password=config.get("h5pass"))
                 except Exception as f:
                     warnings.warn(f"Could not open file, h5pyd raised: {f}")
+                    return
             NXentries = [str(x) for x in h5['/'].keys()
                          if 'NXentry' in str(h5[x].attrs.get('NX_class'))]
             NXdata = [entry + "/" + str(x) for entry in NXentries for x in h5['/' + entry].keys()
@@ -588,7 +604,6 @@ class SGMData(object):
             files = [file.replace(f'/home/jovyan/data/{self.user}/', '/home/jovyan/data/') for file in files]
         if not any([os.path.exists(f) for f in files]) and os.path.exists(f'./data/'):
             files = [file.replace(f'/home/jovyan/', './') for file in files]
-            print(f'Looking for {files} instead')
         # Following line modified so that self.scans will have the same contents regardless of OS.
         self.scans = {(os.path.normpath(k)).split('\\')[-1].split(".")[0]: [] for k in files}
         self.interp_params = {}
