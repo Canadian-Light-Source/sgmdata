@@ -325,6 +325,17 @@ class SGMScan(DisplayDict):
             ]
             return " ".join(entry)
 
+        def _repr_console_(self):
+            """
+            Takes own data and organizes it into a console-friendly table.
+            """
+            final_data = 'sample:\t' + str(self.sample) + '\t\t|\t\t'
+            final_data = final_data + 'command:\t' + str(self.command) + '\t\t|\t\t'
+            final_data = final_data + 'independent:\t' + str(self.independent.keys()) + '\t\t|\t\t'
+            final_data = final_data + 'signals:\t' + str(self.signals.keys()) + '\t\t|\t\t'
+            final_data = final_data + 'other:\t' + str(self.other.keys()) + '\t\t|\t\t'
+            return final_data
+
     def __init__(self, *args, **kwargs):
         super(SGMScan, self).__init__(*args, **kwargs)
         self.__dict__.update(kwargs)
@@ -411,6 +422,8 @@ class SGMScan(DisplayDict):
 
     def __getitem__(self, item):
         return self.__dict__[item]
+
+
 
 
 class SGMData(object):
@@ -617,6 +630,8 @@ class SGMData(object):
                 del self.scans[e]
         self.scans.update({k: SGMScan(**v) for d in L for k, v in d.items()})
         self.entries = self.scans.items
+
+
 
     def _find_data(self, node, indep=None, other=False):
         data = {}
