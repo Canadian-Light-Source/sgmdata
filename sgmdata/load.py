@@ -605,7 +605,7 @@ class SGMData(object):
         if not any([os.path.exists(f) for f in files]) and os.path.exists(f'./data/'):
             files = [file.replace(f'/home/jovyan/', './') for file in files]
         # Following line modified so that self.scans will have the same contents regardless of OS.
-        self.scans = {(os.path.normpath(k)).split('\\')[-1].split(".")[0]: [] for k in files}
+        self.scans = {(os.path.normpath(k)).split('\\')[-1].split('/')[-1].split(".")[0]: {} for k in files}
         self.interp_params = {}
         with ThreadPool(self.threads) as pool:
             L = list(tqdm(pool.imap_unordered(self._load_data, files), total=len(files), leave=False))
@@ -646,7 +646,7 @@ class SGMData(object):
         """
         entries = {}
         # Try to open the file locally or from a url provided.
-        file_root = file.split("\\")[-1].split("/")[-1].split(".")[0]
+        file_root = (os.path.normpath(file)).split('\\')[-1].split('/')[-1].split(".")[0]
         if os.path.exists(file):
             try:
                 h5 = h5py.File(file, 'r')
