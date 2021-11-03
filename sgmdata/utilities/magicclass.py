@@ -31,12 +31,10 @@ class DisplayDict(dict):
         """
         Takes own data and organizes it into a console-friendly table.
         """
-        needed_info = ['entry', 'sample', 'command', 'independent', 'signals', 'other']
         final_data = ''
         for key, value in self.items():
-            if key in needed_info:
-                final_data = final_data + str(key) + ":\t"
-                final_data = final_data + str(value) + "\t\t|\t\t"
+            final_data = final_data + str(key) + ":\t"
+            final_data = final_data + str(value) + "\t\t|\t\t"
         return final_data
 
     def update(self, *args, **kwargs):
