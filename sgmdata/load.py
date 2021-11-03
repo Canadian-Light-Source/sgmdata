@@ -356,19 +356,45 @@ class SGMScan(DisplayDict):
         """
         Takes own data and organizes it into a console-friendly table.
         """
+        needed_info = ['entry', 'sample', 'command', 'independent', 'signals', 'other']
         if sys_has_tab:
             temp_data = []
-            headers = ['entry']
             final_data = []
             for key in self.__dict__.keys():
                 temp_data.append(key)
                 for title in self.__dict__[key].keys():
-                    if title not in headers:
-                        headers.append(str(title))
-                    temp_data.append(self.__dict__[key][title])
+                    if title in needed_info:
+                        temp_data.append(self.__dict__[key][title])
                 final_data.append(temp_data.copy())
                 temp_data.clear()
-            return tabulate(final_data, headers=headers)
+            return tabulate(final_data, headers=needed_info)
+        else:
+            temp_data = ''
+            final_data = ''
+            for key in self.__dict__.keys():
+                temp_data = temp_data + 'Entry:\t'
+                temp_data = temp_data + str(key)
+                for title in self.__dict__[key].keys():
+                    if title in needed_info:
+                        temp_data = temp_data + '\t\t|\t\t'
+                        temp_data = temp_data + (str(title) + ":\t" + str(self.__dict__[key][title]))
+                final_data = final_data + ('\n' + str(temp_data))
+                temp_data = ''
+            return final_data
+        # Following returns all entry headers and their corresponding info
+        # if sys_has_tab:
+        #     temp_data = []
+        #     headers = ['entry']
+        #     final_data = []
+        #     for key in self.__dict__.keys():
+        #         temp_data.append(key)
+        #         for title in self.__dict__[key].keys():
+        #             if title not in headers:
+        #                 headers.append(str(title))
+        #             temp_data.append(self.__dict__[key][title])
+        #         final_data.append(temp_data.copy())
+        #         temp_data.clear()
+        #     return tabulate(final_data, headers=headers)
         # else:
         #     temp_data = ''
         #     final_data = ''
@@ -385,8 +411,6 @@ class SGMScan(DisplayDict):
 
     def __getitem__(self, item):
         return self.__dict__[item]
-
-
 
 
 class SGMData(object):
@@ -865,7 +889,6 @@ class SGMData(object):
             return tabulate(table, headers=["File", "Entry", "Sample", "Command", "Independent", "Signals", "Other"])
         else:
             final_str = ""
-            temp_str = ""
             for key in self.scans.keys():
                 for subkey in self.scans[key].__dict__:
                     temp_str = ("Entry:\t" + str(subkey))
@@ -876,6 +899,5 @@ class SGMData(object):
                     temp_str = (temp_str + "\t\t\tSignals: " + str(self.scans[key].__dict__[subkey].signals))
                     temp_str = (temp_str + "\t\t\tOther: " + str(self.scans[key].__dict__[subkey].other) + "\n")
                     final_str = str(final_str) + str(temp_str)
-                    temp_str = ""
             return final_str
 

@@ -67,11 +67,11 @@ def check_sample_fitness(list_of_files):
     sgm_data.interpolate()
 
     data = sgm_data
-    keys = data.scans.keys()
+    print(data._repr_console_())
+    # keys = data.scans.keys()
     # print(sgm_data.scans)
-    for item in keys:
-        print(data.scans[item]._repr_html_())
-        # print(data.scans[item]._repr_console_())
+    # for item in keys:
+    #     print(data.scans[item]._repr_console_())
         # data.scans[item]._repr_console_()
 
 
