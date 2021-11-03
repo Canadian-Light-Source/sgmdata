@@ -65,11 +65,16 @@ def check_sample_fitness(list_of_files):
     sgm_data = sgmdata.load.SGMData(list_of_files)
     # print(sgm_data)
     sgm_data.interpolate()
+
     data = sgm_data
-    print(data.scans.keys())
-    # print(data.__dict__.keys())
+    keys = data.scans.keys()
+    # print(sgm_data.scans)
+    for item in keys:
+        print(data.scans[item]._repr_html_())
+        # print(data.scans[item]._repr_console_())
+        # data.scans[item]._repr_console_()
 
 
-x = file_retrieval('C:/Users/roseh/Desktop/Internship/MyCode/h5Files/*Co-nitrate*.hdf5')
+x = file_retrieval('C:/Users/roseh/Desktop/Internship/SignalToNoiseConvergence/h5Files/*Co-nitrate*.hdf5')
 # x = file_retrieval('C:/Users/roseh/Desktop/Internship/MyCode/h5Files/*bee*.hdf5')
 y = check_sample_fitness(x)

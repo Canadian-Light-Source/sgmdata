@@ -7,6 +7,9 @@ import dask.array as da
 import dask.dataframe as dd
 import pandas as pd
 import numpy as np
+###
+from tabulate import tabulate
+###
 from multiprocessing.pool import ThreadPool
 from functools import partial
 from sgmdata.plots import eemscan, xrfmap
@@ -366,18 +369,19 @@ class SGMScan(DisplayDict):
                 final_data.append(temp_data.copy())
                 temp_data.clear()
             return tabulate(final_data, headers=headers)
-        else:
-            temp_data = ''
-            final_data = ''
-            for key in self.__dict__.keys():
-                temp_data = temp_data + 'Entry:\t'
-                temp_data = temp_data + str(key)
-                for title in self.__dict__[key].keys():
-                    temp_data = temp_data + '\t\t|\t\t'
-                    temp_data = temp_data + (str(title) + ":\t" + str(self.__dict__[key][title]))
-                final_data = final_data + ('\n' + str(temp_data))
-                temp_data = ''
-            return final_data
+        # else:
+        #     temp_data = ''
+        #     final_data = ''
+        #     for key in self.__dict__.keys():
+        #         temp_data = temp_data + 'Entry:\t'
+        #         temp_data = temp_data + str(key)
+        #         for title in self.__dict__[key].keys():
+        #             temp_data = temp_data + '\t\t|\t\t'
+        #             temp_data = temp_data + (str(title) + ":\t" + str(self.__dict__[key][title]))
+        #         final_data = final_data + ('\n' + str(temp_data))
+        #         temp_data = ''
+        #     return final_data
+
 
     def __getitem__(self, item):
         return self.__dict__[item]
@@ -632,6 +636,28 @@ class SGMData(object):
                 return {"ERROR": file_root}
         # Find the number of scans within the file
         NXentries = [str(x) for x in h5['/'].keys() if 'NXentry' in str(h5[x].attrs.get('NX_class'))]
+        # # Ordering Dict in a coherent way, eg, making NXentries an OrderedDict() and sorting keys so we don't get
+        # # "entry1, entry10, entry2" when we sort.
+        # ordered = OrderedDict()
+        # shortest = len(NXentries[0])
+        # longest = len(NXentries[0])
+        # for anentry in NXentries:
+        #     if len(anentry) < shortest:
+        #         shortest = len(anentry)
+        #     elif len(anentry) > longest:
+        #                 longest = len(anentry)
+        # temp = []
+        # cur_len = shortest
+        # while cur_len <= longest:
+        #     for entry in NXentries:
+        #         if len(entry) == cur_len:
+        #             temp.append(entry)
+        #             temp.sort()
+        #     for item in temp:
+        #         ordered[item] = []
+        #     temp.clear()
+        #     cur_len += 1
+        # NXentries = ordered
         # Get the commands used to declare the above scans
         independent = []
         if not hasattr(self, 'axes'):
