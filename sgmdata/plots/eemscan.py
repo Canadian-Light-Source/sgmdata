@@ -30,11 +30,18 @@ def plot(**kwargs):
         filename = "xas"
     else:
         filename = kwargs['filename']
+
+    delta = max(kwargs['en']) - min(kwargs['en'])
+    bins = max(kwargs['emission']) - min(kwargs['emission'])
     source = ColumnDataSource(dict(image=[kwargs['image'].T],
                                    sdd1=[kwargs['sdd1'].T],
                                    sdd2=[kwargs['sdd2'].T],
                                    sdd3=[kwargs['sdd3'].T],
-                                   sdd4=[kwargs['sdd4'].T]))
+                                   sdd4=[kwargs['sdd4'].T],
+                                   en=[min(kwargs['en'])],
+                                   emission=[min(kwargs['emission'])],
+                                   delta=[delta],
+                                   bins=[bins]))
 
     xrf_source = ColumnDataSource(data=dict(proj_x=np.sum(source.data['image'][0], axis=1),
                                             emission=kwargs['emission'],
@@ -83,10 +90,7 @@ def plot(**kwargs):
     plot = Figure(plot_width=600, plot_height=600, tools="box_select,save,box_zoom, wheel_zoom,hover,pan,reset")
     color_mapper = LinearColorMapper(palette="Spectral11", low=1, high=np.amax(kwargs['sdd1']))
 
-    delta = max(kwargs['en']) - min(kwargs['en'])
-    bins = max(kwargs['emission']) - min(kwargs['emission'])
-
-    im = plot.image(image='image', y=min(kwargs['emission']), x=min(kwargs['en']), dh=bins, dw=delta, source=source,
+    im = plot.image(image='image', y='emission', x='en', dh='bins', dw='delta', source=source,
                     palette="Spectral11")
     color_bar = ColorBar(color_mapper=color_mapper, label_standoff=12, border_line_color=None, location=(0, 0))
 
@@ -115,9 +119,11 @@ def plot(**kwargs):
     plot.xaxis.axis_label = 'Incident Energy (eV)'
     plot.yaxis.axis_label = 'Emisison Energy (eV)'
 
-    flslider = Slider(start=10, end=2560, value=1280, step=10, title="Line Peak", sizing_mode="fixed", height=30, width=150)
-    wdslider = Slider(start=20, end=500, value=100, step=10, title="Line Width",sizing_mode="fixed", height=30, width=150)
-    checkbox_group = RadioGroup(labels=["dx/dy", "1/y", "None"], active=2, name="Functions", width = 150)
+    flslider = Slider(start=10, end=2560, value=1280, step=10, title="Line Peak", sizing_mode="fixed", height=30,
+                      width=150)
+    wdslider = Slider(start=20, end=500, value=100, step=10, title="Line Width", sizing_mode="fixed", height=30,
+                      width=150)
+    checkbox_group = RadioGroup(labels=["dx/dy", "1/y", "None"], active=2, name="Functions", width=150)
     select = CheckboxButtonGroup(name="Detector Select:", labels=['sdd1', 'sdd2', 'sdd3', 'sdd4'], active=[0],
                                  )
     select_callback = CustomJS(args=dict(s1=source, xrf=xrf_source, xas=xas_source, xy=xy_source, sel=rect_source,
@@ -444,14 +450,13 @@ sel.change.emit();
     wdslider.js_on_change('value', callback_flslider)
     checkbox_group.js_on_change('active', callback_flslider)
 
-    slider = RangeSlider(title="Color Scale:", start=0, end=4*np.amax(kwargs['sdd1']),
+    slider = RangeSlider(title="Color Scale:", start=0, end=4 * np.amax(kwargs['sdd1']),
                          value=(0, np.amax(kwargs['sdd1'])), step=20, height=30)
     slider.js_on_change('value', callback_color_range)
 
     select_palette = Select(title="Colormap Select:", options=['Viridis', 'Spectral', 'Inferno'], value='Spectral',
-                          )
+                            )
     select_palette.js_on_change('value', callback_color_palette)
-
 
     select.js_on_change('active', callback, callback_flslider)
 
@@ -489,8 +494,6 @@ sel.change.emit();
         }""" % filename)
 
     button.js_on_event(events.ButtonClick, download)
-
-
 
     fluo = row(flslider, wdslider)
     functions = row(button, checkbox_group)
