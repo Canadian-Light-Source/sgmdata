@@ -584,7 +584,7 @@ class SGMData(object):
         self.shift = kwargs.get('shift', 0.5)
         files = [os.path.abspath(file) for file in files]
         #Not sure if this is important/works, but trying to make sure that dask workers have the right path for non-admin users.
-        if not any([os.path.exists(f) for f in files]) and not os.path.exists(f'/home/jovyan/data/{self.user}/'):
+        if not any([os.path.exists(f) for f in files]) and not os.path.exists(f'/home/jovyan/data/{self.user}/{files[0]}'):
             files = [file.replace(f'/home/jovyan/data/{self.user}/', '/home/jovyan/data/') for file in files]
         if not any([os.path.exists(f) for f in files]) and os.path.exists(f'./data/'):
             files = [file.replace(f'/home/jovyan/', './') for file in files]
