@@ -518,7 +518,7 @@ class SGMData(object):
                 data.update({df.index.name: np.array(df.index), 'emission': np.linspace(0, 2560, 256)})
                 data.update({'image': data['sdd1']})
                 kwargs.update(data)
-                return eemscan.plot(**data)
+                return eemscan.plot(**kwargs)
             elif scantype == 'XRF':
                 keys = xrfmap.required
                 df = self.data
