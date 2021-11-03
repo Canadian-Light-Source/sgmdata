@@ -2,13 +2,19 @@ import os
 from . import config
 from slugify import slugify
 import hashlib
-import psycopg2
 import h5pyd
 import numpy as np
 from collections import Counter
 from .load import SGMData
 from .utilities.magicclass import OneList
+import warnings
 import datetime
+
+try:
+    import psycopg2
+except ImportError:
+    warnings.warn("Using sgm-data without database support.  SGMQuery will fail.")
+
 
 try:
     shell = get_ipython().__class__.__name__
