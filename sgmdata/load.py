@@ -490,13 +490,13 @@ class SGMData(object):
                      str(nm) in str(s)] for nxdata in NXdata]
             indep_shape = [v.shape for i, d in enumerate(NXdata) for k, v in h5[d].items() if k in axes[i][0]]
 
-            data = [{k: np.squeeze(v) for k, v in h5[d].items() if v.shape[0] == indep_shape[i][0]} for i, d in
+            data = [{k.replace('_processed', ''): np.squeeze(v) for k, v in h5[d].items() if v.shape[0] == indep_shape[i][0]} for i, d in
                     enumerate(NXdata)]
             df_sdds = [pd.DataFrame(
                 {k.replace('_processed', '') + f"-{j}": v[:, j] for k, v in data[i].items() if len(v.shape) == 2 for j in range(0, v.shape[1])})
                        for i, _ in enumerate(NXdata)]
             df_scas = [pd.DataFrame.from_dict(
-                {k.replace('_processed', ''): v for k,v, in data[i].items() if len(v.shape) < 2}).join(df_sdds[i]).groupby(axes[i]).mean()
+                {k.replace('_processed', ''): v for k,v, in data[i].items() if len(v.shape) < 2}).join(df_sdds[i]).groupby(axes[i].replace('_processed', '')).mean()
                        for i, _ in enumerate(NXdata)]
             if len(df_scas) == 1:
                 self.data = df_scas[0]
