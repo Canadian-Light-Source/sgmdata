@@ -27,6 +27,17 @@ class DisplayDict(dict):
         table.append("</tbody></table>")
         return "\n".join(table)
 
+
+    def _repr_console_(self):
+        """
+        Takes own data and organizes it into a console-friendly table.
+        """
+        final_data = ''
+        for key, value in self.items():
+            final_data = final_data + str(key) + ":\t"
+            final_data = final_data + str(value) + "\t\t|\t\t"
+        return final_data
+
     def update(self, *args, **kwargs):
         for k, v in dict(*args, **kwargs).items():
             self[k] = v
