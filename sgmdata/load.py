@@ -493,7 +493,7 @@ class SGMData(object):
             data = [{k: np.squeeze(v) for k, v in h5[d].items() if v.shape[0] == indep_shape[i][0]} for i, d in
                     enumerate(NXdata)]
             df_sdds = [pd.DataFrame(
-                {k + f"-{j.replace('_processed', '')}": v[:, j] for k, v in data[i].items() if len(v.shape) == 2 for j in range(0, v.shape[1])})
+                {k.replace('_processed', '') + f"-{j}": v[:, j] for k, v in data[i].items() if len(v.shape) == 2 for j in range(0, v.shape[1])})
                        for i, _ in enumerate(NXdata)]
             df_scas = [pd.DataFrame.from_dict(
                 {k.replace('_processed', ''): v for k,v, in data[i].items() if len(v.shape) < 2}).join(df_sdds[i]).groupby(axes[i]).mean()
