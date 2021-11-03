@@ -5,6 +5,7 @@ from bokeh.models import CustomJS, ColumnDataSource, Select, RangeSlider, ColorB
 from bokeh.plotting import Figure, output_notebook, output_file, show
 from bokeh.embed import json_item
 from bokeh import events
+import json
 import numpy as np
 
 try:
@@ -496,5 +497,5 @@ sel.change.emit();
     options = column(select, functions, fluo, slider, select_palette)
     layout = gridplot([[xas, options], [plot, xrf]])
     if kwargs.get('json', False):
-        return json_item(layout)
+        return json.dumps(json_item(layout, "xrf"))
     show(layout)

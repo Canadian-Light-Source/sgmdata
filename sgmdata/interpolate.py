@@ -61,15 +61,21 @@ def shift_cmesh(x, shift=0.5):
 
 def interpolate(independent, signals, command=None, **kwargs):
     """
+    ### Description:
         Creates the bins required for each independent axes to be histogrammed into for interpolation,
         then uses dask dataframe groupby commands to perform a linear interpolation.
-        Optional Keywords:
-                   start (type: list or number) -- starting position of the new array
-                   stop  (type: list or number) -- ending position of the new array
-                   bins (type: list of numbers or arrays) --  this can be an array of bin values for each axes,
-                                                              or can be the number of bins desired.
-                   resolution (type: list or number) -- used instead of bins to define the bin to bin distance.
-                   sig_digits (type: int) -- used to overide the default uncertainty of the interpolation axis of 2 (e.g. 0.01)
+
+    ### Args:
+        >**independent** *(dict)* -- Dictionary of independent axes from SGMScan.entry
+        >**signals** *(dict)* -- Dictionary of signals from SGMScan.entry
+
+    ### Keywords:
+        >**start** *(list or number)* -- starting position of the new array
+        >**stop**  *(list or number)* -- ending position of the new array
+        >**bins** *(list of numbers or arrays)* --  this can be an array of bin values for each axes,
+                                                  or can be the number of bins desired.
+        >**resolution** *(list or number)* -- used instead of bins to define the bin to bin distance.
+        >**sig_digits** *(int)* -- used to overide the default uncertainty of the interpolation axis of 2 (e.g. 0.01)
     """
     compute = kwargs.get('compute', True)
     method = kwargs.get('method', 'nearest')

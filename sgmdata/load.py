@@ -3,7 +3,6 @@ import h5py
 
 from . import config
 import h5pyd
-from dask import delayed
 import dask.array as da
 import dask.dataframe as dd
 import pandas as pd
@@ -13,7 +12,7 @@ from functools import partial
 from sgmdata.plots import eemscan, xrfmap
 from sgmdata.xrffit import fit_peaks
 from sgmdata.interpolate import interpolate, shift_cmesh
-from dask.diagnostics import ProgressBar
+from .utilities.magicclass import OneList, DisplayDict
 
 import warnings
 
@@ -28,28 +27,10 @@ except NameError:
 
 
 
-class DisplayDict(dict):
-    def __getattr__(self, name):
-        return self[name]
-
-    def __setattr__(self, name, value):
-        self[name] = value
-
-    def _repr_html_(self):
-        table = [
-            "<table>",
-            "  <thead>",
-            "    <tr><td> </td><th>Key</th><th>Value</th></tr>",
-            "  </thead>",
-            "  <tbody>",
-        ]
-        for key, value in self.__dict__.items():
-            table.append(f"<tr><th> {key}</th><th>{value}</th></tr>")
-        table.append("</tbody></table>")
-        return "\n".join(table)
-
-class SGMScan(object):
+class SGMScan(DisplayDict):
     """
+    ### Description:
+    -----
         Data class for storing dask arrays for SGM data files that have been grouped into 'NXentry',
         and then divided into signals, independent axes, and other data.  Contains convenience classes
         for interpolation.
@@ -57,7 +38,26 @@ class SGMScan(object):
 
     class DataDict(DisplayDict):
 
+        def get_arr(self, detector):
+            """
+            ### Description:
+            -----
+                Function to return a numpy array from the internal pandas dataframe, for a given detector.
+            ### Args:
+            -----
+                >**detector** *(str)* -- Name of detector.
+            ### Returns:
+            -----
+                >**detector** *(ndarray)*
+            """
+            if isinstance(detector, str):
+                try:
+                    return self['binned']['dataframe'].filter(regex=f'{detector}.*').to_numpy()
+                except (AttributeError, KeyError):
+                    warnings.warn(f"No dataframe loaded in scan dictionary. Have you run interpolate yet?")
+
         def interpolate(self, **kwargs):
+            f"""{interpolate.__doc__}"""
             independent = self['independent']
             signals = self['signals']
             kwargs['npartitions'] = self.npartitions
@@ -109,44 +109,56 @@ class SGMScan(object):
                                "width": wid}
                 return new_df
 
-        def __repr__(self):
-            represent = ""
-            for key in self.keys():
-                represent += f"\t {key}:\n\t\t\t"
-                val = self[key]
-                if isinstance(val, dict):
-                    for k in val.keys():
-                        if hasattr(val[k], 'shape') and hasattr(val[k], 'dtype'):
-                            represent += f"{k} : array(shape:{val[k].shape}, type:{val[k].dtype}), \n\t\t\t"
-                        else:
-                            represent += f"{k} : {val[k]},\n\t\t\t"
-                    represent += "\n\t"
-                else:
-                    represent += f"{val} \n\t"
-            return represent
-
-        def _repr_html_(self):
-            entry = [
-                "<td>",
-                str(self.sample),
-                "</td>",
-                "<td>",
-                str(self.command),
-                "</td>",
-                "<td>",
-                str(list(self.independent.keys())),
-                "</td>",
-                "<td>",
-                str(list(self.signals.keys())),
-                "</td>",
-                "<td>",
-                str(list(self.other.keys())),
-                "</td>",
-            ]
-            return " ".join(entry)
+        def read(self, filename=None):
+            """
+            ### Description
+            -----
+                Function to load in already processed data from file.
+            ### Keywords
+            -----
+                >**filename** *(str)* -- path to file on disk.
+            """
+            if not filename:
+                return []
+            if os.path.exists(filename):
+                try:
+                    h5 = h5py.File(filename, 'r')
+                except Exception as f:
+                    warnings.warn(f"Could not open file, h5py raised: {f}")
+            else:
+                try:
+                    h5 = h5pyd.File(filename, "r", config.get("h5endpoint"), username=config.get("h5user"),
+                                    password=config.get("h5pass"))
+                except Exception as f:
+                    warnings.warn(f"Could not open file, h5pyd raised: {f}")
+            NXentries = [str(x) for x in h5['/'].keys()
+                         if 'NXentry' in str(h5[x].attrs.get('NX_class')) and str(x) in self['name']]
+            NXdata = [entry + "/" + str(x) for entry in NXentries for x in h5['/' + entry].keys()
+                      if 'NXdata' in str(h5[entry + "/" + x].attrs.get('NX_class'))]
+            axes = [[str(nm) for nm in h5[nxdata].keys() for s in h5[nxdata].attrs.get('axes') if str(s) in str(nm) or
+                     str(nm) in str(s)] for nxdata in NXdata]
+            indep_shape = [v.shape for i, d in enumerate(NXdata) for k, v in h5[d].items() if k in axes[i][0]]
+            data = [{k: np.squeeze(v) for k, v in h5[d].items() if v.shape[0] == indep_shape[i][0]} for i, d in
+                    enumerate(NXdata)]
+            df_sdds = [pd.DataFrame(
+                {k + f"-{j}": v[:, j] for k, v in data[i].items() if len(v.shape) == 2 for j in range(0, v.shape[1])})
+                       for i, _ in enumerate(NXdata)]
+            df_scas = [pd.DataFrame.from_dict(
+                {k: v for k,v, in data[i].items() if len(v.shape) < 2}).join(df_sdds[i]).groupby(axes[i]).mean()
+                       for i, _ in enumerate(NXdata)]
+            if len(df_scas) == 1:
+                self.__setattr__('binned', {"dataframe": df_scas[0], "index": df_scas[0].index})
+            return df_scas
 
         def write(self, filename=None):
-            """ Write data to NeXuS formatted data file."""
+            """
+            ### Description:
+            -----
+                Write data to NeXuS formatted data file.
+            ### Keyword:
+            -----
+                >**filename** *(str / os.path)* -- path/name of file for output.
+            """
             if 'sdd3' in self['signals']:
                 signal = u'sdd3'
             elif 'ge32' in self['signals']:
@@ -198,7 +210,9 @@ class SGMScan(object):
 
         def plot(self, **kwargs):
             """
-            Determines the appropriate plot based on independent axis number and name
+            ### Description
+            -----
+                Determines the appropriate plot based on independent axis number and name.
             """
             dim = len(self.independent)
             if dim == 1 and 'en' in self.independent.keys():
@@ -245,7 +259,7 @@ class SGMScan(object):
                     if 'image' in keys:
                         data.update({"image": data['sdd1']})
                     kwargs.update(data)
-                    xrfmap.plot(**kwargs)
+                    return xrfmap.plot(**kwargs)
                 elif 'binned' in self.keys():
                     print("Plotting Interpolated Data")
                     df = self['binned']['dataframe']
@@ -256,7 +270,7 @@ class SGMScan(object):
                     data.update({n: df.index.levels[i] for i, n in enumerate(list(df.index.names))})
                     data.update({'emission': np.linspace(0, 2560, 256)})
                     kwargs.update(data)
-                    xrfmap.plot_interp(**kwargs)
+                    return xrfmap.plot_interp(**kwargs)
                 else:
                     print("Plotting Raw Data")
                     ds = int(self.independent['xp'].shape[0] / 10000) + 1
@@ -267,11 +281,51 @@ class SGMScan(object):
                          k in s})
                     data.update({k: self.other[s].compute() for s in self.other.keys() for k in keys if s in k})
                     kwargs.update(data)
-                    xrfmap.plot_xyz(**kwargs)
+                    return xrfmap.plot_xyz(**kwargs)
 
-    def __init__(self, **kwargs):
+        def __repr__(self):
+            represent = ""
+            for key in self.keys():
+                represent += f"\t {key}:\n\t\t\t"
+                val = self[key]
+                if isinstance(val, dict):
+                    for k in val.keys():
+                        if hasattr(val[k], 'shape') and hasattr(val[k], 'dtype'):
+                            represent += f"{k} : array(shape:{val[k].shape}, type:{val[k].dtype}), \n\t\t\t"
+                        else:
+                            represent += f"{k} : {val[k]},\n\t\t\t"
+                    represent += "\n\t"
+                else:
+                    represent += f"{val} \n\t"
+            return represent
+
+        def _repr_html_(self):
+            entry = [
+                "<td>",
+                str(self.sample),
+                "</td>",
+                "<td>",
+                str(self.command),
+                "</td>",
+                "<td>",
+                str(list(self.independent.keys())),
+                "</td>",
+                "<td>",
+                str(list(self.signals.keys())),
+                "</td>",
+                "<td>",
+                str(list(self.other.keys())),
+                "</td>",
+            ]
+            return " ".join(entry)
+
+
+
+    def __init__(self, *args, **kwargs):
+        super(SGMScan, self).__init__(*args, **kwargs)
         self.__dict__.update(kwargs)
         for key, value in kwargs.items():
+            value.update({'name': key})
             self.__dict__[key] = SGMScan.DataDict(value)
 
     def __repr__(self):
@@ -302,25 +356,98 @@ class SGMScan(object):
 
 class SGMData(object):
     """
+    ### Description:
+    -----
         Class for loading in data from h5py or h5pyd files for raw SGM data.
         To substantiate pass the class pass a single (or list of) system file paths
         (or hsds path).  e.g. data = SGMData('/path/to/my/file.nxs') or SGMData(['1.h5', '2.h5'])
+        The data is auto grouped into three classifications: "independent", "signals", and "other".
+        You can view the data dictionary representation in a Jupyter cell by just invoking the SGMData() object.
 
-        Optional Keywords:  npartitions (type: integer) -- choose how many divisions (threads)
-                                                           to split the file data arrays into.
-                            scheduler (type: str) -- use dask cluster for operations, e.g. 'dscheduler:8786'
-                            axes (type: list(str)) -- names of the axes to use as independent axis and ignore
-                                                    spec command issued
-                            threads (type: int) -- set the number of threads in threadpool used to load in data.
-                            scan_type (type: str) -- used to filter the type of scan loaded, e.g. 'cmesh', '
-                            shift (type: float)  -- default 0.5.  Shifting 'x' axis data on consecutive passes of stage
-                                                    for cmesh scans.
+    ### Args:
+    -----
+        >**file_paths** *(str or list)* List of file names to be loaded in by the data module.
 
+    ### Keywords:
+    -----
+        >**npartitions** *(type: integer)* -- choose how many divisions (threads)
+                                       to split the file data arrays into.
+        >**scheduler** *(type: str)* -- use specific dask cluster for operations, e.g. 'dscheduler:8786'
+        >**axes** *(type: list(str))* -- names of the axes to use as independent axis and ignore
+                                  spec command issued
+        >**threads** *(type: int)* -- set the number of threads in threadpool used to load in data.
+        >**scan_type** *(type: str)* -- used to filter the type of scan loaded, e.g. 'cmesh', '
+        >**shift** *(type: float)*  -- default 0.5.  Shifting 'x' axis data on consecutive passes of stage
+                                for cmesh scans.
+
+    ### Functions:
+    -----
+        >**interpolate()** -- takes in same parameters as SGMScan.entry.interpolate()
+
+        >**mean()** -- averages all interpolated data together (organized by sample, scan type & range), returns list, saves data
+                  under a dictionary in SGMData().averaged
+
+    Attributes
+    -----
+        >**scans** *(SGMScan)* By default the query will create an SGMData object containing your data, this can be turned off with the data keyword.
+
+        >**averaged** *(list)*. Contains the averaged data from all interpolated datasets contained in the scan.
     """
 
     class Processed(DisplayDict):
 
+        def get_arr(self, detector):
+            f"""{SGMScan.DataDict.get_arr.__doc__}"""
+            if isinstance(detector, str):
+                try:
+                    return self.data.filter(regex=f'{detector}.*').to_numpy()
+                except AttributeError:
+                    warnings.warn(f"No dataframe loaded in processed dictionary.")
+
+        def read(self, filename=None):
+            f"""{SGMScan.DataDict.read.__doc__}"""
+            if not filename:
+                try:
+                    filename = self.filename
+                except AttributeError:
+                    try:
+                        filename = self.sample + ".nxs"
+                    except AttributeError:
+                        return []
+            if os.path.exists(filename):
+                try:
+                    h5 = h5py.File(filename, 'r')
+                except Exception as f:
+                    warnings.warn(f"Could not open file, h5py raised: {f}")
+            else:
+                try:
+                    h5 = h5pyd.File(filename, "r", config.get("h5endpoint"), username=config.get("h5user"),
+                                    password=config.get("h5pass"))
+                except Exception as f:
+                    warnings.warn(f"Could not open file, h5pyd raised: {f}")
+            NXentries = [str(x) for x in h5['/'].keys()
+                         if 'NXentry' in str(h5[x].attrs.get('NX_class'))]
+            NXdata = [entry + "/" + str(x) for entry in NXentries for x in h5['/' + entry].keys()
+                      if 'NXdata' in str(h5[entry + "/" + x].attrs.get('NX_class'))]
+            axes = [[str(nm) for nm in h5[nxdata].keys() for s in h5[nxdata].attrs.get('axes') if str(s) in str(nm) or
+                     str(nm) in str(s)] for nxdata in NXdata]
+            indep_shape = [v.shape for i, d in enumerate(NXdata) for k, v in h5[d].items() if k in axes[i][0]]
+
+            data = [{k: np.squeeze(v) for k, v in h5[d].items() if v.shape[0] == indep_shape[i][0]} for i, d in
+                    enumerate(NXdata)]
+            df_sdds = [pd.DataFrame(
+                {k + f"-{j}": v[:, j] for k, v in data[i].items() if len(v.shape) == 2 for j in range(0, v.shape[1])})
+                       for i, _ in enumerate(NXdata)]
+            df_scas = [pd.DataFrame.from_dict(
+                {k: v for k,v, in data[i].items() if len(v.shape) < 2}).join(df_sdds[i]).groupby(axes[i]).mean()
+                       for i, _ in enumerate(NXdata)]
+            if len(df_scas) == 1:
+                self.data = df_scas[0]
+            return df_scas
+
+
         def write(self, filename=None):
+            f"""{SGMScan.DataDict.write.__doc__}"""
             if 'sdd3' in self['signals']:
                 signal = u'sdd3'
             elif 'ge32' in self['signals']:
@@ -365,21 +492,44 @@ class SGMData(object):
             h5.close()
 
         def plot(self, **kwargs):
+            f"""{SGMScan.DataDict.plot.__doc__}"""
             if 'type' in self.__dict__.keys():
-                pass
+                scantype = self['type']
             else:
-                if 'scan' in self.command[0] and "en" == self.command[1]:
-                    keys = eemscan.required
-                    df = self.data
-                    roi_cols = df.filter(regex="sdd[1-4]_[0-2].*").columns
-                    df.drop(columns=roi_cols, inplace=True)
-                    data = {k: df.filter(regex=("%s.*" % k), axis=1).to_numpy() for k in keys}
-                    data.update({df.index.name: np.array(df.index), 'emission': np.linspace(0, 2560, 256)})
-                    data.update({'image': data['sdd1']})
-                    kwargs.update(data)
-                    return eemscan.plot(**data)
-                elif 'mesh' in self.command[0]:
-                    pass
+                try:
+                    if 'scan' in self.command[0] and "en" == self.command[1]:
+                        scantype = 'EEMS'
+                    elif 'mesh' in self.command[0]:
+                        scantype = 'XRF'
+                except AttributeError:
+                    try:
+                        if len(self.data.index.names) == 1:
+                            scantype = 'EEMS'
+                        elif len(self.data.index.names) == 2:
+                            scantype = 'XRF'
+                    except AttributeError:
+                        return
+            if scantype == 'EEMS':
+                keys = eemscan.required
+                df = self.data
+                roi_cols = df.filter(regex="sdd[1-4]_[0-2].*").columns
+                df.drop(columns=roi_cols, inplace=True)
+                data = {k: df.filter(regex=("%s.*" % k), axis=1).to_numpy() for k in keys}
+                data.update({df.index.name: np.array(df.index), 'emission': np.linspace(0, 2560, 256)})
+                data.update({'image': data['sdd1']})
+                kwargs.update(data)
+                return eemscan.plot(**kwargs)
+            elif scantype == 'XRF':
+                keys = xrfmap.required
+                df = self.data
+                roi_cols = df.filter(regex="sdd[1-4]_[0-2].*").columns
+                df.drop(columns=roi_cols, inplace=True)
+                data = {k: df.filter(regex=("%s.*" % k), axis=1).to_numpy() for k in keys}
+                data = {k: v for k, v in data.items() if v.size}
+                data.update({n: df.index.levels[i] for i, n in enumerate(list(df.index.names))})
+                data.update({'emission': np.linspace(0, 2560, 256)})
+                kwargs.update(data)
+                xrfmap.plot_interp(**kwargs)
 
     def __init__(self, files, **kwargs):
         self.__dict__.update(kwargs)
@@ -398,7 +548,7 @@ class SGMData(object):
         self.scans = {k.split('/')[-1].split(".")[0]: [] for k in files}
         self.interp_params = {}
         with ThreadPool(self.threads) as pool:
-            L = list(tqdm(pool.imap_unordered(self._load_data, files), total=len(files)))
+            L = list(tqdm(pool.imap_unordered(self._load_data, files), total=len(files), leave=False))
         err = [l['ERROR'] for l in L if 'ERROR' in l.keys()]
         L = [l for l in L if 'ERROR' not in l.keys()]
         if len(err):
@@ -429,6 +579,8 @@ class SGMData(object):
 
     def _load_data(self, file):
         """
+        ### Description:
+        -----
             Function loads data in from SGM data file, and using the command value groups the data as
             either independent, signal or other.
         """
@@ -443,7 +595,7 @@ class SGMData(object):
                 return {"ERROR": file_root}
         else:
             try:
-                h5 = h5pyd.File(file, "w", config.get("h5endpoint"), username=config.get("h5user"),
+                h5 = h5pyd.File(file, "r", config.get("h5endpoint"), username=config.get("h5user"),
                                 password=config.get("h5pass"))
             except Exception as f:
                 warnings.warn(f"Could not open file, h5pyd raised: {f}")
@@ -546,6 +698,7 @@ class SGMData(object):
         return {file_root: entries}
 
     def interpolate(self, **kwargs):
+        f"""{interpolate.__doc__}"""
         _interpolate = partial(self._interpolate, **kwargs)
         entries = []
         for file, val in self.entries():
@@ -604,12 +757,12 @@ class SGMData(object):
                 command = k.split(":")[-1]
                 df = df_concat.groupby(df_concat.index).mean()
                 if key in average.keys():
-                    l = average[key] + [
-                        SGMData.Processed(command=command.split('_'), data=df, signals=v['signals'], sample=key)]
+                    l = average[key] + OneList([
+                        SGMData.Processed(command=command.split('_'), data=df, signals=v['signals'], sample=key)])
                     average.update({key: l})
                 else:
-                    average.update({key: [
-                        SGMData.Processed(command=command.split('_'), data=df, signals=v['signals'], sample=key)]})
+                    average.update({key: OneList([
+                        SGMData.Processed(command=command.split('_'), data=df, signals=v['signals'], sample=key)])})
         self.averaged = average
         return average
 
