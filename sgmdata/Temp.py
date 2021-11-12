@@ -61,16 +61,20 @@ def check_sample_fitness(list_of_files):
         interp_list(list): a list of pandas dataframes. Contains the interpolated version of the data in the files
         specified in list_of_files.
     """
-    ### Test data for SGMScan
-
-
     sgm_data = sgmdata.load.SGMData(list_of_files)
     sgm_data.interpolate()
-    data = sgm_data.__dict__
-    # print(data)
-    print(sgm_data._repr_console_())
-#
-x = file_retrieval('C:/Users/roseh/Desktop/Internship/MyCode/h5Files/*Co-nitrate*.hdf5')
+    data = sgm_data
+    # keys = data.scans['Co-nitrate-N-Bottom9'].__dict__.keys()
+    # keys = data.scans['Co-nitrate-N-Bottom9'].__dict__.keys()
+    # print(keys)
+    keys = data.scans['Co-nitrate-N-Top21'].keys()
+    # print(keys)
+    # for item in keys:
+    #     print(str(type(data.scans['Co-nitrate-N-Bottom9'].__dict__[item])))
+    # print(str(data.scans.keys()) + "\n" + str(type(data.scans)))
+
+
+x = file_retrieval('C:/Users/roseh/Desktop/Internship/SignalToNoiseConvergence/h5Files/*Co-nitrate*.hdf5')
 # # x = file_retrieval('C:/Users/roseh/Desktop/Internship/MyCode/h5Files/*bee*.hdf5')
 y = check_sample_fitness(x)
 
