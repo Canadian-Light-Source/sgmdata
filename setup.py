@@ -23,19 +23,20 @@ setup(
     packages=find_packages(),
     include_package_data=True,
     install_requires=[
-        "dask[complete]>=2.11.0",
-        "pandas>=0.25.3"
-        "h5py>=2.10.0",
-        "h5pyd",
-        "bokeh==1.4.0",
-        "numpy>=1.18.1",
+        "blosc==1.10.2",
+        "lz4==3.1.3",
+        "dask[complete]==2021.09.0",
+        "msgpack==1.0.2",
+        "pandas==1.3.3",
+        "h5py==3.4.0",
+        "bokeh>=1.4.0",
+        "numpy>=1.18.3",
         "scipy>=1.4.1",
         "tqdm",
         "python-slugify",
         "beautifulsoup4",
         "matplotlib",
         "requests",
-        "psycopg2-binary"
     ]
 
 

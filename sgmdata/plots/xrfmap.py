@@ -1,16 +1,20 @@
 from bokeh.layouts import column, row, gridplot
 from bokeh.palettes import all_palettes
-from bokeh.models import CustomJS, ColumnDataSource, Select, RangeSlider, ColorBar, LinearColorMapper, Rect, Dropdown
-from bokeh.plotting import Figure, output_notebook, output_file, show
+from bokeh.models import CustomJS, ColumnDataSource, Select, RangeSlider, ColorBar, LinearColorMapper, Rect, Slider, \
+    Range1d, DataTable, TableColumn, Button, TextAreaInput, SelectEditor, CellEditor, IntEditor
+from bokeh.plotting import Figure, show
 from bokeh.embed import json_item
 from bokeh import events
+
+from sgmdata.utilities.lib import scan_lib, elements
 from sgmdata.xrffit import gaussians
+import json
 import numpy as np
 
 required = ['image', 'sdd1', 'sdd2', 'sdd3', 'sdd4', 'tey', 'xp', 'yp', 'emission']
 
 
-def make_data(df, keys):
+def make_data(df, keys, sgm_data):
     data = {k: df.filter(regex=("%s.*" % k), axis=1).to_numpy() for k in keys}
     data.update({k: np.reshape(v, (len(df.index.levels[0]), len(df.index.levels[1]), v.shape[-1])) if len(
         v.shape) == 2 else np.reshape(v, (len(df.index.levels[0]), len(df.index.levels[1]))) for k, v in data.items()})
@@ -98,7 +102,7 @@ def plot(**kwargs):
     x_delta = max(kwargs['xp']) - min(kwargs['xp'])
     y_delta = max(kwargs['yp']) - min(kwargs['yp'])
     plot = Figure(plot_width=600, plot_height=600, tools="box_select,save,box_zoom, wheel_zoom,hover,pan,reset")
-    color_mapper = LinearColorMapper(palette="Spectral11", low=1, high=np.amax(im1))
+    color_mapper = LinearColorMapper(palette="Spectral11", low=0, high=np.amax(im1))
     im = plot.image(image='image', y=min(kwargs['yp']), x=min(kwargs['xp']), dh=y_delta, dw=x_delta, source=img_source,
                     palette="Spectral11")
 
@@ -189,9 +193,8 @@ def plot(**kwargs):
     """)
 
     ##Change Pallette Selectbox
-    palette_select = Select(title="Colormap Select:", options=['Viridis', 'Spectral', 'Inferno'], value='Spectral',
-                            callback=callback_color_palette)
-
+    palette_select = Select(title="Colormap Select:", options=['Viridis', 'Spectral', 'Inferno'], value='Spectral')
+    palette_select.js_on_change('value', callback_color_palette)
     ##Change Color Intensity Slider
     intensity_slider = RangeSlider(title="Color Scale:", start=0, end=2 * np.amax(im1),
                                    value=(0, np.amax(im1)), step=20, )
@@ -227,8 +230,7 @@ def plot(**kwargs):
                 source.change.emit();
         """)
         roi_menu = [(i, "%.1f" % e) for i, e in enumerate(kwargs['peaks'])]
-        roi_slider = Select(title="Fluorescence Line:", options=roi_menu, value="%.1f" % kwargs['peaks'][max_var],
-                            callback=callback_roi_select)
+        roi_slider = Select(title="Fluorescence Line:", options=roi_menu, value="%.1f" % kwargs['peaks'][max_var])
         roi_slider.js_on_change('value', callback_roi_select)
 
         ##Layout and display
@@ -238,5 +240,560 @@ def plot(**kwargs):
 
     layout = gridplot([[plot, options]])
     if kwargs.get('json', False):
-        return json_item(layout)
+        return json.dumps(json_item(layout, "xrf"))
+    show(layout)
+
+
+def plot_interp(**kwargs):
+    """
+    Function to plot interactive XRF maps from raw or interpolated sgm data.
+        Keywords:
+            **kwargs (dict):  DataDict from plot function.
+    """
+    # Verify the data in kwargs
+    if 'xp' in kwargs.keys() and 'yp' in kwargs.keys():
+        x = kwargs['xp']
+        y = kwargs['yp']
+    else:
+        raise (Exception, "Improper data passed to plot function. Need x & y axes")
+    if 'sdd1' in kwargs.keys():
+        # Reshape sdd arrays to image.
+        sdd1 = np.reshape(kwargs['sdd1'], (len(x), len(y), kwargs['sdd1'].shape[-1]))
+        sdd2 = np.reshape(kwargs['sdd2'], (len(x), len(y), kwargs['sdd2'].shape[-1]))
+        sdd3 = np.reshape(kwargs['sdd3'], (len(x), len(y), kwargs['sdd3'].shape[-1]))
+        sdd4 = np.reshape(kwargs['sdd4'], (len(x), len(y), kwargs['sdd4'].shape[-1]))
+    else:
+        raise (Exception, "Improper data passed to plot function. Need sdd signal")
+    if 'tey' in kwargs.keys():
+        tey = np.reshape(kwargs['tey'], (len(x), len(y))).T
+    else:
+        raise (Exception, "Didn't recieve tey signal.")
+
+    # Colourbar / Mapper
+    max_col = np.nanmax(np.add.reduceat(sdd1, np.arange(0, 256, 10), axis=-1))
+    color_mapper = LinearColorMapper(palette="Viridis256", low=np.nanmin(sdd1),
+                                     high=max_col)
+
+    # Set the y and x axes range from actual data.
+    yr = Range1d(start=max(y), end=min(y))
+    xr = Range1d(start=max(x), end=min(x))
+
+    # Data source for plot
+    data = {'x': [max(x)],
+            'y': [max(y)],
+            'dw': [max(x) - min(x)],
+            'dh': [max(y) - min(y)],
+            'image': [np.sum(sdd1[:, :, 45:55], axis=2).T]
+            }
+    data.update({'tey': [np.nanmax(sdd1) * (tey / np.nanmax(tey))]})
+    source = ColumnDataSource(data)
+
+    # Data source for image bank of sdd signals
+    sdd_data = {'sdd1': [sdd1[:, :, i].T for i in range(0, sdd1.shape[-1])],
+                'sdd2': [sdd2[:, :, i].T for i in range(0, sdd2.shape[-1])],
+                'sdd3': [sdd3[:, :, i].T for i in range(0, sdd3.shape[-1])],
+                'sdd4': [sdd4[:, :, i].T for i in range(0, sdd4.shape[-1])],
+                }
+    sdd_source = ColumnDataSource(sdd_data)
+
+    # Create XRF Map plot
+    plot = Figure(plot_width=600,
+                  plot_height=600,
+                  tools="box_select,save,box_zoom,wheel_zoom,hover,pan,reset",
+                  x_range=xr,
+                  y_range=yr,
+                  background_fill_color="black",
+                  background_fill_alpha=1,
+                  )
+
+    plot.xgrid.grid_line_color = None
+    plot.ygrid.grid_line_color = None
+    im = plot.image(image='image', x='x', y='y', dw='dw', dh='dh', color_mapper=color_mapper,
+                    source=source, name="xrf-plot")
+
+    # add image plot annotations
+    color_bar = ColorBar(color_mapper=color_mapper, border_line_color=None, location=(0, 0))
+    plot.xaxis.axis_label = 'X (mm)'
+    plot.yaxis.axis_label = 'Y (mm)'
+    plot.add_layout(color_bar, 'left')
+
+    # XRF Plot Data
+    xrf_source = ColumnDataSource(dict(
+        emission=kwargs.get('emission', np.linspace(0, kwargs['sdd1'].shape[-1] * 10, kwargs['sdd1'].shape[-1])),
+        x1=np.sum(kwargs['sdd1'], axis=0),
+        x2=np.sum(kwargs['sdd2'], axis=0),
+        x3=np.sum(kwargs['sdd3'], axis=0),
+        x4=np.sum(kwargs['sdd4'], axis=0),
+    ))
+
+    # Glyph to highlight XRF peak.
+    ymax = np.max([np.amax(v) for k, v in xrf_source.data.items() if 'x' in k])
+    halfmax = ymax / 2
+    rect_source = ColumnDataSource({'x': [500], 'y': [halfmax], 'width': [100], 'height': [ymax]}, name='rectangle')
+    rect = Rect(x='x', y='y', width='width', height='height', fill_alpha=0.1,
+                line_color='orange', fill_color='black')
+
+    # Create XRF plot
+    xrf = Figure(plot_width=300, plot_height=250, tools="save,hover", title="Total XRF")
+    xrf.line('emission', 'x1', source=xrf_source, line_color='purple', alpha=0.6, legend_label="sdd1")
+    xrf.line('emission', 'x2', source=xrf_source, line_color='blue', alpha=0.6, legend_label="sdd2")
+    xrf.line('emission', 'x3', source=xrf_source, line_color='black', alpha=0.6, legend_label="sdd3")
+    xrf.line('emission', 'x4', source=xrf_source, line_color='red', alpha=0.6, legend_label="sdd4")
+    xrf.add_glyph(rect_source, rect)
+
+    ##add xrf plot annotations
+    xrf.xaxis.axis_label = 'Emission (eV)'
+    xrf.yaxis.axis_label = 'Intensity (a.u.)'
+    xrf.yaxis.visible = False
+    xrf.legend.click_policy = "hide"
+    xrf.legend.background_fill_alpha = 0.6
+
+    slider = RangeSlider(start=0, end=2560, step=10, value=(450, 550), title="Fluorescent Line: ")
+    det_select = Select(title="Detector Select:", options=['sdd1', 'sdd2', 'sdd3', 'sdd4', 'tey'], value='sdd3')
+
+    # Change Detector Source for image
+    det_callback = CustomJS(args=dict(source=source,
+                                      sl=slider,
+                                      im=im,
+                                      det=det_select,
+                                      rect=rect_source,
+                                      sdd=sdd_source), code="""
+            var fluo_min = sl.value[0] / 10;
+            var fluo_max = sl.value[1] / 10;
+            var peak = rect.data['x'];
+            var d = source.data['image'];
+            var f = det.value;
+            var cul_image = new Array();
+
+            function sumArrays(...arrays) {
+              const n = arrays.reduce((max, xs) => Math.max(max, xs.length), 0);
+              const result = Float64Array.from({ length: n });
+              return result.map((_, i) => arrays.map(xs => xs[i] || 0).reduce((sum, x) => sum + x, 0));
+            }
+
+            if (f.includes('sdd')){
+                var image =  sdd.data[f];
+                console.log("Summing image for sdd: " + f)
+                for (i = fluo_min; i < fluo_max; i++) {
+                    cul_image.push(image[i]);
+                }
+                d[0] = sumArrays(...cul_image);
+
+            }
+            if (f == "tey") {
+                var tey = source.data['tey'];
+                d[0] = tey[0];
+
+            }
+            rect.data['x'][0] = 10*(fluo_min + fluo_max) / 2;
+            rect.data['width'][0] = Math.abs(fluo_max - fluo_min)*10 
+            rect.change.emit();
+            source.change.emit();
+    """)
+    det_select.js_on_change('value', det_callback)
+    slider.js_on_change('value', det_callback)
+
+    # Color Palettes
+    viridis = all_palettes['Viridis'][256]
+    inferno = all_palettes['Inferno'][256]
+    spectral = all_palettes['Spectral'][11]
+    colorblind = all_palettes['Colorblind'][4]
+
+    # Color Palette Change
+    callback_color_palette = CustomJS(args=dict(im=im, cl=color_bar), code="""
+            var p = "Inferno11";
+            var f = cb_obj.value;
+            if (f == "Viridis") {
+                im.glyph.color_mapper.palette = %s;
+                cl.color_mapper.palette = %s;
+            }
+            if (f == "Spectral") {
+                im.glyph.color_mapper.palette = %s;
+                cl.color_mapper.palette = %s;
+            }
+            if (f == "Inferno") {
+                im.glyph.color_mapper.palette = %s;
+                cl.color_mapper.palette = %s;
+            }
+            if (f == "Colorblind") {
+                im.glyph.color_mapper.palette = %s;
+                cl.color_mapper.palette = %s;
+            }
+    """ % (viridis, viridis, spectral, spectral, inferno, inferno, colorblind, colorblind))
+
+    # Color Intensity Change Callback
+    callback_color_range = CustomJS(args=dict(im=im, cl=color_bar), code="""
+            var o_min = cb_obj.value[0];
+            var o_max = cb_obj.value[1];
+            im.glyph.color_mapper.low = o_min;
+            im.glyph.color_mapper.high = o_max;
+            cl.color_mapper.low = o_min;
+            cl.color_mapper.high = o_max;
+    """)
+
+    # Change Pallette Selectbox
+    palette_select = Select(title="Colormap Select:", options=['Viridis', 'Spectral', 'Inferno'], value='Viridis')
+    palette_select.js_on_change('value', callback_color_palette)
+    # Change Color Intensity Slider
+    color_max = np.max([np.amax(np.add.reduceat(x, np.arange(0, 256, 10), axis=-1)) for x in [sdd1, sdd2, sdd3, sdd4]])
+    intensity_slider = RangeSlider(title="Color Scale:", start=0, end=2 * color_max,
+                                   value=(0, max_col), step=20, )
+    intensity_slider.js_on_change('value', callback_color_range)
+
+    options = column(det_select, intensity_slider, palette_select, xrf, slider)
+
+    layout = gridplot([[plot, options]])
+    if kwargs.get('json', False):
+        return json.dumps(json_item(layout, "xrf"))
+    show(layout)
+
+
+def plot_xyz(shift=False, table=False, **kwargs):
+    """
+    Function to plot interactive XRF maps from raw or interpolated sgm data.
+        Keywords:
+            shift (bool):  False (default) - compensates for cmesh x-variance if required.
+            table (bool):  False (default) - displays helper tool / datatable for macro generation at SGM.
+            **kwargs (dict):  DataDict from plot function.
+    """
+    # Verify the data in kwargs
+    if 'xp' in kwargs.keys() and 'yp' in kwargs.keys():
+        x = kwargs['xp']
+        y = kwargs['yp']
+    else:
+        raise (Exception, "Improper data passed to plot function. Need x & y axes")
+    if 'sdd1' in kwargs.keys():
+        sdd1 = np.add.reduceat(kwargs['sdd1'], np.arange(0, 256, 5), axis=1)
+        sdd2 = np.add.reduceat(kwargs['sdd2'], np.arange(0, 256, 5), axis=1)
+        sdd3 = np.add.reduceat(kwargs['sdd3'], np.arange(0, 256, 5), axis=1)
+        sdd4 = np.add.reduceat(kwargs['sdd4'], np.arange(0, 256, 5), axis=1)
+    else:
+        raise (Exception, "Improper data passed to plot function. Need sdd signal")
+    if 'command' in kwargs.keys():
+        command = kwargs['command']
+    else:
+        raise (Exception, "Improper data passed to plot function. Need spec command argument")
+    if 'tey' in kwargs.keys():
+        tey = kwargs['tey']
+    else:
+        raise (Exception, "Didn't recieve tey signal.")
+
+    # XRF Map source data
+    n1 = ["sdd1-" + str(int(i / 5)) for i in range(0, 256, 5)]
+    n2 = ["sdd2-" + str(int(i / 5)) for i in range(0, 256, 5)]
+    n3 = ["sdd3-" + str(int(i / 5)) for i in range(0, 256, 5)]
+    n4 = ["sdd4-" + str(int(i / 5)) for i in range(0, 256, 5)]
+
+    z = sdd3[:, 15]
+    color_mapper = LinearColorMapper(palette="Viridis256", low=min(z), high=max(z))
+    xdelta = abs(float(command[2]) - float(command[3]))
+    ydelta = abs(float(command[6]) - float(command[7]))
+    height = ydelta / float(command[8])
+    width = xdelta / (sdd3.shape[0] / float(command[8]))
+
+    # Shift the X data to line up the rows at center.
+    # Pre-process the x values. The data needs to be shifted due to how they were collected
+    if shift:
+        shift = 0.5
+        shifted_data = np.zeros(len(x))
+        shifted_data[0] = x[0]
+        for i in range(1, len(x)):
+            shifted_data[i] = x[i] + shift * (x[i] - x[i - 1])
+        x = shifted_data
+
+    # Set the y and x axes range from actual data.
+    yr = Range1d(start=max(y), end=min(y))
+    xr = Range1d(start=max(x), end=min(x))
+
+    data = {'x': x, 'y': y, 'z': z}
+    data.update({n: sdd1[:, i] for i, n in enumerate(n1)})
+    data.update({n: sdd2[:, i] for i, n in enumerate(n2)})
+    data.update({n: sdd3[:, i] for i, n in enumerate(n3)})
+    data.update({n: sdd4[:, i] for i, n in enumerate(n4)})
+    data.update({'tey': np.nanmax(data['sdd3-15']) * (tey / np.nanmax(tey))})
+    source = ColumnDataSource(data)
+
+    # XRF Coordinates to Clipboard.
+    if table:
+        # Create clipboard data source
+        data = {'sample': [], 'coords': [], 'edges': [], 'nscans': [], 'type': []}
+        clipboard_source = ColumnDataSource(data)
+        columns = [
+            TableColumn(field="sample", title="Sample ID"),
+            TableColumn(field="type", title="Type", editor=SelectEditor(options=["sample", "reference"])),
+            TableColumn(field="coords", title="Position (x,y)", editor=CellEditor()),
+            TableColumn(field="edges", title="Edges", editor=SelectEditor(options=elements, )),
+            TableColumn(field="nscans", title="Number of Scans (#)", editor=IntEditor(step=10)),
+        ]
+        data_table = DataTable(source=clipboard_source, columns=columns, editable=True, width=600, height=300,
+                               name="macro-table")
+        table_macro = Button(label="Make Macro", button_type="success")
+        text_area = TextAreaInput(value="", rows=10)
+
+        table_delete = Button(label="Delete Row", button_type="danger")
+
+        # Create dictionary to pass to Spec Jupyter Client.
+        macro_callback = CustomJS(args=dict(clip=clipboard_source, lib=scan_lib, tx=text_area, tbl=data_table), code="""
+            var text = tx.value;
+            var samples = clip.data['sample'];
+            var edges = clip.data['edges'];
+            var nscans = clip.data['nscans'];
+            var pos = clip.data['coords'];
+            var type = clip.data['type'];
+            var scan;
+            var ncols;
+            var typenum = 1;
+
+            text = "plate = [\\n";
+            for (i = 0; i < pos.length; i++) {
+                scan = lib[edges[i]]
+                if (type[i] == "reference"){
+                    typenum = 2;
+                }
+                else{
+                    typenum = 1;
+                }
+                if (edges[i] == "EEMs"){
+                    text += "{'sample': '" + samples[i] + "'";
+                    text += ", 'type': " + typenum.toString();
+                    text += ", 'scan': '" + scan + "'";
+                    text += ", 'coords': " + pos[i] + "},\\n";          
+                }
+                else{
+                    ncols = Math.ceil(nscans[i] / 10);
+                    scan = scan.replace('col', ncols.toString());
+                    text += "{'sample': '" + samples[i] + " - " + edges[i] + "'";
+                    text += ", 'type': " + typenum.toString();
+                    text += ", 'scan': '" + scan + "'";
+                    text += ", 'coords': " + pos[i] + "},\\n";
+                }
+            }
+            text += "]";
+            tx.value = text;
+
+        """)
+
+        # Callback to delete row of datatable
+        delete_callback = CustomJS(args=dict(clip=clipboard_source), code="""
+            var sel = clip.selected.indices[0];
+            var co = clip.data['coords'];
+            var sam = clip.data['sample'];
+            var edge = clip.data['edges'];
+            var nscans = clip.data['nscans'];
+            var type = clip.data['type'];
+
+            function isDefined(x) {
+                var undefined;
+                return x !== undefined;
+            }
+
+            console.log(sel);
+            if(isDefined(sel)){
+                co.splice(sel, 1);
+                sam.splice(sel, 1);
+                edge.splice(sel, 1);
+                nscans.splice(sel, 1);
+                type.splice(sel, 1);
+                clip.change.emit();
+            }
+        """)
+
+        table_delete.js_on_event(events.ButtonClick, delete_callback)
+        table_macro.js_on_event(events.ButtonClick, macro_callback)
+
+        # Callback to collect x,y position on tap and push to clipboard & datatable
+        clipboard_callback = CustomJS(args=dict(clip=clipboard_source), code="""
+            var x = cb_obj.x;
+            var y = cb_obj.y;
+            var co = clip.data['coords'];
+            var sam = clip.data['sample'];
+            var edge = clip.data['edges'];
+            var nscans = clip.data['nscans'];
+            var type = clip.data['type'];
+
+            co.push("(" + x.toString() + ", " + y.toString() + ")");
+            sam.push("Sample " + sam.length.toString());
+            edge.push("C");
+            nscans.push(10);
+            type.push("sample");
+            clip.change.emit();
+
+            function fallbackCopyTextToClipboard(text) {
+              var textArea = document.createElement("textarea");
+              textArea.value = text;
+
+              // Avoid scrolling to bottom
+              textArea.style.top = "0";
+              textArea.style.left = "0";
+              textArea.style.position = "fixed";
+
+              document.body.appendChild(textArea);
+              textArea.focus();
+              textArea.select();
+
+              try {
+                var successful = document.execCommand('copy');
+                var msg = successful ? 'successful' : 'unsuccessful';
+                console.log('Fallback: Copying text command was ' + msg);
+              } catch (err) {
+                console.error('Fallback: Oops, unable to copy', err);
+              }
+
+              document.body.removeChild(textArea);
+            }
+            function copyTextToClipboard(text) {
+              if (!navigator.clipboard) {
+                fallbackCopyTextToClipboard(text);
+                return;
+              }
+              navigator.clipboard.writeText(text).then(function() {
+                console.log('Async: Copying to clipboard was successful!');
+              }, function(err) {
+                console.error('Async: Could not copy text: ', err);
+              });
+            }
+
+            copyTextToClipboard(co[co.length -1])
+        """)
+
+    # Create XRF Map plot
+    plot = Figure(plot_width=600,
+                  plot_height=600,
+                  tools="box_select,save,box_zoom,wheel_zoom,hover,pan,reset",
+                  x_range=xr,
+                  y_range=yr,
+                  background_fill_color="black",
+                  background_fill_alpha=1,
+
+                  )
+
+    plot.xgrid.grid_line_color = None
+    plot.ygrid.grid_line_color = None
+    if table:
+        plot.js_on_event('tap', clipboard_callback)
+    im = plot.rect(x='x', y='y', color={'field': 'z', 'transform': color_mapper}, width=width, height=height,
+                   source=source, name="xrf-plot")
+
+    # add image plot annotations
+    color_bar = ColorBar(color_mapper=color_mapper, border_line_color=None, location=(0, 0))
+    plot.xaxis.axis_label = 'X (mm)'
+    plot.yaxis.axis_label = 'Y (mm)'
+    plot.add_layout(color_bar, 'left')
+
+    # XRF Plot Data
+    xrf_source = ColumnDataSource(dict(
+        emission=kwargs.get('emission', np.linspace(0, kwargs['sdd1'].shape[1] * 10, kwargs['sdd1'].shape[1])),
+        x1=np.sum(kwargs['sdd1'], axis=0),
+        x2=np.sum(kwargs['sdd2'], axis=0),
+        x3=np.sum(kwargs['sdd3'], axis=0),
+        x4=np.sum(kwargs['sdd4'], axis=0),
+    ))
+
+    # Glyph to highlight XRF peak.
+    ymax = np.max([np.amax(v) for k, v in xrf_source.data.items() if 'x' in k])
+    halfmax = ymax / 2
+    rect_source = ColumnDataSource({'x': [765], 'y': [halfmax], 'width': [50], 'height': [ymax]}, name='rectangle')
+    rect = Rect(x='x', y='y', width='width', height='height', fill_alpha=0.1,
+                line_color='orange', fill_color='black')
+
+    # Create XRF plot
+    xrf = Figure(plot_width=300, plot_height=250, tools="save,hover", title="Total XRF")
+    xrf.line('emission', 'x1', source=xrf_source, line_color='purple', alpha=0.6, legend_label="sdd1")
+    xrf.line('emission', 'x2', source=xrf_source, line_color='blue', alpha=0.6, legend_label="sdd2")
+    xrf.line('emission', 'x3', source=xrf_source, line_color='black', alpha=0.6, legend_label="sdd3")
+    xrf.line('emission', 'x4', source=xrf_source, line_color='red', alpha=0.6, legend_label="sdd4")
+    xrf.add_glyph(rect_source, rect)
+
+    ##add xrf plot annotations
+    xrf.xaxis.axis_label = 'Emission (eV)'
+    xrf.yaxis.axis_label = 'Intensity (a.u.)'
+    xrf.yaxis.visible = False
+    xrf.legend.click_policy = "hide"
+    xrf.legend.background_fill_alpha = 0.6
+
+    slider = Slider(start=0, end=2560, step=51, value=765,
+                    title="Fluorescent Line: ")
+    det_select = Select(title="Detector Select:", options=['sdd1', 'sdd2', 'sdd3', 'sdd4', 'tey'], value='sdd3')
+
+    # Change Detector Source for image
+    det_callback = CustomJS(args=dict(source=source, sl=slider, im=im, det=det_select, rect=rect_source), code="""
+            var fluo = sl.value; 
+            var idx = fluo / 51;
+            var peak = rect.data['x'];
+            var d = source.data['z'];
+            var f = det.value;
+            if (f.includes('sdd')){
+                var sdd =  source.data[f + '-' + idx.toString()];
+                for (i = 0; i < d.length; i++) {
+                    d[i] = sdd[i];
+                }
+            }
+            if (f == "tey") {
+                var tey = source.data['tey'];
+                for (i = 0; i < d.length; i++) {
+                    d[i] = tey[i];
+                }
+            }
+            peak[0] = fluo;
+            rect.change.emit();
+            source.change.emit();
+    """)
+    det_select.js_on_change('value', det_callback)
+    slider.js_on_change('value', det_callback)
+
+    # Color Palettes
+    viridis = all_palettes['Viridis'][256]
+    inferno = all_palettes['Inferno'][256]
+    spectral = all_palettes['Spectral'][11]
+    colorblind = all_palettes['Colorblind'][4]
+
+    # Color Palette Change
+    callback_color_palette = CustomJS(args=dict(im=im, cl=color_bar), code="""
+            var p = "Inferno11";
+            var f = cb_obj.value;
+            if (f == "Viridis") {
+                im.glyph.fill_color.transform.palette = %s;
+                cl.color_mapper.palette = %s;
+            }
+            if (f == "Spectral") {
+                im.glyph.fill_color.transform.palette = %s;
+                cl.color_mapper.palette = %s;
+            }
+            if (f == "Inferno") {
+                im.glyph.fill_color.transform.palette = %s;
+                cl.color_mapper.palette = %s;
+            }
+            if (f == "Colorblind") {
+                im.glyph.fill_color.transform.palette = %s;
+                cl.color_mapper.palette = %s;
+            }
+    """ % (viridis, viridis, spectral, spectral, inferno, inferno, colorblind, colorblind))
+
+    # Color Intensity Change Callback
+    callback_color_range = CustomJS(args=dict(im=im, cl=color_bar), code="""
+            var o_min = cb_obj.value[0];
+            var o_max = cb_obj.value[1];
+            im.glyph.fill_color.transform.low = o_min;
+            im.glyph.fill_color.transform.high = o_max;
+            cl.color_mapper.low = o_min;
+            cl.color_mapper.high = o_max;
+    """)
+
+    # Change Pallette Selectbox
+    palette_select = Select(title="Colormap Select:", options=['Viridis', 'Spectral', 'Inferno'], value='Viridis')
+    palette_select.js_on_change('value', callback_color_palette)
+    # Change Color Intensity Slider
+    color_max = np.max([np.amax(x, axis=1) for x in [sdd1, sdd2, sdd3, sdd4]])
+    intensity_slider = RangeSlider(title="Color Scale:", start=0, end=2 * color_max,
+                                   value=(0, np.amax(z)), step=20, )
+    intensity_slider.js_on_change('value', callback_color_range)
+
+    options = column(det_select, intensity_slider, palette_select, xrf, slider)
+    if table:
+        layout = gridplot([[plot, options],
+                           [data_table, column(table_macro, table_delete, text_area)]])
+    else:
+        layout = gridplot([[plot, options]])
+    if kwargs.get('json', False):
+        return json.dumps(json_item(layout, "xrf"))
     show(layout)

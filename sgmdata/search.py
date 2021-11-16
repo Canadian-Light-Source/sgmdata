@@ -1,17 +1,29 @@
 import os
 from . import config
 from slugify import slugify
-import psycopg2
-import sgmdata
+import hashlib
 import h5pyd
 import numpy as np
 from collections import Counter
-from dask.distributed import Client
-from .utilities import h5tree, scan_health
 from .load import SGMData
-import datetime
+from .utilities.magicclass import OneList
 import warnings
-from tqdm.notebook import tqdm
+import datetime
+
+try:
+    import psycopg2
+except ImportError:
+    warnings.warn("Using sgm-data without database support.  SGMQuery will fail.")
+
+
+try:
+    shell = get_ipython().__class__.__name__
+    if shell == 'ZMQInteractiveShell':
+        from tqdm.notebook import tqdm  # Jupyter notebook or qtconsole
+    else:
+        from tqdm import tqdm  # Other type (?)
+except NameError:
+    from tqdm import tqdm
 
 try:
     from IPython.display import display, HTML, clear_output
@@ -20,6 +32,41 @@ except ImportError:
 
 # Get file path list from SGMLive database
 class SGMQuery(object):
+    """
+    ### Description:
+    -----
+        You can find your data in the SGMLive database by using the SGMQuery module (when using the [SGM JupyterHub](
+        https://sgm-hub.lightsource.ca) ). The following documentation details the keywords that you can use to customize your
+         search.
+
+    ### Keywords:
+    -----
+        >**sample** *(str:required)* -- At minimum you'll need to provide the keyword "sample", corresponding the sample
+                                        name in the database as a default this will grab all the data under that sample
+                                        name.
+
+        >**daterange** *(tuple:optional)* -- This can be used to sort through sample data by the day that it was
+                                            acquired. This is designed to take a tuple of the form ("start-date",
+                                            "end-date") where the strings are of the form "YYYY-MM-DD". You can also
+                                            just use a single string of the same form, instead of a tuple, this will
+                                            make the assumption that "end-date" == now().
+
+        >**data** *(bool:optional)* -- As a default (True) the SGMQuery object will try to load the the data from disk,
+                                        if this is not the desired behaviour set data=False.
+
+        >**user** *(str:optional:staffonly)* -- Can be used to select the username in SGMLive from which the sample query is
+                                                performed. Not available to non-staff.
+
+        >**processed** *(bool:optional)* -- Can be used to return the paths for the processed data (already interpolated) instead
+                                            of the raw. You would generally set data = False for this option.
+
+    ### Attributes
+    -----
+        >**data** *(object)* --  By default the query will create an SGMData object containing your data, this can be turned off
+                                 with the data keyword.
+
+        >**paths** *(list)* -- Contains the local paths to your data (or processed_data if processed=True).
+    """
 
     def __init__(self, **kwargs):
         self.__dict__.update(kwargs)
@@ -62,9 +109,29 @@ class SGMQuery(object):
         self.processed_ids = []
         self.domains = []
         self.avg_id = []
+        self.raw_paths = []
+        self.date_hash = ""
         self.get_paths()
-        if self.paths and self.data:
-            self.data = SGMData(self.paths)
+        if self.paths:
+            if os.path.exists("/".join(self.paths[0].split('/')[:-1]).replace('/home/jovyan', "./")):
+                local_paths = [p.replace('/home/jovyan', '.') for p in self.paths]
+                self.paths = local_paths
+            elif os.path.exists("/".join(self.paths[0].split('/')[:-1]).replace('/home/jovyan', "/SpecData")):
+                local_paths = [p.replace('/home/jovyan', '/SpecData') for p in self.paths]
+                self.paths = local_paths
+        if self.data and not self.processed:
+            self.data = SGMData(self.paths, **kwargs)
+        elif self.data and self.processed:
+            self.data = SGMData(self.raw_paths, **kwargs)
+            if hasattr(self, 'avg_path'):
+                processed = SGMData.Processed(sample=self.sample)
+                processed.read(filename=self.avg_path)
+                self.data.averaged = {processed['sample']: OneList([processed])}
+            if len(self.paths) == len(self.raw_paths):
+                for i, sgmscan in enumerate(self.data.scans.values()):
+                    for entry in list(sgmscan.__dict__.values()):
+                        entry.read(filename=self.paths[i])
+
 
     def get_paths(self):
         self.cursor.execute("SELECT id, name from lims_project WHERE name IN ('%s');" % self.user)
@@ -84,19 +151,23 @@ class SGMQuery(object):
             print(f"No sample, {self.sample}, in account {self.user}.")
             return []
         if self.daterange:
-            SQL = "SELECT id, domain, \"group\" from lims_xasscan WHERE project_id = %d AND sample_id = %d " \
+            SQL = "SELECT id, domain, \"group\", start_time from lims_xasscan WHERE project_id = %d AND sample_id = %d " \
                   "AND (start_time BETWEEN '%s' AND '%s');" % \
                   (
                       self.project_id, self.sample_id, self.daterange[0], self.daterange[1]
                   )
         else:
-            SQL = "SELECT id, domain, \"group\" from lims_xasscan WHERE project_id = %d AND sample_id = %d;" % \
+            SQL = "SELECT id, domain, \"group\", start_time from lims_xasscan WHERE project_id = %d AND sample_id = %d;" % \
                   (
                       self.project_id, self.sample_id
                   )
         self.cursor.execute(SQL)
-        domains = self.cursor.fetchmany(500)
+        domains = self.cursor.fetchall()
+        if len(domains):
+            self.date_hash = hashlib.md5(f"{str(domains[0][3])}-{str(domains[-1][3])}".encode("utf-8"))
         if self.processed:
+            if not len(domains):
+                return []
             SQL = "SELECT average_id, domain, id FROM lims_xasprocessedscan WHERE xasscan_id IN ("
             for ID in domains:
                 SQL += "'%d', " % ID[0]
@@ -114,7 +185,15 @@ class SGMQuery(object):
 
             # Get most common average scan id.
             f = Counter(avg_ids)
-            self.avg_id = [f.most_common()[0][0]]
+            most_common = [i for i in f.most_common()]
+            if most_common:
+                if most_common[0][0] == None and len(most_common) > 1:
+                    mc = most_common[1][0]
+                else:
+                    mc = most_common[0][0]
+            else:
+                return []
+            self.avg_id = [mc]
             if not self.avg_id[0]:
                 print(f"No average scan found for, {self.sample}, in account {self.user}.")
                 return []
@@ -128,6 +207,11 @@ class SGMQuery(object):
             self.avg_domain = self.cursor.fetchone()
             if self.avg_domain:
                 self.avg_domain = [self.avg_domain[0]]
+                if self.admin:
+                    self.avg_path = "/home/jovyan/data/" + self.avg_domain[0].split('.')[1] + "/" \
+                                    + self.avg_domain[0].split('.')[0] + '.nxs'
+                else:
+                    self.avg_path = "/home/jovyan/data/" + self.avg_domain[0].split('.')[0] + '.nxs'
             else:
                 print(f"Average scan for {self.sample}, is in a different account.")
                 return []
@@ -137,6 +221,12 @@ class SGMQuery(object):
                               procdomains]
             else:
                 self.paths = ["/home/jovyan/data/" + d.split('.')[0] + '.nxs' for d in procdomains]
+
+            if self.admin:
+                self.raw_paths = ["/home/jovyan/data/" + d[1].split('.')[1] + "/" + d[1].split('.')[0] + '.nxs' for d in domains]
+            else:
+                self.raw_paths = ["/home/jovyan/data/" + d[1].split('.')[0] + '.nxs' for d in domains]
+
 
         else:
             if self.admin:
@@ -238,10 +328,12 @@ class SGMQuery(object):
             self.cursor.execute("""UPDATE lims_xasprocessedscan SET average_id = %s, modified = %s WHERE id IN %s ;""",
                                 (row[0], now, tuple(processed))
                                 )
-            t = tuple([d for d in self.processed_ids if d not in processed])
+            self.cursor.execute("""SELECT id FROM lims_xasprocessedscan WHERE average_id = %s AND id NOT IN %s ;""",
+                                (row[0], tuple(processed)))
+            t = self.cursor.fetchall()
             if t:
                 self.cursor.execute("""UPDATE lims_xasprocessedscan SET average_id = %s, modified = %s WHERE id in %s ;""",
-                                    (None, now, t)
+                                    (None, now, tuple([e[0] for e in t]))
                                     )
             self.cursor.execute("""UPDATE lims_xasscanaverage SET modified = %s WHERE id = %s;""",
                                 (now, row[0])
@@ -288,8 +380,8 @@ class SGMQuery(object):
                     self.write(data, domain)
                     domain_list.append(domain)
                 except Exception as e:
-                    print("Error: %s" % e)
-                    return domain_list
+                    print("Error: %s \n %s" % (e, domain))
+                    continue
                 resolution = data.index[1] - data.index[0]
                 rng = f"{data.index[0]} {data.index[-1]}"
                 xasscan = self.scan_ids[k][entry]
@@ -313,7 +405,7 @@ class SGMQuery(object):
                 for i, r in enumerate(average[k]):
                     data = r['data']
                     sample = slugify(self.sample)
-                    domain = ".".join([sample + f"-{i}", self.user, "vsrv-sgm-hdf5-01.clsi.ca"])
+                    domain = ".".join([sample + f"-{self.date_hash.hexdigest()}" + f"-{i}", self.user, "vsrv-sgm-hdf5-01.clsi.ca"])
                     try:
                         self.write(data, domain)
                         domain_list.append(domain)
@@ -336,7 +428,11 @@ class SGMQuery(object):
             detectors = kwargs['detectors']
         else:
             detectors = list(set([d.split('-')[0] for d in data.columns]))
-        h5 = h5pyd.File(domain, "w", config.get("h5endpoint"), username=config.get("h5user"), password=config.get("h5pass"))
+        try:
+            h5 = h5pyd.File(domain, "w", config.get("h5endpoint"), username=config.get("h5user"), password=config.get("h5pass"))
+        except:
+            h5 = h5pyd.File(domain, "a", config.get("h5endpoint"), username=config.get("h5user"), password=config.get("h5pass"))
+
         NXentries = [int(str(x).split("entry")[1]) for x in h5['/'].keys() if
                      'NXentry' in str(h5[x].attrs.get('NX_class'))]
         if NXentries:
@@ -369,103 +465,6 @@ class SGMQuery(object):
         h5.close()
 
 
-def badscans(interp, **kwargs):
-    """
-    Description:
-    ----
-    Batch calculation of sgmdata.utilities.scan_health for list of interpolated dataframes.
 
-    Args:
-    ____
-        interp (list) :  list of SGMScan binned dataframes.
 
-    Returns:
-    ____
-        List of indexes for bad scans in interp.
 
-    """
-    cont = kwargs.get('cont', 55)
-    dump = kwargs.get('dump', 30)
-    sat = kwargs.get('sat', 60)
-    sdd_max = kwargs.get('sdd_max', 50000)
-    bad_scans = []
-    health = [scan_health(i, sdd_max=sdd_max) for i in interp]
-    pbar = tqdm(health)
-    for i,t in enumerate(pbar):
-        pbar.set_description("Finding bad scans...")
-        if t[0] > cont or t[1] > dump or t[2] > sat:
-            print(i, t)
-            bad_scans.append(i)
-    return bad_scans
-
-def preprocess(sample, **kwargs):
-    """
-    Description:
-    ----
-    Utility for automating the interpolation and averaging of a sample in the SGMLive website.
-
-    Args:
-    ----
-        sample (str):  The name of the sample in your account that you wish to preprocess.
-        kwargs: resolution - to be passed to interpolation function, this is histogram bin width.
-                start (float) -  start energy to be passed to interpolation function.
-                stop (float) - stop energy to be passed to interpolation function.
-                sdd_max (int) - threshold value to determine saturation in SDDs, to determine scan_health (default
-                                is 105000).
-                bscan_thresh (tuple) - (continuous, dumped, and saturated)  these are the threshold percentages from
-                                    scan_health that will label a scan as 'bad'.
-
-    Returns:
-    ----
-         (HTML) hyperlink for preprocessed data stored in SGMLive
-    """
-    user = kwargs.get('user', False)
-    cl = kwargs.get('client', False)
-    bs_args = kwargs.get('bscan_thresh', dict(cont=55, dump=30, sat=60))
-    sdd_max = kwargs.get('sdd_max', 105000)
-    clear = kwargs.get('clear', True)
-    query_return = kwargs.get('query', False)
-    start = kwargs.get('start', None)
-    stop = kwargs.get('stop', None)
-    if isinstance(bs_args, tuple):
-        bs_args = dict(cont=bs_args[0], dump=bs_args[1], sat=bs_args[2], sdd_max=sdd_max)
-    resolution = kwargs.get('resolution', 0.1)
-    if user:
-        sgmq = SGMQuery(sample=sample, user=user, data=False)
-    else:
-        sgmq = SGMQuery(sample=sample, data=False)
-    if not cl:
-        cl = Client()
-    if len(sgmq.paths):
-        print("Found %d scans matching sample: %s, for user: %s" % (len(sgmq.paths), sample, user))
-        sgm_data = sgmdata.SGMData(sgmq.paths, client=cl)
-        print("Interpolating...", end=" ")
-        if start and stop:
-            interp = sgm_data.interpolate(resolution=resolution, start=start, stop=stop)
-        else:
-            interp = sgm_data.interpolate(resolution=resolution)
-        sgmq.write_proc(sgm_data.scans)
-        bscans = badscans(interp, **bs_args)
-        if len(bscans) != len(sgm_data.scans):
-            print("Removed %d bad scan(s) from average. Averaging..." % len(bscans), end=" ")
-            if any(bscans):
-                sgm_data.mean(bad_scans=bscans)
-                _, http = sgmq.write_avg(sgm_data.averaged, bad_scans=bscans)
-            else:
-                sgm_data.mean()
-                _, http = sgmq.write_avg(sgm_data.averaged)
-
-            html = "\n".join([
-                                 '<button onclick="window.open(\'%s\',\'processed\',\'width=1000,height=700\'); return false;">Open %s</button>' % (
-                                 l, sgmq.sample) for i, l in enumerate(http)])
-            if clear:
-                clear_output()
-            print(f"Averaged {len(sgm_data.scans) - len(bscans)} scans for {sample}")
-            del sgm_data
-            if query_return:
-                return sgmq
-            return HTML(html)
-        else:
-            if clear:
-                clear_output()
-            warnings.warn(f"There were no scans that passed the health check for {sample}.")
