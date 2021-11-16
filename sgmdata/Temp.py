@@ -64,10 +64,12 @@ def check_sample_fitness(list_of_files):
     sgm_data = sgmdata.load.SGMData(list_of_files)
     sgm_data.interpolate()
     data = sgm_data
+    print(data._repr_console_)
+
     # keys = data.scans['Co-nitrate-N-Bottom9'].__dict__.keys()
     # keys = data.scans['Co-nitrate-N-Bottom9'].__dict__.keys()
     # print(keys)
-    keys = data.scans['Co-nitrate-N-Top21'].keys()
+    # keys = data.scans['Co-nitrate-N-Top21'].keys()
     # print(keys)
     # for item in keys:
     #     print(str(type(data.scans['Co-nitrate-N-Bottom9'].__dict__[item])))

@@ -571,7 +571,7 @@ class SGMData(object):
                 del self.scans[e]
         self.scans.update({k: SGMScan(**v) for d in L for k, v in d.items()})
         self.entries = self.scans.items
-        print(self.scans.keys())
+
 
         # Ordering Dict in a coherent way, eg, making NXentries an OrderedDict() and sorting keys so we don't get
         # "entry1, entry10, entry2" when we sort.
@@ -602,8 +602,7 @@ class SGMData(object):
                     ordered[entry] = self.scans[file][entry]
                 temp.clear()
             self.scans[file] = ordered
-        print(self.scans['Co-nitrate-N-Top21'].keys())
-
+        self.scans.update({k: SGMScan(**v) for d in L for k, v in d.items()})
 
 
     def _find_data(self, node, indep=None, other=False):
