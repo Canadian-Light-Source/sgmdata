@@ -337,6 +337,7 @@ def determine_num_scans(d_list, indices, desired_difference=0.17961943):
     return num_predictions
 
 
+# def extracting_data(interp_list_param, num_scans):
 def extracting_data(interp_list_param):
     """
     Purpose: Takes the results returned by SGMData's "interpolate" function and collects the sdd values within it. Sorts
@@ -357,6 +358,7 @@ def extracting_data(interp_list_param):
     avg_list = [sdd_list[0]]
     diff_list = []
     indices = []
+    # for i, arr in enumerate(sdd_list[1:num_scans + 1]):
     for i, arr in enumerate(sdd_list[1:]):
         avg_list.append(arr)
         cur_mean = np.mean(avg_list, axis=0)
@@ -698,7 +700,7 @@ def testing():
 # # # TEMPORARY
 
 
-def predict_num_scans(files, verbose=False, percent_of_log=0.4):
+def predict_num_scans(files, verbose=False, percent_of_log=0.4, num_scans=10):
     """
     Purpose: Takes the name of of a sample, and the username of the individual who took the sample. Uses a combination
     of other function to predict how many additional scans should be taken of that sample.
@@ -708,22 +710,32 @@ def predict_num_scans(files, verbose=False, percent_of_log=0.4):
         additional scans to take of.
         verbose(Boolean, optional): Default value is False. If set to True, gives user additional data on how the
          additional number of scans needed was calculated.
+         percent of log (float, optional):
+         num_scans (integer, optional): The number of scans from the scans provided by the user, that the user would
+         like to be used to predict the number of additional scans to take.
     Returns:
         (int): The number of additional scans that should be taken of a sample.
     """
+    # Getting the data from the file specified by the user, and interpolating it
     list_of_files = file_retrieval(files)
     interp_list = check_sample_fitness(list_of_files)
-    returned_data = extracting_data(interp_list)
-    # Organizing data returned from functions to set up data.
+    # Checking if the user has specified that they want more scans to be used to predict than there are scans available.
+    # If this is the case, the number of scans available instead of the number of scans the user has specified is used
+    # in the prediction.
+    if num_scans > (len(interp_list) + 1):
+        num_scans = len(interp_list)
+    # returned_data = extracting_data(interp_list, num_scans)
+    returned_data = extracting_data(interp_list[:num_scans])
+    # Organizing interpolated data returns from previous functions.
     returned_indices = returned_data[1]
     returned_diff_list = returned_data[0]
     returned_diff_list_listed = []
-    for item in returned_diff_list:
-        # print(item)
-        returned_diff_list_listed.append(item)
     returned_indices_listed = []
+    for item in returned_diff_list:
+        returned_diff_list_listed.append(item)
     for item in returned_indices:
         returned_indices_listed.append(item)
+    # Using organized interpolated data to predict the actual number of additional scans needed.
     cut_off_point_info = predict_cut_off(returned_diff_list_listed[:9], percent_of_log)
     cut_off_point = cut_off_point_info[2]
     number_of_scans = find_cut_off(returned_diff_list_listed[:9], cut_off_point)
