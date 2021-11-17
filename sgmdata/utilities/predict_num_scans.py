@@ -65,7 +65,7 @@ def check_sample_fitness(list_of_files):
 
     if len(sgm_data.__dict__['scans']) == 0:
         raise ValueError("hdf5 file must contain scans to be able to predict the number of scans required. The hdf5 "
-                         "file you have provided does not contain any scans. PLease try again with an hdf5 file that"
+                         "file you have provided does not contain any scans. Please try again with an hdf5 file that"
                          " does contain scans.")
     has_sdd = False
     file = list(sgm_data.__dict__['scans'].keys())
@@ -745,6 +745,6 @@ def predict_num_scans(files, verbose=False, percent_of_log=0.4):
 
 
 print("Number of additional scans needed:\t" +
-      str(predict_num_scans('C:/Users/roseh/Desktop/Internship/MyCode/h5Files/*feb21-32*.hdf5', True)))
+      str(predict_num_scans('C:/Users/roseh/Desktop/Internship/SignalToNoiseConvergence/h5Files/*Co-nitrate*.hdf5', True)))
 
 
