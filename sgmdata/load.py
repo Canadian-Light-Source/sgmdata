@@ -5,7 +5,7 @@ import h5py
 from . import config
 import h5pyd
 # from dask import compute, delayed
-from dask import delayed
+# from dask import delayed
 import dask.array as da
 import dask.dataframe as dd
 # from dask.distributed import Client
@@ -46,46 +46,6 @@ class SGMScan(DisplayDict):
         for interpolation.
     """
 
-    # class DataDict(dict):
-    #     def __getattr__(self, name):
-    #         return self[name]
-    #
-    #     def __setattr__(self, name, value):
-    #         self[name] = value
-    #
-    #     @staticmethod
-    #     def label_bins(bins, bin_edges, independent, npartitions):
-    #         """
-    #             Program creates an array the length of an independent axis and fills it
-    #             with bin center values that the independent array falls into.
-    #         """
-    #         bin_labels = {}
-    #         val = independent
-    #         for i, key in enumerate(val.keys()):
-    #             bin_labels[key] = np.full(val[key].shape, np.nan)
-    #             indep_value = val[key]
-    #             for j, b in enumerate(bins[i]):
-    #                 bin_labels[key][np.where(
-    #                     np.logical_and(indep_value >= bin_edges[i][j], indep_value <= bin_edges[i][j + 1]))] = b
-    #         axes = np.vstack([v for k, v in bin_labels.items()]).T
-    #         bin_l_dask = da.from_array(axes, chunks='auto')
-    #         columns = [k for k, v in bin_labels.items()]
-    #         return dd.from_dask_array(bin_l_dask, columns=columns).compute()
-    #
-    #     def make_df(self, labels=None):
-    #         df = dd.from_delayed(labels)
-    #         c = [k for k, v in self['independent'].items()]
-    #         for k, v in self['signals'].items():
-    #             if len(v.shape) == 2:
-    #                 columns = [k + "-" + str(i) for i in range(v.shape[1])]
-    #             elif len(v.shape) == 1:
-    #                 columns = [k]
-    #             else:
-    #                 continue
-    #             df = df.merge(dd.from_dask_array(v, columns=columns))
-    #
-    #         self.__setattr__('dataframe', {"binned": df.groupby(c).mean()})
-    #         return df.groupby(c).mean()
     class DataDict(DisplayDict):
 
         def get_arr(self, detector):
@@ -107,46 +67,6 @@ class SGMScan(DisplayDict):
                     warnings.warn(f"No dataframe loaded in scan dictionary. Have you run interpolate yet?")
 
         def interpolate(self, **kwargs):
-            # """
-            #     Creates the bins required for each independent axes to be histogrammed into for interpolation,
-            #     then uses dask dataframe groupby commands to perform a linear interpolation.
-            #     Optional Keywords:
-            #                start (type: list or number) -- starting position of the new array
-            #                stop  (type: list or number) -- ending position of the new array
-            #                bins (type: list of numbers or arrays) --  this can be an array of bin values for each axes,
-            #                                                           or can be the number of bins desired.
-            #                resolution (type: list or number) -- used instead of bins to define the bin to bin distance.
-            # """
-            # if 'compute' in kwargs.keys():
-            #     compute = kwargs['compute']
-            # else:
-            #     compute = True
-            # if 'method' in kwargs.keys():
-            #     method = kwargs.keys()
-            # else:
-            #     method = "nearest"
-            # axis = self['independent']
-            # dim = len(axis.keys())
-            # if 'start' not in kwargs.keys():
-            #     if hasattr(self, 'command'):
-            #         command = self.command
-            #         if 'scan' in command[0]:
-            #             start = [round(float(command[2]))]
-            #         elif 'mesh' in command[0]:
-            #             start = [round(float(command[2])), round(float(command[6]))]
-            #     else:
-            #         start = [round(v.min()) for k, v in axis.items()]
-            # else:
-            #     start = kwargs['start']
-            # if 'stop' not in kwargs.keys():
-            #     if hasattr(self, 'command'):
-            #         command = self.command
-            #         if 'scan' in command[0]:
-            #             stop = [round(float(command[3]))]
-            #         elif 'mesh' in command[0]:
-            #             stop = [round(float(command[3])), round(float(command[7]))]
-            #     else:
-            #         stop = [round(v.max()) + 1 for k, v in axis.items()]
             f"""{interpolate.__doc__}"""
             independent = self['independent']
             signals = self['signals']
@@ -154,69 +74,8 @@ class SGMScan(DisplayDict):
             if hasattr(self, 'command'):
                 command = self.command
             else:
-            #     stop = kwargs['stop']
-            # if not isinstance(start, list):
-            #     start = [start for i, _ in enumerate(axis.keys())]
-            # if not isinstance(stop, list):
-            #     stop = [stop for i, _ in enumerate(axis.keys())]
-            # if len(start) != len(stop):
-            #     raise ValueError("Start and Stop coordinates must have same length")
-            # if 'resolution' in kwargs.keys() and 'bins' in kwargs.keys():
-            #     raise KeyError("You can only use the keyword bins, or resolution not both")
-            # if 'resolution' not in kwargs.keys() and 'bins' not in kwargs.keys():
-            #     bin_num = [int(np.unique(v.compute()).shape[0] / 5) for k, v in axis.items()]
-            #     offset = [abs(stop[i] - start[i]) / (2 * bin_num[i]) for i in range(len(bin_num))]
-            #     bins = [np.linspace(start[i], stop[i], bin_num[i], endpoint=True) for i in range(len(bin_num))]
-            # elif 'resolution' in kwargs.keys():
-            #     resolution = kwargs['resolution']
-            #     if not isinstance(kwargs['resolution'], list):
-            #         resolution = [resolution for i, _ in enumerate(axis.keys())]
-            #     max_res = [int(np.unique(np.floor(v.compute() * 100)).shape[0] / 1.1) for k, v in axis.items()]
-            #     bin_num = [int(abs(stop[i] - start[i]) / resolution[i]) for i, _ in enumerate(axis.keys())]
-            #     for i, l in enumerate(max_res):
-            #         if l < bin_num[i]:
-            #             warnings.warn(
-            #                 "Resolution setting can't be higher than experimental resolution, setting resolution for axis %s to %f" % (
-            #                 i, abs(stop[i] - start[i]) / l), UserWarning)
-            #             bin_num[i] = l
-            #     offset = [item / 2 for item in resolution]
-            #     bins = [np.linspace(start[i], stop[i], bin_num[i], endpoint=True) for i in range(len(bin_num))]
-            # elif 'bins' in kwargs.keys():
-            #     if isinstance(kwargs['bins'], list):
-            #         if len(kwargs['bins'][0]) == 1:
-            #             bin_num = [np.floor(len(np.unique(axis[k])) / kwargs['bins'][i]) for i, k in
-            #                        enumerate(axis.keys())]
-            #             bins = [np.linspace(start[i], stop[i], bin_num[i], endpoint=True) for i in range(len(bin_num))]
-            #         else:
-            #             start = [item[0] for item in kwargs['bins']]
-            #             stop = [item[1] for item in kwargs['bins']]
-            #             bin_num = []
-            #     elif isinstance(kwargs['bins'], int):
-            #         bin_num = [int(len(axis[k]) / kwargs['bins']) for i, k in enumerate(axis.keys())]
-            # bin_edges = [np.linspace(start[i] - offset[i], stop[i] + offset[i], bin_num[i] + 1, endpoint=True) for i in
-            #              range(len(bin_num))]
-            # self.__setattr__("new_axes", {"values": bins, "edges": bin_edges})
-            # labels = delayed(self.label_bins)(bins, bin_edges, self['independent'], self.npartitions)
-            # df = self.make_df(labels)
-            # if compute:
-            #     nm = [k for k, v in self['independent'].items()]
-            #     if len(nm) == 1:
-            #         idx = pd.Index(bins[0], name=nm[0])
-            #         df = df.compute().reindex(idx).interpolate()
-            #         self.__setattr__('binned', {"dataframe": df})
-            #         return df
-            #     elif len(nm) == 2:
-            #         _y = np.array([bins[1] for b in bins[0]]).flatten()
-            #         _x = np.array([[bins[0][j] for i in range(len(bins[1]))] for j in range(len(bins[0]))]).flatten()
-            #         array = [_x, _y]
-            #         idx = pd.MultiIndex.from_tuples(list(zip(*array)), names=nm)
-            #         #This method works for now, but can take a fair amount of time.
-            #         df = df.compute().unstack().interpolate(method=method).fillna(0).stack().reindex(idx)
-            #         binned = {"dataframe": df}
-            #         self.__setattr__('binned', binned)
                 command = None
             df, idx = interpolate(independent, signals, command=command, **kwargs)
-            # self.__setattr__('binned', {"dataframe": df, "index": idx})
             if isinstance(df, dd.DataFrame) or isinstance(df, pd.DataFrame):
                 self.__setattr__('binned', {"dataframe": df, "index": idx})
             return df
@@ -233,23 +92,16 @@ class SGMScan(DisplayDict):
                         df = self["binned"]['dataframe'].compute().reindex(idx).interpolate()
                     self['binned']['dataframe'] = df
                     return df
-            #     else:
-            #         raise ValueError("Too many independent axis for interpolation")
-            #
-            # else:
-            #     return df
             print("Nothing to compute.")
 
         def fit_mcas(self, detectors=[], emission=[]):
             if not len(detectors):
-                # detectors = [k for k,v in self['signals'].items() if 'sdd' in k or 'ge' in k]
                 detectors = [k for k, v in self['signals'].items() if 'sdd' in k or 'ge' in k]
             if not len(emission):
                 if 'emission' in self['other']:
                     emission = self['other']['emission'].compute()
                 else:
                     sig = self['signals'][detectors[0]]
-                    # emission = np.linspace(0, sig.shape[1]*10, sig.shape[1])
                     emission = np.linspace(0, sig.shape[1] * 10, sig.shape[1])
             if 'binned' in self.keys():
                 df = self['binned']['dataframe']
@@ -263,46 +115,10 @@ class SGMScan(DisplayDict):
                     data.append(df.filter(regex=rgx, axis=1))
                 fit_df, pks, wid = fit_peaks(emission, data)
                 new_df = pd.concat([scaler_df, fit_df], axis=1, sort=False)
-                # self['fit'] = {"dataframe": new_df, "emission":emission, "peaks": np.array([emission[p] for p in pks]), "width": wid }
                 self['fit'] = {"dataframe": new_df, "emission": emission, "peaks": np.array([emission[p] for p in pks]),
                                "width": wid}
                 return new_df
 
-        # def __repr__(self):
-        #     represent = ""
-        #     for key in self.keys():
-        #         represent += f"\t {key}:\n\t\t\t"
-        #         val = self[key]
-        #         if isinstance(val, dict):
-        #             for k in val.keys():
-        #                 if hasattr(val[k], 'shape') and hasattr(val[k], 'dtype'):
-        #                     represent += f"{k} : array(shape:{val[k].shape}, type:{val[k].dtype}), \n\t\t\t"
-        #                 else:
-        #                     represent += f"{k} : {val[k]},\n\t\t\t"
-        #             represent += "\n\t"
-        #         else:
-        #             represent += f"{val} \n\t"
-        #     return represent
-        #
-        # def _repr_html_(self):
-        #     entry = [
-        #         "<td>",
-        #         str(self.sample),
-        #         "</td>",
-        #         "<td>",
-        #         str(self.command),
-        #         "</td>",
-        #         "<td>",
-        #         str(list(self.independent.keys())),
-        #         "</td>",
-        #         "<td>",
-        #         str(list(self.signals.keys())),
-        #         "</td>",
-        #         "<td>",
-        #         str(list(self.other.keys())),
-        #         "</td>",
-        #     ]
-        #     return " ".join(entry)
         def read(self, filename=None):
             """
             ### Description
@@ -377,7 +193,6 @@ class SGMScan(DisplayDict):
                 if 'dataframe' in self['binned'].keys():
                     df = self['binned']['dataframe']
                     h5 = h5py.File(filename, "w")
-                    # NXentries = [int(str(x).split("entry")[1]) for x in h5['/'].keys() if 'NXentry' in str(h5[x].attrs.get('NX_class'))]
                     NXentries = [int(str(x).split("entry")[1]) for x in h5['/'].keys() if
                                  'NXentry' in str(h5[x].attrs.get('NX_class'))]
                     if NXentries:
@@ -411,7 +226,6 @@ class SGMScan(DisplayDict):
             else:
                 raise AttributeError("no interpolated data found to write")
 
-        # def plot(self, json_out = False):
         def plot(self, **kwargs):
             """
             ### Description
@@ -432,7 +246,6 @@ class SGMScan(DisplayDict):
                         data.update({df.index.name: np.array(df.index), 'emission': np.linspace(0, 2560, 256)})
                         if 'image' in keys:
                             data.update({'image': data['sdd1'], 'filename': str(self.sample)})
-                        # data.update({'json': json_out})
                         return eemscan.plot(**data)
                 else:
                     print("Plotting Raw Data")
@@ -444,8 +257,6 @@ class SGMScan(DisplayDict):
                     data.update({k: self.other[s].compute() for s in self.other.keys() for k in keys if s in k})
                     if 'image' in keys:
                         data.update({'image': self.signals['sdd1'][::ds].compute(), 'filename': str(self.sample)})
-                    # data.update({'json':json_out})
-                    # return eemscan.plot(**data)
                     kwargs.update(data)
                     return eemscan.plot(**kwargs)
             elif dim == 2:
@@ -465,8 +276,6 @@ class SGMScan(DisplayDict):
                     data.update({'emission': emission, 'peaks': peaks, 'width': width})
                     if 'image' in keys:
                         data.update({"image": data['sdd1']})
-                    # data.update({'json': json_out})
-                    # xrfmap.plot(**data)
                     kwargs.update(data)
                     return xrfmap.plot(**kwargs)
                 elif 'binned' in self.keys():
@@ -479,7 +288,6 @@ class SGMScan(DisplayDict):
                     data.update({n: df.index.levels[i] for i, n in enumerate(list(df.index.names))})
                     data.update({'emission': np.linspace(0, 2560, 256)})
                     kwargs.update(data)
-                    # xrfmap.plot(**kwargs)
                     return xrfmap.plot_interp(**kwargs)
                 else:
                     print("Plotting Raw Data")
@@ -511,31 +319,6 @@ class SGMScan(DisplayDict):
             return represent
 
 
-### below is the __init__() that I wrote for issue 23
-    # def __init__(self, **kwargs):
-    #     self.__dict__ = OrderedDict()
-    #     keys = list(kwargs.keys())
-    #     if len(keys) > 0:
-    #         shortest = len(keys[0])
-    #         longest = len(keys[0])
-    #         for key, value in kwargs.items():
-    #             if len(key) < shortest:
-    #                 shortest = len(key)
-    #             elif len(key) > longest:
-    #                 longest = len(key)
-    #         temp = []
-    #         cur_len = shortest
-    #         while cur_len <= longest:
-    #             for entry in keys:
-    #                 if len(entry) == cur_len:
-    #                     temp.append(entry)
-    #             temp.sort()
-    #             for key, value in kwargs.items():
-    #                 if key in temp:
-    #                     self.__dict__[key] = SGMScan.DataDict(value)
-    #             temp.clear()
-    #             cur_len += 1
-    #         temp = None
         def _repr_html_(self):
             entry = [
                 "<td>",
@@ -625,25 +408,6 @@ class SGMScan(DisplayDict):
 
 
 
-# class DisplayDict(dict):
-#     def __getattr__(self, name):
-#         return self[name]
-#
-#     def __setattr__(self, name, value):
-#         self[name] = value
-#
-#     def _repr_html_(self):
-#         table = [
-#             "<table>",
-#             "  <thead>",
-#             "    <tr><td> </td><th>Key</th><th>Value</th></tr>",
-#             "  </thead>",
-#             "  <tbody>",
-#         ]
-#         for key, value in self.__dict__.items():
-#             table.append(f"<tr><th> {key}</th><th>{value}</th></tr>")
-#         table.append("</tbody></table>")
-#         return "\n".join(table)
 
 class SGMData(object):
     """
@@ -791,27 +555,11 @@ class SGMData(object):
                 nxdata.create_dataset(sig, arr.shape, data=arr, dtype=arr.dtype)
             h5.close()
 
-        # def plot(self, json_out=False):
         def plot(self, **kwargs):
             f"""{SGMScan.DataDict.plot.__doc__}"""
             if 'type' in self.__dict__.keys():
-                # pass
                 scantype = self['type']
             else:
-                # if 'scan' in self.command[0] and "en" == self.command[1]:
-                #     keys = eemscan.required
-                #     df = self.data
-                #     roi_cols = df.filter(regex="sdd[1-4]_[0-2].*").columns
-                #     df.drop(columns=roi_cols, inplace=True)
-                #     data = {k: df.filter(regex=("%s.*" % k), axis=1).to_numpy() for k in keys}
-                #     # data.update({df.index.name: np.array(df.index), 'emission': np.linspace(0,2560,256)})
-                #     # data.update({'image':data['sdd1'], 'json':json_out})
-                #     data.update({df.index.name: np.array(df.index), 'emission': np.linspace(0, 2560, 256)})
-                #     data.update({'image': data['sdd1']})
-                #     kwargs.update(data)
-                #     return eemscan.plot(**data)
-                # elif 'mesh' in self.command[0]:
-                #     pass
                 try:
                     if 'scan' in self.command[0] and "en" == self.command[1]:
                         scantype = 'EEMS'
@@ -858,7 +606,6 @@ class SGMData(object):
         self.user = kwargs.get('user', os.environ.get('JUPYTERHUB_USER'))
         self.shift = kwargs.get('shift', 0.5)
         files = [os.path.abspath(file) for file in files]
-        # self.scans = {k.split('/')[-1].split(".")[0]: [] for k in files}
         #Not sure if this is important/works, but trying to make sure that dask workers have the right path for non-admin users.
         if not any([os.path.exists(f) for f in files]) and os.path.exists(f'/home/jovyan/data/{files[0]}'):
             files = [file.replace(f'/home/jovyan/data/{self.user}/', '/home/jovyan/data/') for file in files]
@@ -877,6 +624,7 @@ class SGMData(object):
                 del self.scans[e]
         self.scans.update({k: SGMScan(**v) for d in L for k, v in d.items()})
         self.entries = self.scans.items
+        self.interpolated = False
 
 
 
@@ -906,7 +654,6 @@ class SGMData(object):
         """
         entries = {}
         # Try to open the file locally or from a url provided.
-        # file_root = file.split("\\")[-1].split("/")[-1].split(".")[0]
         file_root = (os.path.normpath(file)).split('\\')[-1].split('/')[-1].split(".")[0]
         if os.path.exists(file):
             try:
@@ -938,7 +685,6 @@ class SGMData(object):
                 else:
                     commands = [
                         str(h5[entry + '/command'][()]).split() if isinstance(h5[entry + '/command'][()], str) else str(
-                            # h5[entry + '/command'][()], 'utf-8').split()[:-1] for entry in NXentries]
                             h5[entry + '/command'][()], 'utf-8').split() for entry in NXentries]
             except:
                 warnings.warn(
@@ -964,7 +710,6 @@ class SGMData(object):
         try:
             signals = [{k: da.from_array(v, chunks=tuple(
                 [np.int(np.divide(dim, self.npartitions)) for dim in v.shape])).astype('f4') for k, v in d.items() if
-                    # np.abs(v.shape[0] - list(indep[i].values())[0].shape[0]) < 2} for i, d in enumerate(data)]
                         np.abs(v.shape[0] - list(indep[i].values())[0].shape[0]) < 30} for i, d in enumerate(data)]
         except IndexError:
             return {"ERROR": file_root}
@@ -1028,18 +773,6 @@ class SGMData(object):
             for key, entry in val.__dict__.items():
                 entries.append(entry)
         with ThreadPool(self.threads) as pool:
-        #     results = list(tqdm(pool.imap(_interpolate, entries), total=len(entries)))
-        # i = 1
-        # while i < len(results):
-        #     if len(results[i]) != len(results[0]):
-        #         raise ValueError("All of the signals for the scans must be the same length. The signals for the scans "
-        #                          "in the hdf5 file you provided are not the same length. This issue can be fixed by "
-        #                          "decreasing the motor scan range. Please decrease the motor scan range and try again.")
-        #     elif len(results[i].columns) != len(results[0].columns):
-        #         raise ValueError("** All of the signals for the scans must be the same length. The signals for the scans "
-        #                          "in the hdf5 file you provided are not the same length. This issue can be fixed by "
-        #                          "decreasing the motor scan range. Please decrease the motor scan range and try again.")
-        #     i += 1
             results = list(tqdm(pool.imap_unordered(_interpolate, entries), total=len(entries)))
         return results
 
@@ -1092,14 +825,10 @@ class SGMData(object):
                 command = k.split(":")[-1]
                 df = df_concat.groupby(df_concat.index).mean()
                 if key in average.keys():
-                    # l = average[key] + [
-                    #     SGMData.Processed(command=command.split('_'), data=df, signals=v['signals'], sample=key)]
                     l = average[key] + OneList([
                         SGMData.Processed(command=command.split('_'), data=df, signals=v['signals'], sample=key)])
                     average.update({key: l})
                 else:
-                    # average.update({key: [
-                    #     SGMData.Processed(command=command.split('_'), data=df, signals=v['signals'], sample=key)]})
                     average.update({key: OneList([
                         SGMData.Processed(command=command.split('_'), data=df, signals=v['signals'], sample=key)])})
         self.averaged = average

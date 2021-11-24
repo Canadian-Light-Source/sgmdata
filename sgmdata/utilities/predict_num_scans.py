@@ -92,6 +92,7 @@ def check_sample_fitness(list_of_files):
                                  "try again with an hdf5 file only containing scans from the"
                                  " same sample. ")
     interp_list = sgm_data.interpolate(resolution=0.1)
+    print("Interpolated Attribute: " + str(sgm_data.interpolated) + "\n\n")
     return interp_list
 
 
