@@ -64,7 +64,14 @@ def check_sample_fitness(list_of_files):
     sgm_data = sgmdata.load.SGMData(list_of_files)
     sgm_data.interpolate()
     data = sgm_data
-    print(data._repr_console_)
+    for item in data.scans:
+        print("outside the loop: \t\t" + str(data.scans[item].keys()))
+    print(data.mean())
+    # mean = data.mean()
+    # if len(mean) < 1:
+    #     print("Nothing in DisplayDict")
+    # else:
+    #     print("***Contents in DataDict")
 
     # keys = data.scans['Co-nitrate-N-Bottom9'].__dict__.keys()
     # keys = data.scans['Co-nitrate-N-Bottom9'].__dict__.keys()
@@ -76,7 +83,7 @@ def check_sample_fitness(list_of_files):
     # print(str(data.scans.keys()) + "\n" + str(type(data.scans)))
 
 
-x = file_retrieval('C:/Users/roseh/Desktop/Internship/SignalToNoiseConvergence/h5Files/*Co-nitrate*.hdf5')
+x = file_retrieval('C:/Users/roseh/Desktop/Internship/SignalToNoiseConvergence/h5Files/*Co-nit*.hdf5')
 # # x = file_retrieval('C:/Users/roseh/Desktop/Internship/MyCode/h5Files/*bee*.hdf5')
 y = check_sample_fitness(x)
 
@@ -151,7 +158,4 @@ y = check_sample_fitness(x)
 #         result = pool.apply_async(time.sleep, (10,))
 #         # print(result.get(timeout=1))        # raises multiprocessing.TimeoutError
 
-# * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
-
-
-
+# * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *

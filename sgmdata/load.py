@@ -4,7 +4,6 @@ import h5py
 
 from . import config
 import h5pyd
-from dask import delayed
 import dask.array as da
 import dask.dataframe as dd
 import pandas as pd
@@ -13,18 +12,13 @@ from multiprocessing.pool import ThreadPool
 from functools import partial
 from sgmdata.plots import eemscan, xrfmap
 from sgmdata.xrffit import fit_peaks
-from sgmdata.interpolate import interpolate, compute_df
-from dask.diagnostics import ProgressBar
 from sgmdata.interpolate import interpolate, shift_cmesh
 from .utilities.magicclass import OneList, DisplayDict
 
 import warnings
 
-###
-# from tabulate import tabulate
 import sys
 from collections import OrderedDict
-###
 
 try:
     shell = get_ipython().__class__.__name__
@@ -138,12 +132,20 @@ class SGMScan(DisplayDict):
                     h5 = h5py.File(filename, 'r')
                 except Exception as f:
                     warnings.warn(f"Could not open file, h5py raised: {f}")
+                    return
+            elif os.path.exists('./data/'):
+                try:
+                    h5 = h5py.File(filename.replace('/home/jovyan/', './'), 'r')
+                except Exception as f:
+                    warnings.warn(f"Could not open file, h5py raised: {f}")
+                    return
             else:
                 try:
                     h5 = h5pyd.File(filename, "r", config.get("h5endpoint"), username=config.get("h5user"),
                                     password=config.get("h5pass"))
                 except Exception as f:
                     warnings.warn(f"Could not open file, h5pyd raised: {f}")
+                    return
             NXentries = [str(x) for x in h5['/'].keys()
                          if 'NXentry' in str(h5[x].attrs.get('NX_class')) and str(x) in self['name']]
             NXdata = [entry + "/" + str(x) for entry in NXentries for x in h5['/' + entry].keys()
@@ -272,7 +274,7 @@ class SGMScan(DisplayDict):
                     if 'image' in keys:
                         data.update({"image": data['sdd1']})
                     kwargs.update(data)
-                    xrfmap.plot(**kwargs)
+                    return xrfmap.plot(**kwargs)
                 elif 'binned' in self.keys():
                     print("Plotting Interpolated Data")
                     df = self['binned']['dataframe']
@@ -283,7 +285,7 @@ class SGMScan(DisplayDict):
                     data.update({n: df.index.levels[i] for i, n in enumerate(list(df.index.names))})
                     data.update({'emission': np.linspace(0, 2560, 256)})
                     kwargs.update(data)
-                    xrfmap.plot_interp(**kwargs)
+                    return xrfmap.plot_interp(**kwargs)
                 else:
                     print("Plotting Raw Data")
                     ds = int(self.independent['xp'].shape[0] / 10000) + 1
@@ -294,7 +296,8 @@ class SGMScan(DisplayDict):
                          k in s})
                     data.update({k: self.other[s].compute() for s in self.other.keys() for k in keys if s in k})
                     kwargs.update(data)
-                    xrfmap.plot_xyz(**kwargs)
+                    return xrfmap.plot_xyz(**kwargs)
+
 
         def __repr__(self):
             represent = ""
@@ -311,6 +314,7 @@ class SGMScan(DisplayDict):
                 else:
                     represent += f"{val} \n\t"
             return represent
+
 
         def _repr_html_(self):
             entry = [
@@ -333,11 +337,20 @@ class SGMScan(DisplayDict):
             return " ".join(entry)
 
 
+        def _repr_console_(self):
+            final_data = 'sample:\t' + str(self.sample) + '\t\t|\t\t'
+            final_data = final_data + 'command:\t' + str(self.command) + '\t\t|\t\t'
+            final_data = final_data + 'independent:\t' + str(self.independent.keys()) + '\t\t|\t\t'
+            final_data = final_data + 'signals:\t' + str(self.signals.keys()) + '\t\t|\t\t'
+            final_data = final_data + 'other:\t' + str(self.other.keys()) + '\t\t|\t\t'
+            return final_data
+
 
     def __init__(self, *args, **kwargs):
         super(SGMScan, self).__init__(*args, **kwargs)
         self.__dict__.update(kwargs)
         for key, value in kwargs.items():
+            # print(key)
             value.update({'name': key})
             self.__dict__[key] = SGMScan.DataDict(value)
 
@@ -360,6 +373,33 @@ class SGMScan(DisplayDict):
         table.append("</tbody></table>")
 
         return "\n".join(table)
+
+    def _repr_console_(self):
+        needed_info = ['entry', 'sample', 'command', 'independent', 'signals', 'other']
+        if sys_has_tab:
+            temp_data = []
+            final_data = []
+            for key in self.__dict__.keys():
+                temp_data.append(key)
+                for title in self.__dict__[key].keys():
+                    if title in needed_info:
+                        temp_data.append(self.__dict__[key][title])
+                final_data.append(temp_data.copy())
+                temp_data.clear()
+            return tabulate(final_data, headers=needed_info)
+        else:
+            temp_data = ''
+            final_data = ''
+            for key in self.__dict__.keys():
+                temp_data = temp_data + 'Entry:\t'
+                temp_data = temp_data + str(key)
+                for title in self.__dict__[key].keys():
+                    if title in needed_info:
+                        temp_data = temp_data + '\t\t|\t\t'
+                        temp_data = temp_data + (str(title) + ":\t" + str(self.__dict__[key][title]))
+                final_data = final_data + ('\n' + str(temp_data))
+                temp_data = ''
+            return final_data
 
     def __getitem__(self, item):
         return self.__dict__[item]
@@ -432,12 +472,20 @@ class SGMData(object):
                     h5 = h5py.File(filename, 'r')
                 except Exception as f:
                     warnings.warn(f"Could not open file, h5py raised: {f}")
+                    return
+            elif os.path.exists('./data/'):
+                try:
+                    h5 = h5py.File(filename.replace('/home/jovyan/','./'), 'r')
+                except Exception as f:
+                    warnings.warn(f"Could not open file, h5py raised: {f}")
+                    return
             else:
                 try:
                     h5 = h5pyd.File(filename, "r", config.get("h5endpoint"), username=config.get("h5user"),
                                     password=config.get("h5pass"))
                 except Exception as f:
                     warnings.warn(f"Could not open file, h5pyd raised: {f}")
+                    return
             NXentries = [str(x) for x in h5['/'].keys()
                          if 'NXentry' in str(h5[x].attrs.get('NX_class'))]
             NXdata = [entry + "/" + str(x) for entry in NXentries for x in h5['/' + entry].keys()
@@ -446,13 +494,14 @@ class SGMData(object):
                      str(nm) in str(s)] for nxdata in NXdata]
             indep_shape = [v.shape for i, d in enumerate(NXdata) for k, v in h5[d].items() if k in axes[i][0]]
 
-            data = [{k: np.squeeze(v) for k, v in h5[d].items() if v.shape[0] == indep_shape[i][0]} for i, d in
+            data = [{k.replace('_processed', ''): np.squeeze(v) for k, v in h5[d].items() if v.shape[0] == indep_shape[i][0]} for i, d in
                     enumerate(NXdata)]
             df_sdds = [pd.DataFrame(
-                {k + f"-{j}": v[:, j] for k, v in data[i].items() if len(v.shape) == 2 for j in range(0, v.shape[1])})
+                {k.replace('_processed', '') + f"-{j}": v[:, j] for k, v in data[i].items() if len(v.shape) == 2 for j in range(0, v.shape[1])})
                        for i, _ in enumerate(NXdata)]
+            processed_axes = [[ax.replace('_processed', '') for ax in x] for x in axes]
             df_scas = [pd.DataFrame.from_dict(
-                {k: v for k,v, in data[i].items() if len(v.shape) < 2}).join(df_sdds[i]).groupby(axes[i]).mean()
+                {k.replace('_processed', ''): v for k,v, in data[i].items() if len(v.shape) < 2}).join(df_sdds[i]).groupby(processed_axes[i]).mean()
                        for i, _ in enumerate(NXdata)]
             if len(df_scas) == 1:
                 self.data = df_scas[0]
@@ -531,7 +580,7 @@ class SGMData(object):
                 data.update({df.index.name: np.array(df.index), 'emission': np.linspace(0, 2560, 256)})
                 data.update({'image': data['sdd1']})
                 kwargs.update(data)
-                return eemscan.plot(**data)
+                return eemscan.plot(**kwargs)
             elif scantype == 'XRF':
                 keys = xrfmap.required
                 df = self.data
@@ -556,13 +605,16 @@ class SGMData(object):
         self.shift = kwargs.get('shift', 0.5)
         files = [os.path.abspath(file) for file in files]
         #Not sure if this is important/works, but trying to make sure that dask workers have the right path for non-admin users.
-        if not any([os.path.exists(f) for f in files]) and os.path.exists(f'/home/jovyan/{self.user}/'):
-            files = [file.replace('/home/jovyan/', f'/home/jovyan/{self.user}/') for file in files]
+        if not any([os.path.exists(f) for f in files]) and os.path.exists(f'/home/jovyan/data/{files[0]}'):
+            files = [file.replace(f'/home/jovyan/data/{self.user}/', '/home/jovyan/data/') for file in files]
+        if not any([os.path.exists(f) for f in files]) and os.path.exists(f'./data/'):
+            files = [file.replace(f'/home/jovyan/', './') for file in files]
         # Following line modified so that self.scans will have the same contents regardless of OS.
-        self.scans = {(os.path.normpath(k)).split('\\')[-1].split(".")[0]: [] for k in files}
+        self.scans = {(os.path.normpath(k)).split('\\')[-1].split('/')[-1].split(".")[0]: {} for k in files}
         self.interp_params = {}
         with ThreadPool(self.threads) as pool:
-            L = list(tqdm(pool.imap_unordered(self._load_data, files), total=len(files), leave=False))
+            # L = list(tqdm(pool.imap_unordered(self._load_data, files), total=len(files), leave=False))
+            L = list(tqdm(pool.imap(self._load_data, files), total=len(files), leave=False))
         err = [l['ERROR'] for l in L if 'ERROR' in l.keys()]
         L = [l for l in L if 'ERROR' not in l.keys()]
         if len(err):
@@ -570,39 +622,47 @@ class SGMData(object):
             for e in err:
                 del self.scans[e]
         self.scans.update({k: SGMScan(**v) for d in L for k, v in d.items()})
+        i = 0
+        while i < len(L):
+            ordered = OrderedDict()
+            entries = []
+            for file in L[i].keys():
+                print("\n" + str(file))
+                ### temporary ^^
+                for entry in L[i][file].keys():
+                    entries.append(entry)
+                shortest = len(entries[0])
+                longest = len(entries[0])
+                for key in entries:
+                    if len(key) > longest:
+                        longest = len(key)
+                    elif len(key) < shortest:
+                        shortest = len(key)
+                print("Shortest: " + str(shortest) + "\t\t\tLongest: " + str(longest))
+                ### temporary ^^
+                temp = []
+                cur_len = shortest
+                while cur_len <= longest:
+                    for key in entries:
+                        if len(key) == cur_len:
+                            temp.append(key)
+                    temp.sort()
+                    for entry in temp:
+                        ordered[entry] = L[i][file][entry]
+                    cur_len += 1
+                    temp.clear()
+                L[i][file] = ordered.copy()
+                print("Inside of Loop: \t\t\t" + str(L[i][file].keys()))
+                ### temporary ^^
+            i += 1
+        self.scans.update({k: SGMScan(**v) for d in L for k, v in d.items()})
         self.entries = self.scans.items
 
+        for item in self.scans:
+            print("Inside function, outside loop:\t\t\t" + str(self.scans[item].keys()))
+            # print(self.scans[item])
+        ### ^^ temporary
 
-        # Ordering Dict in a coherent way, eg, making NXentries an OrderedDict() and sorting keys so we don't get
-        # "entry1, entry10, entry2" when we sort.
-        for file in self.scans:
-            # Collecting the names for each of the entries within a scan
-            entries = []
-            for entry in self.scans[file].keys():
-                entries.append(entry)
-            # Our default values, in case there is only one scan, or something else goes wrong.
-            shortest = len(entries[0])
-            longest = len(entries[0])
-            # Finding the longest entry name in the file, and the shortest
-            for entry in self.scans[file]:
-                if len(self.scans[file][entry].name) > longest:
-                    longest = len(self.scans[file][entry].name)
-                elif len(self.scans[file][entry].name) < shortest:
-                    shortest = len(self.scans[file][entry].name)
-            temp = []
-            ordered = OrderedDict()
-            cur_len = shortest
-            while cur_len <= longest:
-                for entry in self.scans[file]:
-                    if len(self.scans[file][entry].name) == cur_len:
-                        temp.append(entry)
-                temp.sort()
-                cur_len += 1
-                for entry in temp:
-                    ordered[entry] = self.scans[file][entry]
-                temp.clear()
-            self.scans[file] = ordered
-        self.scans.update({k: SGMScan(**v) for d in L for k, v in d.items()})
 
 
     def _find_data(self, node, indep=None, other=False):
@@ -631,7 +691,7 @@ class SGMData(object):
         """
         entries = {}
         # Try to open the file locally or from a url provided.
-        file_root = file.split("\\")[-1].split("/")[-1].split(".")[0]
+        file_root = (os.path.normpath(file)).split('\\')[-1].split('/')[-1].split(".")[0]
         if os.path.exists(file):
             try:
                 h5 = h5py.File(file, 'r')
@@ -646,7 +706,7 @@ class SGMData(object):
                 warnings.warn(f"Could not open file, h5pyd raised: {f}")
                 return {"ERROR": file_root}
         # Find the number of scans within the file
-        NXentries = [str(x) for x in h5["/"].keys() if 'NXentry' in str(h5[x].attrs.get('NX_class'))]
+        NXentries = [str(x) for x in h5['/'].keys() if 'NXentry' in str(h5[x].attrs.get('NX_class'))]
         # Get the commands used to declare the above scans
         independent = []
         if not hasattr(self, 'axes'):
@@ -772,7 +832,9 @@ class SGMData(object):
             bad_scans = []
         sample_scans = {}
         i = 1
+        # print(self.scans.items())
         for k, file in self.scans.items():
+            # print(file.__dict__.items())
             for entry, scan in file.__dict__.items():
                 i = i + 1
                 signals = [k for k, v in scan['signals'].items()]
@@ -834,9 +896,6 @@ class SGMData(object):
         return "\n".join(table)
 
     def _repr_console_(self):
-        """
-        Takes own data and organizes it into a console-friendly table.
-        """
         if sys_has_tab:
             table = []
             temp_list = []
@@ -854,7 +913,6 @@ class SGMData(object):
             return tabulate(table, headers=["File", "Entry", "Sample", "Command", "Independent", "Signals", "Other"])
         else:
             final_str = ""
-            temp_str = ""
             for key in self.scans.keys():
                 for subkey in self.scans[key].__dict__:
                     temp_str = ("Entry:\t" + str(subkey))
@@ -865,6 +923,5 @@ class SGMData(object):
                     temp_str = (temp_str + "\t\t\tSignals: " + str(self.scans[key].__dict__[subkey].signals))
                     temp_str = (temp_str + "\t\t\tOther: " + str(self.scans[key].__dict__[subkey].other) + "\n")
                     final_str = str(final_str) + str(temp_str)
-                    temp_str = ""
             return final_str
 

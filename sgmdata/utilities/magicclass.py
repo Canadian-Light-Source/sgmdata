@@ -29,9 +29,52 @@ class DisplayDict(OrderedDict):
         table.append("</tbody></table>")
         return "\n".join(table)
 
+
+    def _repr_console_(self):
+        """
+        Takes own data and organizes it into a console-friendly table.
+        """
+        final_data = ''
+        for key, value in self.items():
+            final_data = final_data + str(key) + ":\t"
+            final_data = final_data + str(value) + "\t\t|\t\t"
+        return final_data
+
+
+
     def update(self, *args, **kwargs):
-        for k, v in dict(*args, **kwargs).items():
-            self[k] = v
+        entries = {}
+        for k, v in OrderedDict(*args, **kwargs).items():
+            if 'entry' in k:
+                entries[str(k)] = v
+            else:
+                self[k] = v
+        # if len(entries) > 0:
+        #     shortest = 0
+        #     longest = 0
+        #     keyHolder = []
+        #     ordered = OrderedDict()
+        #     for entryKey, entryVal in entries.items():
+        #         keyHolder.append(entryKey)
+        #         shortest = len(keyHolder[0])
+        #         longest = len(keyHolder[0])
+        #     for key in keyHolder:
+        #         if len(key) > longest:
+        #             longest = len(key)
+        #         elif len(key) < shortest:
+        #             shortest = len(key)
+        #     temp = []
+        #     cur_len = shortest
+        #     while cur_len <= longest:
+        #         for key in keyHolder:
+        #             if len(key) == cur_len:
+        #                 temp.append(key)
+        #         temp.sort()
+        #         for entry in temp:
+        #             ordered[entry] = entries[entry]
+        #         temp.clear()
+        #         cur_len += 1
+
 
 
 class OneList(list):
