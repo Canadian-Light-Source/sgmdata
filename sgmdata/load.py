@@ -350,7 +350,6 @@ class SGMScan(DisplayDict):
         super(SGMScan, self).__init__(*args, **kwargs)
         self.__dict__.update(kwargs)
         for key, value in kwargs.items():
-            # print(key)
             value.update({'name': key})
             self.__dict__[key] = SGMScan.DataDict(value)
 
@@ -613,8 +612,7 @@ class SGMData(object):
         self.scans = {(os.path.normpath(k)).split('\\')[-1].split('/')[-1].split(".")[0]: {} for k in files}
         self.interp_params = {}
         with ThreadPool(self.threads) as pool:
-            # L = list(tqdm(pool.imap_unordered(self._load_data, files), total=len(files), leave=False))
-            L = list(tqdm(pool.imap(self._load_data, files), total=len(files), leave=False))
+            L = list(tqdm(pool.imap_unordered(self._load_data, files), total=len(files), leave=False))
         err = [l['ERROR'] for l in L if 'ERROR' in l.keys()]
         L = [l for l in L if 'ERROR' not in l.keys()]
         if len(err):
@@ -627,8 +625,6 @@ class SGMData(object):
             ordered = OrderedDict()
             entries = []
             for file in L[i].keys():
-                print("\n" + str(file))
-                ### temporary ^^
                 for entry in L[i][file].keys():
                     entries.append(entry)
                 shortest = len(entries[0])
@@ -638,8 +634,6 @@ class SGMData(object):
                         longest = len(key)
                     elif len(key) < shortest:
                         shortest = len(key)
-                print("Shortest: " + str(shortest) + "\t\t\tLongest: " + str(longest))
-                ### temporary ^^
                 temp = []
                 cur_len = shortest
                 while cur_len <= longest:
@@ -649,19 +643,12 @@ class SGMData(object):
                     temp.sort()
                     for entry in temp:
                         ordered[entry] = L[i][file][entry]
-                    cur_len += 1
                     temp.clear()
+                    cur_len += 1
                 L[i][file] = ordered.copy()
-                print("Inside of Loop: \t\t\t" + str(L[i][file].keys()))
-                ### temporary ^^
             i += 1
         self.scans.update({k: SGMScan(**v) for d in L for k, v in d.items()})
         self.entries = self.scans.items
-
-        for item in self.scans:
-            print("Inside function, outside loop:\t\t\t" + str(self.scans[item].keys()))
-            # print(self.scans[item])
-        ### ^^ temporary
 
 
 
@@ -832,9 +819,7 @@ class SGMData(object):
             bad_scans = []
         sample_scans = {}
         i = 1
-        # print(self.scans.items())
         for k, file in self.scans.items():
-            # print(file.__dict__.items())
             for entry, scan in file.__dict__.items():
                 i = i + 1
                 signals = [k for k, v in scan['signals'].items()]

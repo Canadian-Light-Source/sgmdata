@@ -66,96 +66,15 @@ def check_sample_fitness(list_of_files):
     data = sgm_data
     for item in data.scans:
         print("outside the loop: \t\t" + str(data.scans[item].keys()))
-    print(data.mean())
+    print(data._repr_console_())
+    # print(data.mean())
     # mean = data.mean()
     # if len(mean) < 1:
     #     print("Nothing in DisplayDict")
     # else:
     #     print("***Contents in DataDict")
 
-    # keys = data.scans['Co-nitrate-N-Bottom9'].__dict__.keys()
-    # keys = data.scans['Co-nitrate-N-Bottom9'].__dict__.keys()
-    # print(keys)
-    # keys = data.scans['Co-nitrate-N-Top21'].keys()
-    # print(keys)
-    # for item in keys:
-    #     print(str(type(data.scans['Co-nitrate-N-Bottom9'].__dict__[item])))
-    # print(str(data.scans.keys()) + "\n" + str(type(data.scans)))
-
 
 x = file_retrieval('C:/Users/roseh/Desktop/Internship/SignalToNoiseConvergence/h5Files/*Co-nit*.hdf5')
 # # x = file_retrieval('C:/Users/roseh/Desktop/Internship/MyCode/h5Files/*bee*.hdf5')
 y = check_sample_fitness(x)
-
-# import logging
-# import threading
-# import time
-# import concurrent.futures
-#
-#
-# def thread_function(name):
-#     logging.info("Thread %s: starting", name)
-#     time.sleep(2)
-#     logging.info("Thread %s: finishing", name)
-#
-#
-# if __name__ == "__main__":
-#     format="%(asctime)s: %(message)s"
-#     logging.basicConfig(format=format, level=logging.INFO, datefmt="%H:%M:%S")
-#
-#     with concurrent.futures.ThreadPoolExecutor(max_workers=3) as executor:
-#         executor.map(thread_function, range(3))
-
-
-### TESTING POOL
-# from multiprocessing import Process
-# import os
-#
-#
-# def info(title):
-#     print(title)
-#     print('module name:', __name__)
-#     print('parent process:', os.getppid())
-#     print('process id:', os.getpid())
-#
-#
-# def f(name):
-#     info('function f')
-#     print('hello', name)
-#
-#
-# if __name__ == '__main__':
-#     info('main line')
-#     p = Process(target=f, args=('bob',))
-#     p.start()
-#     p.join()
-#
-#
-### TESTING MULTIPROCESSING.POOL
-# * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
-# was not commented out when I started working again
-# * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
-# from multiprocessing import Pool
-# import time
-#
-#
-# def f(x):
-#     return x*x
-#
-#
-# if __name__ == '__main__':
-#     with Pool(processes=4) as pool:         # start 4 worker processes
-#         result = pool.apply_async(f, (10,)) # evaluate "f(10)" asynchronously in a single process
-#         print(result.get(timeout=1))        # prints "100" unless your computer is *very* slow
-#
-#         print(pool.map(f, range(10)))       # prints "[0, 1, 4,..., 81]"
-#
-#         it = pool.imap(f, range(10))
-#         print(next(it))                     # prints "0"
-#         print(next(it))                     # prints "1"
-#         print(it.next(timeout=1))           # prints "4" unless your computer is *very* slow
-#
-#         result = pool.apply_async(time.sleep, (10,))
-#         # print(result.get(timeout=1))        # raises multiprocessing.TimeoutError
-
-# * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
