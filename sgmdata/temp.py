@@ -66,11 +66,11 @@ def check_sample_fitness(list_of_files):
     data = sgm_data
     # print(data.mean())
     # print(data.__str__())
-    print(data.__repr__())
+    # print(data.__repr__())
     # print(data._repr_html_())
-    # print(data._repr_console_())
+    print(data._repr_console_())
 
-x = file_retrieval('C:/Users/roseh/Desktop/Internship/SignalToNoiseConvergence/h5Files/IndivScanPerFile-Nov25/HE025-Mn/*.hdf5')
+x = file_retrieval('C:/Users/roseh/Desktop/Internship/SignalToNoiseConvergence/h5Files/IndivScanPerFile-Nov25/BN-C/*.hdf5')
 # x = file_retrieval('C:/Users/roseh/Desktop/Internship/SignalToNoiseConvergence/h5Files/*Co-nit*.hdf5')
 # # x = file_retrieval('C:/Users/roseh/Desktop/Internship/MyCode/h5Files/*bee*.hdf5')
 y = check_sample_fitness(x)

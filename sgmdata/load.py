@@ -17,8 +17,8 @@ from .utilities.magicclass import OneList, DisplayDict
 
 import warnings
 
-import sys
 from collections import OrderedDict
+import os.path, time
 
 try:
     shell = get_ipython().__class__.__name__
@@ -619,13 +619,13 @@ class SGMData(object):
             files = [file.replace(f'/home/jovyan/data/{self.user}/', '/home/jovyan/data/') for file in files]
         if not any([os.path.exists(f) for f in files]) and os.path.exists(f'./data/'):
             files = [file.replace(f'/home/jovyan/', './') for file in files]
-        # Following line modified so that self.scans will have the same contents regardless of OS.
-        files_sorted = [(os.path.normpath(k)).split('\\')[-1].split('/')[-1].split(".")[0] for k in files]
         try:
-            files_sorted = sorted(files_sorted, key=(lambda x: datetime.datetime.strptime(x, '%Y-%m-%dt%H-%M-%s%z')))
+            files_sorted = sorted(files, key=(lambda x: datetime.datetime.strptime(time.ctime(os.path.getctime(x)),
+                                                                                   '%a %b %d %H:%M:%S %Y')))
         except ValueError:
-            files_sorted = sorted(files_sorted)
-        self.scans = {(os.path.normpath(k)).split('\\')[-1].split('/')[-1].split(".")[0]: {} for k in files}
+            # Following line modified so that self.scans will have the same contents regardless of OS.
+            files_sorted = sorted([(os.path.normpath(k)).split('\\')[-1].split('/')[-1].split(".")[0] for k in files])
+        self.scans = {(os.path.normpath(k)).split('\\')[-1].split('/')[-1].split(".")[0]: {} for k in files_sorted}
         self.interp_params = {}
         with ThreadPool(self.threads) as pool:
             L = list(tqdm(pool.imap_unordered(self._load_data, files), total=len(files), leave=False))
