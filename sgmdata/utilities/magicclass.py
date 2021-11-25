@@ -41,11 +41,8 @@ class DisplayDict(OrderedDict):
         return final_data
 
     def update(self, *args, **kwargs):
-        for k, v in OrderedDict(*args, **kwargs).items():
-            if 'entry' in k:
-                return
-            else:
-                self[k] = v
+        for k, v in dict(*args, **kwargs).items():
+            self[k] = v
 
 
 class OneList(list):

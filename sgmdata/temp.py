@@ -64,17 +64,13 @@ def check_sample_fitness(list_of_files):
     sgm_data = sgmdata.load.SGMData(list_of_files)
     sgm_data.interpolate()
     data = sgm_data
-    for item in data.scans:
-        print("outside the loop: \t\t" + str(data.scans[item].keys()))
-    print(data._repr_console_())
     # print(data.mean())
-    # mean = data.mean()
-    # if len(mean) < 1:
-    #     print("Nothing in DisplayDict")
-    # else:
-    #     print("***Contents in DataDict")
+    # print(data.__str__())
+    print(data.__repr__())
+    # print(data._repr_html_())
+    # print(data._repr_console_())
 
-
-x = file_retrieval('C:/Users/roseh/Desktop/Internship/SignalToNoiseConvergence/h5Files/*Co-nit*.hdf5')
+x = file_retrieval('C:/Users/roseh/Desktop/Internship/SignalToNoiseConvergence/h5Files/IndivScanPerFile-Nov25/HE025-Mn/*.hdf5')
+# x = file_retrieval('C:/Users/roseh/Desktop/Internship/SignalToNoiseConvergence/h5Files/*Co-nit*.hdf5')
 # # x = file_retrieval('C:/Users/roseh/Desktop/Internship/MyCode/h5Files/*bee*.hdf5')
 y = check_sample_fitness(x)
