@@ -779,6 +779,7 @@ class SGMData(object):
     def _interpolate(self, entry, **kwargs):
         compute = kwargs.get('compute', True)
         if compute:
+            self.interpolated = True
             return entry.interpolate(**kwargs)
         else:
             independent = entry['independent']
@@ -788,6 +789,7 @@ class SGMData(object):
                 command = entry.command
             else:
                 command = None
+            self.interpolated = True
             return interpolate(independent, signals, command=command, **kwargs)
 
     def mean(self, bad_scans=None):
