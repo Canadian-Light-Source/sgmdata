@@ -21,6 +21,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspa
 ### JUST FOR MY COMP DONE
 import sgmdata
 from sgmdata.load import SGMData
+from sgmdata.search import SGMQuery
 import math
 from sgmdata.utilities.util import plot1d
 
@@ -31,6 +32,8 @@ def file_retrieval(path):
     Parameters:
         path(str): path to directory and pattern to look for in directory.
     Returns:
+        sgmdata.load.SGMData(list_of_files)(SGMData object): an SGMData object made from the files the user entered the
+         path to.
         list_of_files(list): a list of the files that match the given pattern.
     """
     if type(path) != str:
@@ -48,52 +51,58 @@ def file_retrieval(path):
         list_of_files.append(filename)
     if len(list_of_files) == 0:
         raise ValueError("There are no files that match the given pattern. Please try again with a different pattern.")
-    return list_of_files
+    return sgmdata.load.SGMData(list_of_files)
 
 
-def check_sample_fitness(list_of_files):
+def check_sample_fitness(sgm_data):
     """
     Purpose: Create an SGMData object from hdf5 files. Interpolate the data in the SGMData object. Return this
     interpolated data.
     Parameters:
-        list_of_files(list of str): the names of the hdf5 files to create an SGMData object out of.
+        sgm_data (SGMData object): the SGMData object containing the data from the files that the user provided
     Returns:
         interp_list(list): a list of pandas dataframes. Contains the interpolated version of the data in the files
         specified in list_of_files.
     """
-    sgm_data = sgmdata.load.SGMData(list_of_files)
-
-    if len(sgm_data.__dict__['scans']) == 0:
-        raise ValueError("hdf5 file must contain scans to be able to predict the number of scans required. The hdf5 "
-                         "file you have provided does not contain any scans. Please try again with an hdf5 file that"
-                         " does contain scans.")
-    has_sdd = False
     file = list(sgm_data.__dict__['scans'].keys())
     sample_name = list(sgm_data.__dict__['scans'][file[0]].__dict__.keys())
-    signals = list(sgm_data.__dict__['scans'][file[0]].__getitem__(sample_name[0]).__getattr__('signals').keys())
-    i = 0
-    while i < len(signals) and not has_sdd:
-        if "sdd" in signals[i]:
-            has_sdd = True
-        else:
-            i += 1
-    if not has_sdd:
-        raise ValueError("Scans must have sdd values to be able to predict the number of scans required. One or "
-                         "more of the scans you have provided do not have sdd values. Please try again using "
-                         "scans with sdd values. ")
     sample_type = sgm_data.__dict__['scans'][file[0]].__getitem__(sample_name[0])['sample']
-    for indiv_file in file:
-        sample_name = list(sgm_data.__dict__['scans'][indiv_file].__dict__.keys())
-        for scan in sample_name:
-            if sgm_data.__dict__['scans'][indiv_file].__getitem__(scan)['sample'] != sample_type:
-                raise ValueError("In order to predict, the scans in the hdf5 file passed in by user must all be from"
-                                 " the same sample. The scans in the hdf5 file passed in by the user are not all from"
-                                 " the same sample. Please "
-                                 "try again with an hdf5 file only containing scans from the"
-                                 " same sample. ")
-    # print("is Interpolated (before call to interpolate): " + str(sgm_data.interpolated))
     interp_list = sgm_data.interpolate(resolution=0.1)
-    # print("is Interpolated (after call to interpolate): " + str(sgm_data.interpolated))
+    if sgm_data.interpolated is True:
+        print("SGMQuery required\n" + str(sample_type))
+        sgmq = SGMQuery(sample=sample_type, user=self.account, data=False)
+        # interp_list = [sorted(sgmq.paths,
+        #                       key=lambda x: datetime.datetime.strptime(x.split('/')[-1].split('.')[0], "%Y-%m-%dt%H-%M-%S%z")
+        #                       )[-1]]
+    else:
+        print(sample_type)
+        print("interpolation needed")
+        if len(sgm_data.__dict__['scans']) == 0:
+            raise ValueError("hdf5 file must contain scans to be able to predict the number of scans required. The hdf5 "
+                             "file you have provided does not contain any scans. Please try again with an hdf5 file that"
+                             " does contain scans.")
+        has_sdd = False
+        signals = list(sgm_data.__dict__['scans'][file[0]].__getitem__(sample_name[0]).__getattr__('signals').keys())
+        i = 0
+        while i < len(signals) and not has_sdd:
+            if "sdd" in signals[i]:
+                has_sdd = True
+            else:
+                i += 1
+        if not has_sdd:
+            raise ValueError("Scans must have sdd values to be able to predict the number of scans required. One or "
+                             "more of the scans you have provided do not have sdd values. Please try again using "
+                             "scans with sdd values. ")
+        for indiv_file in file:
+            sample_name = list(sgm_data.__dict__['scans'][indiv_file].__dict__.keys())
+            for scan in sample_name:
+                if sgm_data.__dict__['scans'][indiv_file].__getitem__(scan)['sample'] != sample_type:
+                    raise ValueError("In order to predict, the scans in the hdf5 file passed in by user must all be from"
+                                     " the same sample. The scans in the hdf5 file passed in by the user are not all from"
+                                     " the same sample. Please "
+                                     "try again with an hdf5 file only containing scans from the"
+                                     " same sample. ")
+        interp_list = sgm_data.interpolate(resolution=0.1)
     return interp_list
 
 
@@ -719,8 +728,18 @@ def predict_num_scans(files, verbose=False, percent_of_log=0.4, num_scans=10):
         (int): The number of additional scans that should be taken of a sample.
     """
     # Getting the data from the file specified by the user, and interpolating it
-    list_of_files = file_retrieval(files)
-    interp_list = check_sample_fitness(list_of_files)
+    newSGMDataObj = file_retrieval(files)
+    interp_list = check_sample_fitness(newSGMDataObj)
+    # SGMDOfile = list(newSGMDataObj.scans.keys())[0]
+    # SGMDOfilesEntry = list(newSGMDataObj.scans[SGMDOfile].keys())[0]
+    # sampleType = newSGMDataObj.scans[SGMDOfile][SGMDOfilesEntry].sample
+    # if newSGMDataObj.interpolated is False:
+    #     interp_list = check_sample_fitness(newSGMDataObj)
+    # else:
+    #     sgmq = SGMQuery(sample=sampleType, user=self.account, data=False)
+    #     interp_list = [sorted(sgmq.paths,
+    #                     key=lambda x: datetime.datetime.strptime(x.split('/')[-1].split('.')[0], "%Y-%m-%dt%H-%M-%S%z")
+    #                     )[-1]]
     # Checking if the user has specified that they want more scans to be used to predict than there are scans available.
     # If this is the case, the number of scans available instead of the number of scans the user has specified is used
     # in the prediction.
