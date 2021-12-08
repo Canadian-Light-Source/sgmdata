@@ -67,13 +67,14 @@ def check_sample_fitness(sgm_data):
     file = list(sgm_data.__dict__['scans'].keys())
     sample_name = list(sgm_data.__dict__['scans'][file[0]].__dict__.keys())
     sample_type = sgm_data.__dict__['scans'][file[0]].__getitem__(sample_name[0])['sample']
-    interp_list = sgm_data.interpolate(resolution=0.1)
+    # interp_list = sgm_data.interpolate(resolution=0.1)
     if sgm_data.interpolated is True:
+        ### do nothing if this is the case, the data we have is already interpolated
         print("SGMQuery required\n" + str(sample_type))
-        sgmq = SGMQuery(sample=sample_type, user=self.account, data=False)
-        # interp_list = [sorted(sgmq.paths,
+        # interp_list = [sorted(sgm_data.paths,
         #                       key=lambda x: datetime.datetime.strptime(x.split('/')[-1].split('.')[0], "%Y-%m-%dt%H-%M-%S%z")
         #                       )[-1]]
+        interp_list = sgm_data.interpolate(resolution=0.1)
     else:
         print(sample_type)
         print("interpolation needed")
@@ -728,18 +729,11 @@ def predict_num_scans(files, verbose=False, percent_of_log=0.4, num_scans=10):
         (int): The number of additional scans that should be taken of a sample.
     """
     # Getting the data from the file specified by the user, and interpolating it
-    newSGMDataObj = file_retrieval(files)
-    interp_list = check_sample_fitness(newSGMDataObj)
-    # SGMDOfile = list(newSGMDataObj.scans.keys())[0]
-    # SGMDOfilesEntry = list(newSGMDataObj.scans[SGMDOfile].keys())[0]
-    # sampleType = newSGMDataObj.scans[SGMDOfile][SGMDOfilesEntry].sample
-    # if newSGMDataObj.interpolated is False:
-    #     interp_list = check_sample_fitness(newSGMDataObj)
-    # else:
-    #     sgmq = SGMQuery(sample=sampleType, user=self.account, data=False)
-    #     interp_list = [sorted(sgmq.paths,
-    #                     key=lambda x: datetime.datetime.strptime(x.split('/')[-1].split('.')[0], "%Y-%m-%dt%H-%M-%S%z")
-    #                     )[-1]]
+    ### ROSE - this was the code before switching check_sample_fitness to take an SGMData object.
+    # newSGMDataObj = file_retrieval(files)
+    # print(type(newSGMDataObj))
+    # interp_list = check_sample_fitness(newSGMDataObj)
+    interp_list = check_sample_fitness(files)
     # Checking if the user has specified that they want more scans to be used to predict than there are scans available.
     # If this is the case, the number of scans available instead of the number of scans the user has specified is used
     # in the prediction.
@@ -777,7 +771,11 @@ def predict_num_scans(files, verbose=False, percent_of_log=0.4, num_scans=10):
     return number_of_scans[0] - 10
 
 
-print("Number of additional scans needed:\t" +
-      str(predict_num_scans('C:/Users/roseh/Desktop/Internship/SignalToNoiseConvergence/h5Files/*Co-nitrate*.hdf5', True)))
+data = file_retrieval('C:/Users/roseh/Desktop/Internship/SignalToNoiseConvergence/h5Files/*Co-nitrate*.hdf5')
+
+print(predict_num_scans(data, True))
+
+# print("Number of additional scans needed:\t" +
+#       str(predict_num_scans('C:/Users/roseh/Desktop/Internship/SignalToNoiseConvergence/h5Files/*Co-nitrate*.hdf5', True)))
 
 
