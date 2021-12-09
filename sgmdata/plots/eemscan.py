@@ -88,7 +88,8 @@ def plot(**kwargs):
     spectral = all_palettes['Spectral'][11]
     colorblind = all_palettes['Colorblind'][4]
 
-    plot = Figure(plot_width=600, plot_height=600, tools="box_select,save,box_zoom, wheel_zoom,hover,pan,reset")
+    plot = Figure(plot_width=600, plot_height=600, sizing_mode=sizing_mode,
+                  tools="box_select,save,box_zoom, wheel_zoom,hover,pan,reset")
     color_mapper = LinearColorMapper(palette="Spectral11", low=1, high=np.amax(kwargs['sdd1']))
 
     im = plot.image(image='image', y='emission', x='en', dh='bins', dw='delta', source=source,
@@ -96,7 +97,7 @@ def plot(**kwargs):
     color_bar = ColorBar(color_mapper=color_mapper, label_standoff=12, border_line_color=None, location=(0, 0))
 
     xrf = Figure(plot_width=225, plot_height=600, y_range=plot.y_range, tools="save,hover,box_zoom, pan",
-                 title="XRF Projection")
+                 title="XRF Projection", sizing_mode=sizing_mode)
     fluo = Rect(x='y', y='x', width='width', height='height', fill_alpha=0.1, line_color=None, fill_color='yellow')
     xrf.add_glyph(peak_source, fluo)
     xrf.circle('proj_x', 'emission', source=xrf_source, alpha=0.6)
@@ -104,7 +105,7 @@ def plot(**kwargs):
     xrf.xaxis.major_label_orientation = "vertical"
 
     xas = Figure(plot_width=600, plot_height=225, x_range=plot.x_range, tools="save,hover,box_zoom,wheel_zoom,pan",
-                 title="XAS Projection")
+                 title="XAS Projection", sizing_mode=sizing_mode)
     xas.line('en', 'proj_y', source=xas_source, line_color='purple', alpha=0.6, legend_label="EEMs")
     xas.line('en', 'tey', source=aux_source, line_color='black', alpha=0.6, legend_label="TEY")
     xas.line('en', 'pd', source=aux_source, line_color="navy", alpha=0.6, legend_label="Diode")
