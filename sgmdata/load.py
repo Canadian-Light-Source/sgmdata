@@ -298,7 +298,7 @@ class SGMScan(DisplayDict):
                     kwargs.update(data)
                     return xrfmap.plot_xyz(**kwargs)
 
-
+                  
         def __repr__(self):
             represent = ""
             for key in self.keys():
@@ -357,8 +357,8 @@ class SGMScan(DisplayDict):
                 kw_sorted.append(entry)
             cur_len += 1
         kwargs_sorted = OrderedDict({k: kwargs[k] for k in kw_sorted})
-
         super(SGMScan, self).__init__(*args, **kwargs_sorted)
+
         self.__dict__.update(kwargs)
         for key, value in kwargs.items():
             value.update({'name': key})
@@ -392,6 +392,7 @@ class SGMScan(DisplayDict):
             for key in self.keys():
                 temp_data.append(key)
                 for title in self[key].keys():
+
                     if title in needed_info:
                         temp_data.append(self.__dict__[key][title])
                 final_data.append(temp_data.copy())
@@ -404,6 +405,7 @@ class SGMScan(DisplayDict):
                 temp_data = temp_data + 'Entry:\t'
                 temp_data = temp_data + str(key)
                 for title in self[key].keys():
+
                     if title in needed_info:
                         temp_data = temp_data + '\t\t|\t\t'
                         temp_data = temp_data + (str(title) + ":\t" + str(self.__dict__[key][title]))
@@ -626,6 +628,7 @@ class SGMData(object):
             # Following line modified so that self.scans will have the same contents regardless of OS.
             files_sorted = sorted([(os.path.normpath(k)).split('\\')[-1].split('/')[-1].split(".")[0] for k in files])
         self.scans = {(os.path.normpath(k)).split('\\')[-1].split('/')[-1].split(".")[0]: {} for k in files_sorted}
+
         self.interp_params = {}
         with ThreadPool(self.threads) as pool:
             L = list(tqdm(pool.imap_unordered(self._load_data, files), total=len(files), leave=False))

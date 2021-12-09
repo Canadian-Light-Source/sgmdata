@@ -3,6 +3,7 @@ from collections import OrderedDict
 
 class DisplayDict(OrderedDict):
 
+
     def __init__(self, *args, **kwargs):
         super(DisplayDict, self).__init__(*args, **kwargs)
         self.update(*args, **kwargs)

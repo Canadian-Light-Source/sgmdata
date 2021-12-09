@@ -4,7 +4,8 @@ import getpass
 from bs4 import BeautifulSoup
 import re
 from .load import SGMData
-from .search import preprocess, SGMQuery
+from .search import SGMQuery
+from .utilities import preprocess
 import os
 import matplotlib.pyplot as plt
 import numpy as np
@@ -898,6 +899,7 @@ to the relevant subsection of the report.}
                     positions = []
                 image = [entry for k1, scan in holder_data.scans.items() for k2, entry in scan.__dict__.items() if
                          entry['sample'] == k][0]
+
                 command = image['command']
                 self.holder_command.update({k: command})
                 xrange = (float(command[2]), float(command[3]))
