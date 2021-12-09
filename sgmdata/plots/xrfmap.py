@@ -26,6 +26,7 @@ def make_data(df, keys, sgm_data):
 
 
 def plot(**kwargs):
+    sizing_mode = kwargs.get('sizing_mode', 'stretch_both')
     # Create datasources
     if 'emission' not in kwargs.keys():
         kwargs['emission'] = np.linspace(0, 2560, 256)
@@ -238,7 +239,7 @@ def plot(**kwargs):
     else:
         options = column(det_select, intensity_slider, palette_select, xrf)
 
-    layout = gridplot([[plot, options]])
+    layout = gridplot([[plot, options]], sizing_mode=sizing_mode)
     if kwargs.get('json', False):
         return json.dumps(json_item(layout, "xrf"))
     show(layout)
@@ -250,6 +251,7 @@ def plot_interp(**kwargs):
         Keywords:
             **kwargs (dict):  DataDict from plot function.
     """
+    sizing_mode = kwargs.get('sizing_mode', 'stretch_both')
     # Verify the data in kwargs
     if 'xp' in kwargs.keys() and 'yp' in kwargs.keys():
         x = kwargs['xp']
@@ -442,7 +444,7 @@ def plot_interp(**kwargs):
 
     options = column(det_select, intensity_slider, palette_select, xrf, slider)
 
-    layout = gridplot([[plot, options]])
+    layout = gridplot([[plot, options]], sizing_mode=sizing_mode)
     if kwargs.get('json', False):
         return json.dumps(json_item(layout, "xrf"))
     show(layout)
@@ -456,6 +458,7 @@ def plot_xyz(shift=False, table=False, **kwargs):
             table (bool):  False (default) - displays helper tool / datatable for macro generation at SGM.
             **kwargs (dict):  DataDict from plot function.
     """
+    sizing_mode = kwargs.get('sizing_mode', 'stretch_both')
     # Verify the data in kwargs
     if 'xp' in kwargs.keys() and 'yp' in kwargs.keys():
         x = kwargs['xp']
@@ -793,7 +796,7 @@ def plot_xyz(shift=False, table=False, **kwargs):
         layout = gridplot([[plot, options],
                            [data_table, column(table_macro, table_delete, text_area)]])
     else:
-        layout = gridplot([[plot, options]])
+        layout = gridplot([[plot, options]], sizing_mode=sizing_mode)
     if kwargs.get('json', False):
         return json.dumps(json_item(layout, "xrf"))
     show(layout)

@@ -22,6 +22,7 @@ required = ['image', 'sdd1', 'sdd2', 'sdd3', 'sdd4', 'emission', 'en', 'tey', 'p
 
 
 def plot(**kwargs):
+    sizing_mode = kwargs.get('sizing_mode', 'stretch_both')
     if 'emission' not in kwargs.keys():
         kwargs['emission'] = np.linspace(0, 2560, 256)
     if 'io' in kwargs.keys() and np.any(kwargs['io']):
@@ -498,7 +499,7 @@ sel.change.emit();
     fluo = row(flslider, wdslider)
     functions = row(button, checkbox_group)
     options = column(select, functions, fluo, slider, select_palette)
-    layout = gridplot([[xas, options], [plot, xrf]])
+    layout = gridplot([[xas, options], [plot, xrf]], sizing_mode=sizing_mode)
     if kwargs.get('json', False):
         return json.dumps(json_item(layout, "xrf"))
     show(layout)
