@@ -501,5 +501,5 @@ sel.change.emit();
     options = column(select, functions, fluo, slider, select_palette)
     layout = gridplot([[xas, options], [plot, xrf]], sizing_mode=sizing_mode)
     if kwargs.get('json', False):
-        return json.dumps(json_item(layout, "xrf"))
+        return json.dumps(json_item(layout, "eems"))
     show(layout)
