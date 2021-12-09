@@ -898,7 +898,8 @@ to the relevant subsection of the report.}
                     print("Couldn't get sample positions: %s" % e)
                     positions = []
                 image = [entry for k1, scan in holder_data.scans.items() for k2, entry in scan.__dict__.items() if
-                         entry['sample'] in k][0]
+                         entry['sample'] == k][0]
+
                 command = image['command']
                 self.holder_command.update({k: command})
                 xrange = (float(command[2]), float(command[3]))

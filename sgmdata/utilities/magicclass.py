@@ -1,5 +1,8 @@
+from collections import OrderedDict
 
-class DisplayDict(dict):
+
+class DisplayDict(OrderedDict):
+
 
     def __init__(self, *args, **kwargs):
         super(DisplayDict, self).__init__(*args, **kwargs)
