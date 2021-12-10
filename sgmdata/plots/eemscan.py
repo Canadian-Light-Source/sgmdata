@@ -94,7 +94,7 @@ def plot(**kwargs):
 
     im = plot.image(image='image', y='emission', x='en', dh='bins', dw='delta', source=source,
                     palette="Spectral11")
-    color_bar = ColorBar(color_mapper=color_mapper, label_standoff=12, border_line_color=None, location=(0, 0))
+    color_bar = ColorBar(color_mapper=color_mapper, label_standoff=12, border_line_color=None, location=(0, 0), width=50)
 
     xrf = Figure(plot_width=150, plot_height=300, y_range=plot.y_range, tools="save,hover,box_zoom, pan",
                  title="XRF Projection", sizing_mode=sizing_mode)
@@ -121,13 +121,13 @@ def plot(**kwargs):
     plot.xaxis.axis_label = 'Incident Energy (eV)'
     plot.yaxis.axis_label = 'Emisison Energy (eV)'
 
-    flslider = Slider(start=10, end=2560, value=1280, step=10, title="Line Peak", sizing_mode="fixed", height=30,
+    flslider = Slider(start=10, end=2560, value=1280, step=10, title="Line Peak", sizing_mode="fixed", height=15,
                       width=75)
-    wdslider = Slider(start=20, end=500, value=100, step=10, title="Line Width", sizing_mode="fixed", height=30,
+    wdslider = Slider(start=20, end=500, value=100, step=10, title="Line Width", sizing_mode="fixed", height=15,
                       width=75)
-    checkbox_group = RadioGroup(labels=["dx/dy", "1/y", "None"], active=2, name="Functions", width=75)
-    select = CheckboxButtonGroup(name="Detector Select:", labels=['sdd1', 'sdd2', 'sdd3', 'sdd4'], active=[0],
-                                 )
+    checkbox_group = RadioGroup(labels=["dx/dy", "1/y", "None"], active=2, name="Functions", width=75, height=15)
+    select = CheckboxButtonGroup(name="Detector Select:", labels=['sdd1', 'sdd2', 'sdd3', 'sdd4'], active=[0],height=15,
+                                 width=150)
     select_callback = CustomJS(args=dict(s1=source, xrf=xrf_source, xas=xas_source, xy=xy_source, sel=rect_source,
                                          flslider=flslider, wdslider=wdslider, alter=checkbox_group, det=select), code="""
 var rect = sel.data;
@@ -453,16 +453,16 @@ sel.change.emit();
     checkbox_group.js_on_change('active', callback_flslider)
 
     slider = RangeSlider(title="Color Scale:", start=0, end=4 * np.amax(kwargs['sdd1']),
-                         value=(0, np.amax(kwargs['sdd1'])), step=20, height=30)
+                         value=(0, np.amax(kwargs['sdd1'])), step=20, height=15, width=150)
     slider.js_on_change('value', callback_color_range)
 
     select_palette = Select(title="Colormap Select:", options=['Viridis', 'Spectral', 'Inferno'], value='Spectral',
-                            )
+                            width=150)
     select_palette.js_on_change('value', callback_color_palette)
 
     select.js_on_change('active', callback, callback_flslider)
 
-    button = Button(label="Download XAS", button_type="success", width=150)
+    button = Button(label="Download XAS", button_type="success", width=75)
 
     download = CustomJS(args=dict(s2=xas_source, aux=aux_source), code="""
         var sdd = s2.data;
