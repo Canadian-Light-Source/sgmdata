@@ -88,7 +88,7 @@ def plot(**kwargs):
     spectral = all_palettes['Spectral'][11]
     colorblind = all_palettes['Colorblind'][4]
 
-    plot = Figure(plot_width=600, plot_height=600, sizing_mode=sizing_mode,
+    plot = Figure(plot_width=300, plot_height=300, sizing_mode=sizing_mode,
                   tools="box_select,save,box_zoom, wheel_zoom,hover,pan,reset")
     color_mapper = LinearColorMapper(palette="Spectral11", low=1, high=np.amax(kwargs['sdd1']))
 
@@ -96,7 +96,7 @@ def plot(**kwargs):
                     palette="Spectral11")
     color_bar = ColorBar(color_mapper=color_mapper, label_standoff=12, border_line_color=None, location=(0, 0))
 
-    xrf = Figure(plot_width=225, plot_height=600, y_range=plot.y_range, tools="save,hover,box_zoom, pan",
+    xrf = Figure(plot_width=150, plot_height=300, y_range=plot.y_range, tools="save,hover,box_zoom, pan",
                  title="XRF Projection", sizing_mode=sizing_mode)
     fluo = Rect(x='y', y='x', width='width', height='height', fill_alpha=0.1, line_color=None, fill_color='yellow')
     xrf.add_glyph(peak_source, fluo)
@@ -104,7 +104,7 @@ def plot(**kwargs):
     xrf.yaxis.visible = False
     xrf.xaxis.major_label_orientation = "vertical"
 
-    xas = Figure(plot_width=600, plot_height=225, x_range=plot.x_range, tools="save,hover,box_zoom,wheel_zoom,pan",
+    xas = Figure(plot_width=300, plot_height=150, x_range=plot.x_range, tools="save,hover,box_zoom,wheel_zoom,pan",
                  title="XAS Projection", sizing_mode=sizing_mode)
     xas.line('en', 'proj_y', source=xas_source, line_color='purple', alpha=0.6, legend_label="EEMs")
     xas.line('en', 'tey', source=aux_source, line_color='black', alpha=0.6, legend_label="TEY")
@@ -122,10 +122,10 @@ def plot(**kwargs):
     plot.yaxis.axis_label = 'Emisison Energy (eV)'
 
     flslider = Slider(start=10, end=2560, value=1280, step=10, title="Line Peak", sizing_mode="fixed", height=30,
-                      width=150)
+                      width=75)
     wdslider = Slider(start=20, end=500, value=100, step=10, title="Line Width", sizing_mode="fixed", height=30,
-                      width=150)
-    checkbox_group = RadioGroup(labels=["dx/dy", "1/y", "None"], active=2, name="Functions", width=150)
+                      width=75)
+    checkbox_group = RadioGroup(labels=["dx/dy", "1/y", "None"], active=2, name="Functions", width=75)
     select = CheckboxButtonGroup(name="Detector Select:", labels=['sdd1', 'sdd2', 'sdd3', 'sdd4'], active=[0],
                                  )
     select_callback = CustomJS(args=dict(s1=source, xrf=xrf_source, xas=xas_source, xy=xy_source, sel=rect_source,
