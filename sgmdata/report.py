@@ -57,9 +57,8 @@ class ReportBuilder(object):
         if not isinstance(shifts, int):
             raise Exception("Shifts needs to be of type int")
         self.shifts = shifts
-        self.LOGIN_URL = "https://confluence.lightsource.ca/rest/api/content/152768104/child/page"
-        if "login" in kwargs.keys():
-            self.LOGIN_URL = kwargs['login']
+        self.LOGIN_URL = kwargs.get("login", "https://confluence.lightsource.ca/dologin.action")
+        self.EXP_URL = kwargs.get("exp_url", "https://confluence.lightsource.ca/rest/api/content/152768104/child/page")
         if "user" in kwargs.keys():
             self.username = kwargs['user']
         else:
@@ -89,10 +88,18 @@ class ReportBuilder(object):
 
     def get_confluence_log(self):
         password = getpass.getpass("Enter password:")
-        basicauth = (self.username, password)
         with requests.session() as s:
-            resp = s.get(self.LOGIN_URL, auth=basicauth)
-            del basicauth, password
+            headers = {'Content-type': 'application/x-www-form-urlencoded'}
+            s.headers.update(headers)
+            body = {'os_username': self.username, 'os_password': password}
+            resp = s.post(
+                self.LOGIN_URL,
+                data=body
+            )
+            c = {"Cookies": resp.headers['Set-Cookie'], 'Content-type': 'application/json'}
+            s.headers.update(c)
+            resp = s.get(self.EXP_URL)
+            del password
             if resp.status_code != 200:
                 print("Failed to fetch data from " + self.LOGIN_URL + ", with HTTP %d" % resp.status_code)
                 return {"title": "", "body": ""}
