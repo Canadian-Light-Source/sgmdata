@@ -1,14 +1,11 @@
 import os
 import sys
 import h5py
-
+import datetime
 from . import config
 import h5pyd
-# from dask import compute, delayed
-# from dask import delayed
 import dask.array as da
 import dask.dataframe as dd
-# from dask.distributed import Client
 import pandas as pd
 import numpy as np
 from multiprocessing.pool import ThreadPool
@@ -19,10 +16,10 @@ from sgmdata.interpolate import interpolate, shift_cmesh
 from .utilities.magicclass import OneList, DisplayDict
 
 import warnings
-from collections import OrderedDict
 
-if os.name == 'nt':
-    from tabulate import tabulate
+from collections import OrderedDict
+import os.path, time
+
 try:
     shell = get_ipython().__class__.__name__
     if shell == 'ZMQInteractiveShell':
@@ -350,7 +347,18 @@ class SGMScan(DisplayDict):
 
 
     def __init__(self, *args, **kwargs):
-        super(SGMScan, self).__init__(*args, **kwargs)
+        kw_sorted = []
+        longest = max([len(entry) for entry in kwargs.keys()])
+        shortest = min([len(entry) for entry in kwargs.keys()])
+        cur_len = shortest
+        while cur_len <= longest:
+            temp = sorted([k for k in kwargs.keys() if len(k) == cur_len])
+            for entry in temp:
+                kw_sorted.append(entry)
+            cur_len += 1
+        kwargs_sorted = OrderedDict({k: kwargs[k] for k in kw_sorted})
+        super(SGMScan, self).__init__(*args, **kwargs_sorted)
+
         self.__dict__.update(kwargs)
         for key, value in kwargs.items():
             value.update({'name': key})
@@ -358,7 +366,7 @@ class SGMScan(DisplayDict):
 
     def __repr__(self):
         represent = ""
-        for key in self.__dict__.keys():
+        for key in self.keys():
             represent += f"\n Entry: {key},\n\t Type: {self.__dict__[key]}"
         return represent
 
@@ -370,7 +378,7 @@ class SGMScan(DisplayDict):
             "  </thead>",
             "  <tbody>",
         ]
-        for key in self.__dict__.keys():
+        for key in self.keys():
             table.append(f"<tr><th> {key}</th>" + self.__dict__[key]._repr_html_() + "</tr>")
         table.append("</tbody></table>")
 
@@ -381,9 +389,10 @@ class SGMScan(DisplayDict):
         if sys_has_tab:
             temp_data = []
             final_data = []
-            for key in self.__dict__.keys():
+            for key in self.keys():
                 temp_data.append(key)
-                for title in self.__dict__[key].keys():
+                for title in self[key].keys():
+
                     if title in needed_info:
                         temp_data.append(self.__dict__[key][title])
                 final_data.append(temp_data.copy())
@@ -392,10 +401,11 @@ class SGMScan(DisplayDict):
         else:
             temp_data = ''
             final_data = ''
-            for key in self.__dict__.keys():
+            for key in self.keys():
                 temp_data = temp_data + 'Entry:\t'
                 temp_data = temp_data + str(key)
-                for title in self.__dict__[key].keys():
+                for title in self[key].keys():
+
                     if title in needed_info:
                         temp_data = temp_data + '\t\t|\t\t'
                         temp_data = temp_data + (str(title) + ":\t" + str(self.__dict__[key][title]))
@@ -611,8 +621,14 @@ class SGMData(object):
             files = [file.replace(f'/home/jovyan/data/{self.user}/', '/home/jovyan/data/') for file in files]
         if not any([os.path.exists(f) for f in files]) and os.path.exists(f'./data/'):
             files = [file.replace(f'/home/jovyan/', './') for file in files]
-        # Following line modified so that self.scans will have the same contents regardless of OS.
-        self.scans = {(os.path.normpath(k)).split('\\')[-1].split('/')[-1].split(".")[0]: {} for k in files}
+        try:
+            files_sorted = sorted(files, key=(lambda x: datetime.datetime.strptime(time.ctime(os.path.getctime(x)),
+                                                                                   '%a %b %d %H:%M:%S %Y')))
+        except ValueError:
+            # Following line modified so that self.scans will have the same contents regardless of OS.
+            files_sorted = sorted([(os.path.normpath(k)).split('\\')[-1].split('/')[-1].split(".")[0] for k in files])
+        self.scans = {(os.path.normpath(k)).split('\\')[-1].split('/')[-1].split(".")[0]: {} for k in files_sorted}
+
         self.interp_params = {}
         with ThreadPool(self.threads) as pool:
             L = list(tqdm(pool.imap_unordered(self._load_data, files), total=len(files), leave=False))
@@ -774,12 +790,12 @@ class SGMData(object):
                 entries.append(entry)
         with ThreadPool(self.threads) as pool:
             results = list(tqdm(pool.imap_unordered(_interpolate, entries), total=len(entries)))
+        self.interpolated = True
         return results
 
     def _interpolate(self, entry, **kwargs):
         compute = kwargs.get('compute', True)
         if compute:
-            self.interpolated = True
             return entry.interpolate(**kwargs)
         else:
             independent = entry['independent']
@@ -789,7 +805,6 @@ class SGMData(object):
                 command = entry.command
             else:
                 command = None
-            self.interpolated = True
             return interpolate(independent, signals, command=command, **kwargs)
 
     def mean(self, bad_scans=None):
@@ -852,7 +867,7 @@ class SGMData(object):
             "  <tbody>",
         ]
         for key in self.scans.keys():
-            for subkey in self.scans[key].__dict__.keys():
+            for subkey in self.scans[key].keys():
                 table.append(f"<tr><th>{key}</th><td>{subkey}</td>" + self.scans[key][subkey]._repr_html_() + "</tr>")
         table.append("</tbody></table>")
 
@@ -863,7 +878,7 @@ class SGMData(object):
             table = []
             temp_list = []
             for key in self.scans.keys():
-                for subkey in self.scans[key].__dict__:
+                for subkey in self.scans[key]:
                     temp_list.append(key)
                     temp_list.append(subkey)
                     temp_list.append(self.scans[key].__dict__[subkey].sample)
@@ -877,7 +892,7 @@ class SGMData(object):
         else:
             final_str = ""
             for key in self.scans.keys():
-                for subkey in self.scans[key].__dict__:
+                for subkey in self.scans[key]:
                     temp_str = ("Entry:\t" + str(subkey))
                     temp_str = (temp_str + "\t\t\tFile: " + str(key))
                     temp_str = (temp_str + "\t\t\tSample: " + str(self.scans[key].__dict__[subkey].sample))

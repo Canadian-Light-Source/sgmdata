@@ -64,24 +64,27 @@ def check_sample_fitness(sgm_data):
         interp_list(list): a list of pandas dataframes. Contains the interpolated version of the data in the files
         specified in list_of_files.
     """
+    interp = False  # this is a temporary variable, delete later
     file = list(sgm_data.__dict__['scans'].keys())
     sample_name = list(sgm_data.__dict__['scans'][file[0]].__dict__.keys())
     sample_type = sgm_data.__dict__['scans'][file[0]].__getitem__(sample_name[0])['sample']
-    # interp_list = sgm_data.interpolate(resolution=0.1)
-    if sgm_data.interpolated is True:
-        ### do nothing if this is the case, the data we have is already interpolated
-        print("SGMQuery required\n" + str(sample_type))
-        # interp_list = [sorted(sgm_data.paths,
-        #                       key=lambda x: datetime.datetime.strptime(x.split('/')[-1].split('.')[0], "%Y-%m-%dt%H-%M-%S%z")
-        #                       )[-1]]
-        interp_list = sgm_data.interpolate(resolution=0.1)
+    sgm_data.interpolate(resolution=0.1)
+    interp_list = []
+    #         if sgm_data.interpolated is True: #this is what we want in the end, but cannot use yet
+    if interp is True:  # this is just a temp replacement for the above line. Remove later.
+
+        print("SGMQuery required for sample " + str(sample_type))
+        for item in sgm_data.__dict__['scans']:
+            for entry in sgm_data.__dict__['scans'][item]:
+                interp_list.append(pandas.DataFrame.from_dict(sgm_data.__dict__['scans'][item].__dict__[entry]
+                                                              ['binned']['dataframe']))
     else:
-        print(sample_type)
         print("interpolation needed")
         if len(sgm_data.__dict__['scans']) == 0:
-            raise ValueError("hdf5 file must contain scans to be able to predict the number of scans required. The hdf5 "
-                             "file you have provided does not contain any scans. Please try again with an hdf5 file that"
-                             " does contain scans.")
+            raise ValueError(
+                "hdf5 file must contain scans to be able to predict the number of scans required. The hdf5 "
+                "file you have provided does not contain any scans. Please try again with an hdf5 file that"
+                " does contain scans.")
         has_sdd = False
         signals = list(sgm_data.__dict__['scans'][file[0]].__getitem__(sample_name[0]).__getattr__('signals').keys())
         i = 0
@@ -98,11 +101,12 @@ def check_sample_fitness(sgm_data):
             sample_name = list(sgm_data.__dict__['scans'][indiv_file].__dict__.keys())
             for scan in sample_name:
                 if sgm_data.__dict__['scans'][indiv_file].__getitem__(scan)['sample'] != sample_type:
-                    raise ValueError("In order to predict, the scans in the hdf5 file passed in by user must all be from"
-                                     " the same sample. The scans in the hdf5 file passed in by the user are not all from"
-                                     " the same sample. Please "
-                                     "try again with an hdf5 file only containing scans from the"
-                                     " same sample. ")
+                    raise ValueError(
+                        "In order to predict, the scans in the hdf5 file passed in by user must all be from"
+                        " the same sample. The scans in the hdf5 file passed in by the user are not all from"
+                        " the same sample. Please "
+                        "try again with an hdf5 file only containing scans from the"
+                        " same sample. ")
         interp_list = sgm_data.interpolate(resolution=0.1)
     return interp_list
 
@@ -246,7 +250,7 @@ def find_cut_off(d_list, cut_off_point):
         # End loop if most recent 9 variances <= cut_off_point
         if log_of_avg_of_ten <= cut_off_point:
             current_point = i + 1
-            return current_point, log_of_avg_of_ten
+            return current_point, log_of_avg_of_ten, d_list
         # Predict variance between most recent scan and scan after it.
         else:
             j = 0
@@ -712,7 +716,7 @@ def testing():
 # # # TEMPORARY
 
 
-def predict_num_scans(files, verbose=False, percent_of_log=0.4, num_scans=10):
+def predict_num_scans(data, verbose=False, percent_of_log=0.4, num_scans=10):
     """
     Purpose: Takes the name of of a sample, and the username of the individual who took the sample. Uses a combination
     of other function to predict how many additional scans should be taken of that sample.
@@ -728,18 +732,15 @@ def predict_num_scans(files, verbose=False, percent_of_log=0.4, num_scans=10):
     Returns:
         (int): The number of additional scans that should be taken of a sample.
     """
-    # Getting the data from the file specified by the user, and interpolating it
-    ### ROSE - this was the code before switching check_sample_fitness to take an SGMData object.
-    # newSGMDataObj = file_retrieval(files)
-    # print(type(newSGMDataObj))
-    # interp_list = check_sample_fitness(newSGMDataObj)
-    interp_list = check_sample_fitness(files)
+    interp_list = check_sample_fitness(data)
+    # sample_type = data.__dict__['sample']
+    sample_type = data.__dict__['scans']['Co-nitrate-N-Bottom9']['entry1']['sample']
     # Checking if the user has specified that they want more scans to be used to predict than there are scans available.
     # If this is the case, the number of scans available instead of the number of scans the user has specified is used
     # in the prediction.
+
     if num_scans > (len(interp_list) + 1):
         num_scans = len(interp_list)
-    # returned_data = extracting_data(interp_list, num_scans)
     returned_data = extracting_data(interp_list[:num_scans])
     # Organizing interpolated data returns from previous functions.
     returned_indices = returned_data[1]
@@ -751,9 +752,9 @@ def predict_num_scans(files, verbose=False, percent_of_log=0.4, num_scans=10):
     for item in returned_indices:
         returned_indices_listed.append(item)
     # Using organized interpolated data to predict the actual number of additional scans needed.
-    cut_off_point_info = predict_cut_off(returned_diff_list_listed[:9], percent_of_log)
+    cut_off_point_info = predict_cut_off(returned_diff_list_listed[: num_scans - 1], percent_of_log)
     cut_off_point = cut_off_point_info[2]
-    number_of_scans = find_cut_off(returned_diff_list_listed[:9], cut_off_point)
+    number_of_scans = find_cut_off(returned_diff_list_listed[: num_scans - 1], cut_off_point)
     # If user has specified they want additional information about the process to find the number of additional scans
     # required, providing them with that information.
     if verbose:
@@ -768,14 +769,77 @@ def predict_num_scans(files, verbose=False, percent_of_log=0.4, num_scans=10):
         print(" *** Cut-off at scan number: " + str(number_of_scans[0]))
         print(" *** Value at scan " + str(number_of_scans[0]) + "(scans at which cut-off point is reached): "
               + str(number_of_scans[1]))
-    return number_of_scans[0] - 10
+        print("**************************")
+        from bokeh.plotting import figure, ColumnDataSource
+        from bokeh.models import HoverTool, CustomJS, BooleanFilter, LinearColorMapper, LogColorMapper, ColorBar
+        from bokeh.io import show
+
+        def plot1d(scansX, noiseLevelsY):
+            given_scans = []
+            predicted_scans = []
+            actual_scans = []
+            i = 0
+            for scan in noiseLevelsY:
+                if i < 8:
+                    given_scans.append(scan)
+                    i += 1
+                else:
+                    predicted_scans.append(scan)
+                    i += 1
+            to_plot = []
+            to_plot.append(given_scans)
+            to_plot.append(predicted_scans)
+            TOOLS = 'pan, hover,box_zoom,box_select,crosshair,reset,save'
+            fig = figure(
+                tools=TOOLS,
+                title="Number of Scans for Sample " + sample_type,
+                background_fill_color="white",
+                background_fill_alpha=1,
+                x_axis_label="Scan",
+                y_axis_label="Average Noise Level",
+            )
+            colors = []
+            for i in range(np.floor(len(scansX)/6).astype(int)+1):
+                colors += ['purple', 'firebrick', 'red', 'orange', 'black', 'navy']
+            colors = iter(colors)
+            if not isinstance(scansX, list):
+                scansX = [scansX]
+            if not len(scansX) == len(noiseLevelsY):
+                noiseLevelsY = [noiseLevelsY]
+            # for index in scansX:
+            # for i, x in enumerate(scansX):
+            ind = 0
+            # while ind < len(scansX):
+                #                 fig.circle(x=x, y=yarr[i], color=next(colors), legend_label="Curve" + str(i))
+                # fig.circle(x=x, y=noiseLevelsY[i], color=next(colors), legend_label="Curve" + str(i))
+            while ind < (len(scansX)):
+                if ind < 8:
+                    fig.circle(x=ind, y=to_plot[0][ind], color="red")
+                    print("given: " + str(to_plot[0][ind]))
+                    ind += 1
+                elif ind < len(scansX):
+                    fig.circle(x=ind, y=to_plot[1][ind - 8], color="blue")
+                    print("expected: " + str(to_plot[1][ind - 8]))
+                    ind += 1
+            fig.legend.location = "top_left"
+            fig.legend.click_policy = "hide"
+            show(fig)
+            # print(to_plot[0])
+            # print(to_plot[1])
+
+        i = 0
+        num_scans_listed = []
+        while i < len(number_of_scans[2]):
+            num_scans_listed.append(i)
+            i += 1
+
+        plot1d(num_scans_listed, number_of_scans[2])
+        return number_of_scans[0] - 10
 
 
-data = file_retrieval('C:/Users/roseh/Desktop/Internship/SignalToNoiseConvergence/h5Files/*Co-nitrate*.hdf5')
-
-print(predict_num_scans(data, True))
-
-# print("Number of additional scans needed:\t" +
-#       str(predict_num_scans('C:/Users/roseh/Desktop/Internship/SignalToNoiseConvergence/h5Files/*Co-nitrate*.hdf5', True)))
-
+sample = file_retrieval('C:/Users/roseh/Desktop/Internship/SignalToNoiseConvergence/h5Files/*Co-nitrate*.hdf5')
+# print(sample.__dict__['scans']['Co-nitrate-N-Bottom9']['entry1']['sample'])
+# data = sample.__dict__.keys()
+print(predict_num_scans(sample, True))
+# Getting sgmData object of files
 
