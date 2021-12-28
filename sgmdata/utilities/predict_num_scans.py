@@ -774,10 +774,14 @@ def predict_num_scans(data, verbose=False, percent_of_log=0.4, num_scans=10):
         from bokeh.models import HoverTool, CustomJS, BooleanFilter, LinearColorMapper, LogColorMapper, ColorBar
         from bokeh.io import show
 
-        def plot1d(scansX, noiseLevelsY):
+        def plot1d(scansX, noiseLevelsY, cutOff, interpList):
+            hasBlackLabel = False
+            hasRlabel = False
+            hasBlueLabel= False
             given_scans = []
             predicted_scans = []
             actual_scans = []
+
             i = 0
             for scan in noiseLevelsY:
                 if i < 8:
@@ -786,9 +790,12 @@ def predict_num_scans(data, verbose=False, percent_of_log=0.4, num_scans=10):
                 else:
                     predicted_scans.append(scan)
                     i += 1
+
             to_plot = []
             to_plot.append(given_scans)
             to_plot.append(predicted_scans)
+            extractedData = extracting_data(interpList)
+
             TOOLS = 'pan, hover,box_zoom,box_select,crosshair,reset,save'
             fig = figure(
                 tools=TOOLS,
@@ -798,42 +805,68 @@ def predict_num_scans(data, verbose=False, percent_of_log=0.4, num_scans=10):
                 x_axis_label="Scan",
                 y_axis_label="Average Noise Level",
             )
-            colors = []
-            for i in range(np.floor(len(scansX)/6).astype(int)+1):
-                colors += ['purple', 'firebrick', 'red', 'orange', 'black', 'navy']
-            colors = iter(colors)
+
             if not isinstance(scansX, list):
                 scansX = [scansX]
             if not len(scansX) == len(noiseLevelsY):
                 noiseLevelsY = [noiseLevelsY]
-            # for index in scansX:
-            # for i, x in enumerate(scansX):
+
+            print(extractedData)
             ind = 0
-            # while ind < len(scansX):
-                #                 fig.circle(x=x, y=yarr[i], color=next(colors), legend_label="Curve" + str(i))
-                # fig.circle(x=x, y=noiseLevelsY[i], color=next(colors), legend_label="Curve" + str(i))
             while ind < (len(scansX)):
                 if ind < 8:
-                    fig.circle(x=ind, y=to_plot[0][ind], color="red")
-                    print("given: " + str(to_plot[0][ind]))
-                    ind += 1
+                    if not hasBlackLabel:
+                        fig.circle(x=ind, y=to_plot[0][ind], color="black",
+                                   legend_label="Data From Initial 10 Scans Provided.")
+                        print("given: " + str(to_plot[0][ind]))
+                        ind += 1
+                    else:
+                        fig.circle(x=ind, y=to_plot[0][ind], color="black")
+                        print("given: " + str(to_plot[0][ind]))
+                        ind += 1
                 elif ind < len(scansX):
-                    fig.circle(x=ind, y=to_plot[1][ind - 8], color="blue")
-                    print("expected: " + str(to_plot[1][ind - 8]))
-                    ind += 1
+                    if not hasBlueLabel:
+                        fig.circle(x=ind, y=to_plot[1][ind - 8], color="blue", legend_label="Predictions")
+                        print("expected: " + str(to_plot[1][ind - 8]))
+                        if ind < len(extractedData[0]):
+                            if not hasRlabel:
+                                fig.circle(x=ind, y=extractedData[0][ind], color="red", legend_label="Actual Scan Data")
+                                print("Actual data: " + str(extractedData[0][ind]))
+                                ind += 1
+                            else:
+                                fig.circle(x=ind, y=extractedData[0][ind], color="red")
+                                print("Actual data: " + str(extractedData[0][ind]))
+                                ind += 1
+                        else:
+                            ind += 1
+                    else:
+                        fig.circle(x=ind, y=to_plot[1][ind - 8], color="blue")
+                        print("expected: " + str(to_plot[1][ind - 8]))
+                        if ind < len(extractedData[0]):
+                            if not hasRlabel:
+                                fig.circle(x=ind, y=extractedData[0][ind], color="red", legend_label="Actual Scan Data")
+                                print("Actual data: " + str(extractedData[0][ind]))
+                                ind += 1
+                            else:
+                                fig.circle(x=ind, y=extractedData[0][ind], color="red")
+                                print("Actual data: " + str(extractedData[0][ind]))
+                                ind += 1
+                        else:
+                            ind += 1
+
+            fig.line(x=scansX, y=cutOff, color="yellow", legend_label="Cut off val, based on log of average of"
+                                                                      " initial 10 values")
             fig.legend.location = "top_left"
             fig.legend.click_policy = "hide"
+            fig.legend.title = "Legend For Predictive Function"
             show(fig)
-            # print(to_plot[0])
-            # print(to_plot[1])
 
         i = 0
         num_scans_listed = []
         while i < len(number_of_scans[2]):
             num_scans_listed.append(i)
             i += 1
-
-        plot1d(num_scans_listed, number_of_scans[2])
+        plot1d(num_scans_listed, number_of_scans[2], cut_off_point, interp_list)
         return number_of_scans[0] - 10
 
 
