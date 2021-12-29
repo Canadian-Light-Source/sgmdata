@@ -1,14 +1,12 @@
 # General imports
 import glob
-# from IPython.testing.globalipapp import get_ipython
 import asyncio
 import h5py
 import pandas
-# from dask.distributed import Client
-# from distributed import Client
 import numpy as np
 from lmfit import Model
 from collections import OrderedDict
+import math
 # Plotting function imports
 from bokeh.plotting import figure, ColumnDataSource
 from bokeh.models import HoverTool, CustomJS, BooleanFilter, LinearColorMapper, LogColorMapper, ColorBar
@@ -17,13 +15,12 @@ from bokeh.io import show
 import os
 import sys
 import inspect
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe()))))))
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(inspect.getfile(
+    inspect.currentframe()))))))
 ### JUST FOR MY COMP DONE
 import sgmdata
 from sgmdata.load import SGMData
 from sgmdata.search import SGMQuery
-import math
-from sgmdata.utilities.util import plot1d
 
 
 def file_retrieval(path):
@@ -56,13 +53,19 @@ def file_retrieval(path):
 
 def check_sample_fitness(sgm_data):
     """
-    Purpose: Create an SGMData object from hdf5 files. Interpolate the data in the SGMData object. Return this
-    interpolated data.
-    Parameters:
-        sgm_data (SGMData object): the SGMData object containing the data from the files that the user provided
-    Returns:
-        interp_list(list): a list of pandas dataframes. Contains the interpolated version of the data in the files
-        specified in list_of_files.
+        ### Description:
+    -----
+        Determines whether the data from the SGMData object passed in has already been interpolated. If it has an
+        SGMQuery is used to retrieve it. Otherwise, the SGMData object is checked to ensure it is suitable for
+        interpolation, and if it is the data in the SGMData object is interpolated.
+    ### Args:
+    -----
+        > **sgm_data** *(type: SGMData object)* -- AN SGMData object containing the date for a sample the user would
+            like to know more about.
+    ### Returns:
+    -----
+        > **interp_list** *(type: list of pandas dataframes)* -- the interpolated data for the SGMData object passed
+            in by the user.
     """
     interp = False  # this is a temporary variable, delete later
     file = list(sgm_data.__dict__['scans'].keys())
@@ -114,12 +117,18 @@ def check_sample_fitness(sgm_data):
 # # # Primarily for testing, not in final code.
 def lowest_variance(d_list):
     """
-    Purpose: Takes a list of differences between values. Calculates the lowest variance between 5 of these consecutive
-    differences and keeps track of the positions of these 5 values in d_list.
-    Parameters:
-        d_list(list of float): a list of the differences between each 2 consecutive values.
-    Returns:
-        (str): the lowest variance value and the index of the list differences that make up this variance value.
+    ### Description:
+    -----
+        Takes a list of differences between values. Calculates the lowest variance between 5 of these consecutive
+        differences and keeps track of the positions of these 5 values in d_list.
+    ### Args:
+    -----
+        > **d_list** *(type: list of floats)* -- A list of the difference in average variances between each 2
+            consecutive values.
+    ### Returns:
+    -----
+        > *(type: str)* -- The lowest variance value and the index of the list differences that make up this variance
+            value.
     """
     if len(d_list) < 5:
         raise ValueError("lowest_variance function can only be used on hdf5 file containing 6 or more scans. The hdf5"
@@ -152,30 +161,37 @@ def lowest_variance(d_list):
 
 def noise(idx, amp, shift, ofs):
     """
-    Purpose: The equation to calculate the predicted level of noise in a scan.
-    Parameters:
-        idx(np.array): Independent variable. An array of the indices of the values in sdd_list that were previously deemed to be
-        acceptable sdd values.
-        amp(float): Dependant variable. How much to amplify the noise level by.
-        shift(float): Dependant variable. Amount to shift the index by.
-        ofs(float): Dependant variable. How much to offset the noise level by.
-    Returns:
-         (np.array): the values in idx fit to the curve outlined by amp, shift and ofs.
+    ### Description:
+    -----
+        Predicts the amount of noise in the next scan.
+    ### Args:
+    -----
+        > **idx** *(type: np.array)* -- An array of the indices of the values in sdd_list that were previously deemed
+            to be acceptable sdd values.
+        > **amp** *(type: float)* -- How much to amplify the noise level by.
+        > **shift** *(type: float)* -- Amount to shift the index by.
+        > **ofs** *(type: float)* -- How much to offset the noise level by.
+    ### Returns:
+    -----
+        > *(type: np.array)* -- the values in idx fit to the curve outlined by amp, shift and ofs.
     """
     return amp * (idx + shift) ** (-3 / 2)
 
 
 def predict_next_scan(d_list, cur_indices):
     """
-    Purpose: Takes predicted differences from d_list and inputs them to the noise function. This predicts the level of
-    noise in the next scan.
-    Variables:
-        d_list(list of floats): a list of the differences between our first ten scans. As our determine_scan_num
-        function continues it will add values to the d_list.
-        num_indices(list of ints): a list of the x values of the first 10 scans (1, 2, 3, etc.). As our
-        determine_scan_num function progresses it will add more x values.
-    Returns:
-        (np.array): an array of the differences between consecutive values.
+    ### Description:
+    -----
+        Takes predicted differences from d_list and inputs them to the noise function. This predicts the level of
+        noise in the next scan.
+    ### Args:
+    -----
+        > **d_list** *(type: list of floats)* -- The values from which the user would like the end point to be based on.
+            Expected, but not required, to be the variance between the noise levels in the first 10 scans of a sample.
+        > **num_indices** *(type: list of ints)* -- The indexes of d_list. Will expand as long as d_list is expanding.
+    ### Returns:
+    -----
+        > *(type: np.array)* -- An array of the differences between consecutive averages of variances.
     """
     noisemodel = Model(noise)
     params = noisemodel.make_params()
@@ -190,17 +206,22 @@ def predict_next_scan(d_list, cur_indices):
 
 def predict_cut_off(d_list, percent_of_log=0.4):
     '''
-    Purpose: Takes the variance between the values in d_list and finds the log value of their average. Multiplies log
-    value by the percent_of_log to get the value at which scanning should stop.
-    Variables:
-        d_list(list): the values from which the user would like the end point to be based on. Expected, but not
-        required, to be the variance between the noise levels in the first 10 scans of a sample.
-        percent_of_log(float): the value by which the log of the average of the d_list values is multiplied to get the value
-        where scanning should stop. Set to 0.4 by default, because this is the most likely to be accurate.
-    Returns:
-        first_ten_average_variance(float): the average of the values in d_list.
-        log_of_ftav(float): the log value of first_ten_average_variance.
-        log_cut_off(float): the ideal value of the log of the average of the variance between the last 10 scans.
+    ### Description:
+    -----
+        Takes the variance between the values in d_list and finds the log value of their average. Multiplies log value
+        by the percent_of_log to get the value at which scanning should stop.
+    ### Args:
+    -----
+        > **d_list** *(type: list of floats)* -- The values from which the user would like the end point to be based on.
+            Expected, but not required, to be the variance between the noise levels in the first 10 scans of a sample.
+        > **percent_of_log** *(type: float)* -- The value by which the log of the average of the d_list values is
+            multiplied to get the value where scanning should stop. Default value is 0.4.
+    ### Returns:
+    -----
+        > **first_ten_average_variance** *(type: float)* -- The average of the values in d_list.
+        > **log_of_ftav** *(type: float)* -- The log value of first_ten_average_variance.
+        > **log_cut_off** *(type: float)* -- The ideal value of the log of the average of the variance between the
+            last 10 scans.
     '''
     first_ten_average_variance = sum(d_list) / len(d_list)
     log_of_ftav = math.log(first_ten_average_variance, 10)
@@ -210,26 +231,31 @@ def predict_cut_off(d_list, percent_of_log=0.4):
 
 def find_cut_off(d_list, cut_off_point):
     '''
-    Purpose: uses a list of variances between scans to predict the values that would be associated with the next scan.
-    Checks if the log of the average of the variance between the most recently predicted scan and preceding scan, and
-    the variances between the 9 scans before it is less than or equal to cut_off_point. If it isn't then the values
-    that would be associated with the next scan are predicted. If it is then predictions stop, and the number of
-    predictions it took to get to that point is returned to the user, indicating that that many additional scans should
-    be taken of the sample from which d_list originates.
-    Variables:
-        d_list(list): the variance between the initial scans of a sample, expected, but not required, to be the variance
-        between the initial 10 scans of a sample.
-        cut_off_point(float): the ideal value of the log of the average of the variance between the last 10 scans.
-    Returns:
-        current_point: The number of scans that had to be predicted for the log of the average of the variance between
-        last 10 scans to be equal to or smaller than cut_off_point. Indicative of number of additional scans that
-        should be taken of the sample the function is being preformed on.
-        log_of_avg_of_ten: the first log of the average of the last 10 scans that is smaller than or equal to
-        cut_off_point.
+    ### Description:
+    -----
+        Uses a list of variances between scans to predict the values that would be associated with the next scan. Checks
+        if the log of the average of the variance between the most recently predicted scan and preceding scan, and
+        the variances between the 9 scans before it is less than or equal to cut_off_point. If it isn't then the values
+        that would be associated with the next scan are predicted. If it is then predictions stop, and the number of
+        predictions it took to get to that point is returned to the user, indicating that that many additional scans
+        should be taken of the sample.
+    ### Args:
+    -----
+        > **d_list** *(type: list of floats)* -- The variance between the initial scans of a sample. Initial number of
+            scans is expected to be 10, but it can be any number.
+        > **cut_off_point** *(type: float)* -- The ideal value of the log of the average of the variance between the
+            last 10 scans.
+    ### Returns:
+    -----
+        > **current_point** *(type: int)* -- The number of scans that had to be predicted for the log of the average of
+            the variance between last 10 scans to be equal to or smaller than cut_off_point. Indicative of number of
+            additional scans that should be taken of the sample.
+        > **log_of_avg_of_ten** *(type: float)* -- The log of the average of the variance between the last 10 scans
+            when the log of the average of the variance between last 10 scans to be equal to or smaller than
+            cut_off_point.
     '''
     keep_predicting = True
     i = len(d_list)
-    # If d_list is smaller than 9, predict and add elements to d_list until it isn't.
     while len(d_list) < 9:
         j = 0
         indices = []
@@ -239,19 +265,12 @@ def find_cut_off(d_list, cut_off_point):
         predicted_level = predict_next_scan(d_list, indices)
         d_list = np.append(d_list, predicted_level[-1])
         i += 1
-    # Check info of most recent 9 variances
     while keep_predicting:
         avg_of_ten = (sum(d_list[i - 9:i]) / 9)
         log_of_avg_of_ten = math.log(avg_of_ten, 10)
-        # # # Testing purposes only: print what number of scans we're at, the avg of previous nine scan values and log
-        # of the average of the previous nine scan values.
-        # print(" *** " + str(i-8) + ".      " + str(avg_of_ten) + "\t\t\t" + str(log_of_avg_of_ten))
-        # # #
-        # End loop if most recent 9 variances <= cut_off_point
         if log_of_avg_of_ten <= cut_off_point:
             current_point = i + 1
             return current_point, log_of_avg_of_ten, d_list
-        # Predict variance between most recent scan and scan after it.
         else:
             j = 0
             indices = []
@@ -260,30 +279,30 @@ def find_cut_off(d_list, cut_off_point):
                 j += 1
             predicted_level = predict_next_scan(d_list, indices)
             d_list = np.append(d_list, predicted_level[-1])
-            # # # Testing purposes only: print the list of values (predicted and actual) in our list of scan values,
-            # after our most recent prediction.
-            # print(" *** \tnew d_list: " + str(d_list))
-            # # #
             if i > 60:
                 raise RuntimeError("Sufficiently accurate prediction cannot be made.")
             i += 1
 
 
-# Must be modified to fit new equation.
-def determine_num_scans(d_list, indices, desired_difference=0.17961943):
+def determine_num_scans(d_list, indices, desired_difference):
     """
-    Purpose: takes a string of variations in noise levels and a desired noise level, and returns the number of additional
-    variations (ie, scans) required to reach the desired noise level.
-    Variables:
-        d_list(list of floats): a list of the differences between our first ten acceptable scans. As our
-        determine_scan_num function continues it will add values to the d_list.
-        indices(list of ints): the scan numbers of the scans used to generate d_list.
-        desired_noise(float): the variance between 5 consecutive scans the user would like to achieve, ie, we'll need to
-        continue scans until this level of variance is reached. Default is the highest variance among sample scans.
-    Returns:
-         num_predictions+1(int): the number of scans required to reach the desired level of variance. Adding one
-         because, since we're working differences in d_list, and a difference comes from 2 values, to get any number of
-         differences you'll need that number of scans plus 1.
+    ### Description:
+    -----
+        takes a list of the the averages of the variances of the initial scans provided by the user. Uses these to
+        determine how many additional scans are needed to have an average variance of desired_difference across the
+        most recent 10 scans.
+    ### Args:
+    -----
+        > **d_list** *(type: list of floats)* -- A list of the averages of the variances of the initial scans provided
+            by the user. As our determine_scan_num function continues it will add values to the d_list.
+        > **indices** *(type: list of ints)* -- The indexes of the scans used to formulate d_list.
+        > **desired_noise** *(type: float)* -- the variance between 10 consecutive scans the user would like to
+        achieve, ie, we'll need to continue scaning until this level of variance is reached.
+    ### Returns:
+    -----
+        > **num_predictions + 1** *(int)*: The number of scans required to reach the desired level of variance. Adding
+         one because, since we're working differences in d_list, and a difference comes from 2 values, to get any
+         number of differences you'll need that number of scans plus 1.
     """
     copied_indices = indices.copy()
     num_predictions = 9
@@ -294,7 +313,6 @@ def determine_num_scans(d_list, indices, desired_difference=0.17961943):
     if len(d_list) < 9:
         raise ValueError("Prediction can only be made with hdf5 file containing 10 or more scans. Less than 10 scans"
                          " in the hdf5 file passed in. Please try again with an hdf5 file containing 10 or more scans.")
-    # Checking if the desired level of variance has already been reached in the first 10 scans.
     for element in d_list:
         if len(recent_differences) < 10:
             recent_differences.append(element)
@@ -304,68 +322,44 @@ def determine_num_scans(d_list, indices, desired_difference=0.17961943):
                 recent_variances.append(((var - np.mean(recent_differences)) ** 2))
             if (np.sum(recent_variances) / len(recent_variances)) <= desired_difference:
                 return 0
-                # # # Testing purposes only: returns indices and values if desired level of variance already reached
-                # return d_list, copied_indices
-                # # #
-        # # # Testing purposes only: code for if we're looking at 5 of initial 10 scans at a time, not all ten initial
-        # scans at once. Current and final code should both look at all initial ten scans at once.
-        # else:
-        #     recent_variances.clear()
-        #     recent_differences.pop(0)
-        #     recent_differences.append(element)
-        #     for var in recent_differences:
-        #         recent_variances.append(((var - np.mean(recent_differences)) ** 2))
-        #     if (np.sum(recent_variances) / len(recent_variances)) <= desired_difference:
-        #         # # # For final code.
-        #         # return 0
-        #         # # # Temporary, for testing only.
-        #         return d_list, copied_indices
-        #         # # #
-        # # #
-    # Predicting variances until we predict a variance that's at or below the desired level of variance.
     while keep_predicting:
-        # Predicting the next difference.
         predicted_level = predict(d_list, copied_indices)
         copied_indices.append(int(copied_indices[-1]) + 1)
         num_predictions = num_predictions + 1
-        # Adding the newly predicted differance to our list of variances.
         d_list = np.append(d_list, predicted_level[-1])
-        # Calculating the variance of the newest differences.
         recent_variances.clear()
         recent_differences.pop(0)
         recent_differences.append(predicted_level[-1])
         for var in recent_differences:
             recent_variances.append(((var - np.mean(recent_differences)) ** 2))
         variances.append((np.sum(recent_variances)) / len(recent_variances))
-        # Stopping the predictions if the desired level of variance has already been reached.
         if variances[-1] <= desired_difference:
             keep_predicting = False
         if num_predictions > 60:
-            # If the desired_difference was the default value, not input by user.
             if desired_difference == 0.17961943:
                 raise RuntimeError("Sufficiently accurate prediction cannot be made.")
             else:
                 raise ValueError("Desired level of variance cannot be reached.")
-    # # # Temporary, for testing only: returns d_list with the predicted values added, and the indices of the actual
-    # and predicted d_list values.
-    # return d_list, copied_indices
-    # # #
     return num_predictions
 
 
-# def extracting_data(interp_list_param, num_scans):
 def extracting_data(interp_list_param):
     """
-    Purpose: Takes the results returned by SGMData's "interpolate" function and collects the sdd values within it. Sorts
-    through these sdd values and removes unfit values. Keeps a separate list of the indices of the fit values. Deals
-    with nan and infinity values in the list of sdd values. Returns the modified list of sdd values and the list
-    of the indices of fit valuer to caller as a numpy arrays.
-    Variables:
-        interp_list_param(list of pandas dataframes): the list of results returned by SGMData's "interpolate" function.
-    Returns:
-        diff_list(list of floats): a list of the differences between our first ten acceptable scans. Used to formulate
-        the model to predict the differences between future scans.
-        indices(list of ints): The numbers of the scans used to formulate diff_list.
+    ### Description:
+    -----
+        Takes the results returned by SGMData's "interpolate" function, or from an SGMQuery and collects the sdd values
+        within it. Sorts through these sdd values and removes unfit values. Keeps a separate list of the indices of the
+        fit values. Deals with nan and infinity values in the list of sdd values. Returns the modified list of sdd
+        values and the list of the indices of fit value to caller as a numpy arrays.
+    ### Args:
+    -----
+        > **interp_list_param** *(type: list of pandas dataframes)* -- The list of results returned by SGMData's
+            "interpolate" function, or from the ".data" attribute the return value of an SGMQuery.
+    ### Returns:
+    -----
+        > **diff_list** *(type: list of floats)*: The predicted number of additional scans that should be taken of a
+            sample.
+        > **indices** *(type: list of ints)*: The indexes of the scans used to formulate diff_list.
         """
     sdd_list = []
     for df in interp_list_param:
@@ -374,7 +368,6 @@ def extracting_data(interp_list_param):
     avg_list = [sdd_list[0]]
     diff_list = []
     indices = []
-    # for i, arr in enumerate(sdd_list[1:num_scans + 1]):
     for i, arr in enumerate(sdd_list[1:]):
         avg_list.append(arr)
         cur_mean = np.mean(avg_list, axis=0)
@@ -383,6 +376,105 @@ def extracting_data(interp_list_param):
         prev_mean = cur_mean
     diff_list = np.nan_to_num(np.array(diff_list))
     return diff_list, indices
+
+
+def plot_predicted(scans_x, noise_levels_y, cut_off, interp_list,  sample_type, num_scans=10):
+    '''
+    ### Description:
+    -----
+        Takes the information about a sample and plots it onto a graph. Then takes the data predicted for the sample by
+        the 'predict_num_scans' function and plots it on the same graph. Allows for easy comparison of actual data to
+        predicted data.
+    ### Args:
+    -----
+        > **scans_x** *(type: list of ints)* -- the indexes of all of the scans up to, and including, the index of the
+            last scan the predict_num_scans function predicts will be needed.
+        > **noise_levels_y** *(type: numpy array of floats)* -- the averages of the noise levels of all the scans
+            leading up to a scan. The averages match up with the indexes in scans_x.
+        > **cut_off** *(type: float)* -- The predicted value of the log of the average of the variance between 10
+            scans that is low enough that no more scans need to be taken.
+        > **interp_list** *(type: list of pandas dataframes)* -- the interpolated data for each scan.
+        > **sample_type** *(type: str)* -- the name of the sample that the user wants more information on.
+        > **num_scans** *(type: optional int)* -- the number of scans that the user initially provided. Default value
+            is 10.
+    '''
+    hasBlackLabel = False
+    hasRlabel = False
+    hasBlueLabel = False
+    given_scans = []
+    predicted_scans = []
+
+    if not isinstance(scans_x, list):
+        scans_x = [scans_x]
+    if not len(scans_x) == len(noise_levels_y):
+        noise_levels_y = [noise_levels_y]
+
+    i = 0
+    for scan in noise_levels_y:
+        if i < 8:
+            given_scans.append(scan)
+            i += 1
+        else:
+            predicted_scans.append(scan)
+            i += 1
+
+    to_plot = []
+    to_plot.append(given_scans)
+    to_plot.append(predicted_scans)
+    extractedData = extracting_data(interp_list)
+
+    TOOLS = 'pan, hover,box_zoom,box_select,crosshair,reset,save'
+    fig = figure(
+        tools=TOOLS,
+        title="Number of Scans for Sample " + sample_type,
+        background_fill_color="white",
+        background_fill_alpha=1,
+        x_axis_label="Scan",
+        y_axis_label="Average Noise Level",
+    )
+
+    ind = 0
+    while ind < (len(scans_x)):
+        if ind < (num_scans - 2):
+            if not hasBlackLabel:
+                fig.circle(x=ind, y=to_plot[0][ind], color="black",
+                           legend_label="Data From Initial 10 Scans Provided")
+                ind += 1
+            else:
+                fig.circle(x=ind, y=to_plot[0][ind], color="black")
+                ind += 1
+        elif ind < len(scans_x):
+            if not hasBlueLabel:
+                fig.circle(x=ind, y=to_plot[1][ind - 8], color="blue", legend_label="Predicted Average Noise Values")
+                if ind < len(extractedData[0]):
+                    if not hasRlabel:
+                        fig.circle(x=ind, y=extractedData[0][ind], color="red", legend_label="Actual Average Noise "
+                                                                                             "Values")
+                        ind += 1
+                    else:
+                        fig.circle(x=ind, y=extractedData[0][ind], color="red")
+                        ind += 1
+                else:
+                    ind += 1
+            else:
+                fig.circle(x=ind, y=to_plot[1][ind - 8], color="blue")
+                if ind < len(extractedData[0]):
+                    if not hasRlabel:
+                        fig.circle(x=ind, y=extractedData[0][ind], color="red", legend_label="Actual Average Noise "
+                                                                                             "Values")
+                        ind += 1
+                    else:
+                        fig.circle(x=ind, y=extractedData[0][ind], color="red")
+                        ind += 1
+                else:
+                    ind += 1
+
+    fig.line(x=scans_x, y=cut_off, color="yellow", legend_label="Log Value of Noise Values of Ten Scans at Which "
+                                                                "Scanning Can Stop")
+    fig.legend.location = "top_right"
+    fig.legend.click_policy = "hide"
+    fig.legend.title = "Legend For Predictive Function"
+    show(fig)
 
 
 # def run_all(files):
@@ -718,31 +810,32 @@ def testing():
 
 def predict_num_scans(data, verbose=False, percent_of_log=0.4, num_scans=10):
     """
-    Purpose: Takes the name of of a sample, and the username of the individual who took the sample. Uses a combination
-    of other function to predict how many additional scans should be taken of that sample.
-    Variables:
-        Sample(string): The name of the sample the user would like to know how many additional scans to take of.
-        User(string): The username of the individual who took the sample the user would like to know how many
-        additional scans to take of.
-        verbose(Boolean, optional): Default value is False. If set to True, gives user additional data on how the
-         additional number of scans needed was calculated.
-         percent of log (float, optional):
-         num_scans (integer, optional): The number of scans from the scans provided by the user, that the user would
-         like to be used to predict the number of additional scans to take.
-    Returns:
-        (int): The number of additional scans that should be taken of a sample.
+    ### Description:
+    -----
+        Takes the SGMData object of a sample and uses a combination of other functions to predict how many additional
+        scans should be taken of that sample.
+    ### Args:
+    -----
+        > **data** *(type: SGMData object)* -- The SGMData object for the sample on which the user would like more
+            information.
+        > **verbose** *(type: optional boolean)* -- Default value is False. If set to True, gives user additional data
+            on how the additional number of scans needed was calculated.
+        > **percent_of_log** *(type: optional float)* -- Default value is 0.4. The average of the noise values of the
+            first ten scans is taken, and the log of it is found. Scans continue to be taken, and the average of the
+            noise values of the most recent ten scans is taken. The log of this average is taken,and if it's less than
+            percent_of_log multiplied by the log of the first ten averages, then scanning stops.
+        > **num_scans** *(type: optional int)* -- Default value is 10. The number of scans from the scans provided by
+            the user, that the user would like to be used to predict the number of additional scans to take.
+    ### Returns:
+    -----
+        >*(int)*: The predicted number of additional scans that should be taken of a sample.
     """
     interp_list = check_sample_fitness(data)
-    # sample_type = data.__dict__['sample']
     sample_type = data.__dict__['scans']['Co-nitrate-N-Bottom9']['entry1']['sample']
-    # Checking if the user has specified that they want more scans to be used to predict than there are scans available.
-    # If this is the case, the number of scans available instead of the number of scans the user has specified is used
-    # in the prediction.
 
     if num_scans > (len(interp_list) + 1):
         num_scans = len(interp_list)
     returned_data = extracting_data(interp_list[:num_scans])
-    # Organizing interpolated data returns from previous functions.
     returned_indices = returned_data[1]
     returned_diff_list = returned_data[0]
     returned_diff_list_listed = []
@@ -751,12 +844,17 @@ def predict_num_scans(data, verbose=False, percent_of_log=0.4, num_scans=10):
         returned_diff_list_listed.append(item)
     for item in returned_indices:
         returned_indices_listed.append(item)
-    # Using organized interpolated data to predict the actual number of additional scans needed.
     cut_off_point_info = predict_cut_off(returned_diff_list_listed[: num_scans - 1], percent_of_log)
     cut_off_point = cut_off_point_info[2]
     number_of_scans = find_cut_off(returned_diff_list_listed[: num_scans - 1], cut_off_point)
-    # If user has specified they want additional information about the process to find the number of additional scans
-    # required, providing them with that information.
+
+    i = 0
+    num_scans_listed = []
+    while i < len(number_of_scans[2]):
+        num_scans_listed.append(i)
+        i += 1
+    plot_predicted(num_scans_listed, number_of_scans[2], cut_off_point, interp_list, sample_type, num_scans)
+
     if verbose:
         first_ten_average_variance = cut_off_point_info[0]
         log_of_ftav = cut_off_point_info[1]
@@ -769,110 +867,10 @@ def predict_num_scans(data, verbose=False, percent_of_log=0.4, num_scans=10):
         print(" *** Cut-off at scan number: " + str(number_of_scans[0]))
         print(" *** Value at scan " + str(number_of_scans[0]) + "(scans at which cut-off point is reached): "
               + str(number_of_scans[1]))
-        print("**************************")
-        from bokeh.plotting import figure, ColumnDataSource
-        from bokeh.models import HoverTool, CustomJS, BooleanFilter, LinearColorMapper, LogColorMapper, ColorBar
-        from bokeh.io import show
 
-        def plot1d(scansX, noiseLevelsY, cutOff, interpList):
-            hasBlackLabel = False
-            hasRlabel = False
-            hasBlueLabel= False
-            given_scans = []
-            predicted_scans = []
-            actual_scans = []
-
-            i = 0
-            for scan in noiseLevelsY:
-                if i < 8:
-                    given_scans.append(scan)
-                    i += 1
-                else:
-                    predicted_scans.append(scan)
-                    i += 1
-
-            to_plot = []
-            to_plot.append(given_scans)
-            to_plot.append(predicted_scans)
-            extractedData = extracting_data(interpList)
-
-            TOOLS = 'pan, hover,box_zoom,box_select,crosshair,reset,save'
-            fig = figure(
-                tools=TOOLS,
-                title="Number of Scans for Sample " + sample_type,
-                background_fill_color="white",
-                background_fill_alpha=1,
-                x_axis_label="Scan",
-                y_axis_label="Average Noise Level",
-            )
-
-            if not isinstance(scansX, list):
-                scansX = [scansX]
-            if not len(scansX) == len(noiseLevelsY):
-                noiseLevelsY = [noiseLevelsY]
-
-            print(extractedData)
-            ind = 0
-            while ind < (len(scansX)):
-                if ind < 8:
-                    if not hasBlackLabel:
-                        fig.circle(x=ind, y=to_plot[0][ind], color="black",
-                                   legend_label="Data From Initial 10 Scans Provided.")
-                        print("given: " + str(to_plot[0][ind]))
-                        ind += 1
-                    else:
-                        fig.circle(x=ind, y=to_plot[0][ind], color="black")
-                        print("given: " + str(to_plot[0][ind]))
-                        ind += 1
-                elif ind < len(scansX):
-                    if not hasBlueLabel:
-                        fig.circle(x=ind, y=to_plot[1][ind - 8], color="blue", legend_label="Predictions")
-                        print("expected: " + str(to_plot[1][ind - 8]))
-                        if ind < len(extractedData[0]):
-                            if not hasRlabel:
-                                fig.circle(x=ind, y=extractedData[0][ind], color="red", legend_label="Actual Scan Data")
-                                print("Actual data: " + str(extractedData[0][ind]))
-                                ind += 1
-                            else:
-                                fig.circle(x=ind, y=extractedData[0][ind], color="red")
-                                print("Actual data: " + str(extractedData[0][ind]))
-                                ind += 1
-                        else:
-                            ind += 1
-                    else:
-                        fig.circle(x=ind, y=to_plot[1][ind - 8], color="blue")
-                        print("expected: " + str(to_plot[1][ind - 8]))
-                        if ind < len(extractedData[0]):
-                            if not hasRlabel:
-                                fig.circle(x=ind, y=extractedData[0][ind], color="red", legend_label="Actual Scan Data")
-                                print("Actual data: " + str(extractedData[0][ind]))
-                                ind += 1
-                            else:
-                                fig.circle(x=ind, y=extractedData[0][ind], color="red")
-                                print("Actual data: " + str(extractedData[0][ind]))
-                                ind += 1
-                        else:
-                            ind += 1
-
-            fig.line(x=scansX, y=cutOff, color="yellow", legend_label="Cut off val, based on log of average of"
-                                                                      " initial 10 values")
-            fig.legend.location = "top_left"
-            fig.legend.click_policy = "hide"
-            fig.legend.title = "Legend For Predictive Function"
-            show(fig)
-
-        i = 0
-        num_scans_listed = []
-        while i < len(number_of_scans[2]):
-            num_scans_listed.append(i)
-            i += 1
-        plot1d(num_scans_listed, number_of_scans[2], cut_off_point, interp_list)
-        return number_of_scans[0] - 10
+    return number_of_scans[0] - 10
 
 
 sample = file_retrieval('C:/Users/roseh/Desktop/Internship/SignalToNoiseConvergence/h5Files/*Co-nitrate*.hdf5')
-# print(sample.__dict__['scans']['Co-nitrate-N-Bottom9']['entry1']['sample'])
-# data = sample.__dict__.keys()
 print(predict_num_scans(sample, True))
-# Getting sgmData object of files
 
