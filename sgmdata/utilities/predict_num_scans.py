@@ -1,4 +1,3 @@
-# General imports
 import glob
 import asyncio
 import h5py
@@ -7,7 +6,6 @@ import numpy as np
 from lmfit import Model
 from collections import OrderedDict
 import math
-# Plotting function imports
 from bokeh.plotting import figure, ColumnDataSource
 from bokeh.models import HoverTool, CustomJS, BooleanFilter, LinearColorMapper, LogColorMapper, ColorBar
 from bokeh.io import show
@@ -269,6 +267,8 @@ def find_cut_off(d_list, cut_off_point):
         avg_of_ten = (sum(d_list[i - 9:i]) / 9)
         log_of_avg_of_ten = math.log(avg_of_ten, 10)
         if log_of_avg_of_ten <= cut_off_point:
+            # ***
+            # ***
             current_point = i + 1
             return current_point, log_of_avg_of_ten, d_list
         else:
@@ -398,83 +398,66 @@ def plot_predicted(scans_x, noise_levels_y, cut_off, interp_list,  sample_type, 
         > **num_scans** *(type: optional int)* -- the number of scans that the user initially provided. Default value
             is 10.
     '''
-    hasBlackLabel = False
-    hasRlabel = False
-    hasBlueLabel = False
     given_scans = []
     predicted_scans = []
-
-    if not isinstance(scans_x, list):
-        scans_x = [scans_x]
-    if not len(scans_x) == len(noise_levels_y):
-        noise_levels_y = [noise_levels_y]
-
+    print(scans_x)
     i = 0
-    for scan in noise_levels_y:
-        if i < 8:
-            given_scans.append(scan)
-            i += 1
-        else:
-            predicted_scans.append(scan)
-            i += 1
+    while i < len(noise_levels_y):
+        print(str(scans_x[i]) + ": " + str(noise_levels_y[i]))
+        i += 1
 
-    to_plot = []
-    to_plot.append(given_scans)
-    to_plot.append(predicted_scans)
-    extractedData = extracting_data(interp_list)
+    # if not isinstance(scans_x, list):
+    #     scans_x = [scans_x]
+    # if not len(scans_x) == len(noise_levels_y):
+    #     noise_levels_y = [noise_levels_y]
 
-    TOOLS = 'pan, hover,box_zoom,box_select,crosshair,reset,save'
-    fig = figure(
-        tools=TOOLS,
-        title="Number of Scans for Sample " + sample_type,
-        background_fill_color="white",
-        background_fill_alpha=1,
-        x_axis_label="Scan",
-        y_axis_label="Average Noise Level",
-    )
-
-    ind = 0
-    while ind < (len(scans_x)):
-        if ind < (num_scans - 2):
-            if not hasBlackLabel:
-                fig.circle(x=ind, y=to_plot[0][ind], color="black",
-                           legend_label="Data From Initial 10 Scans Provided")
-                ind += 1
-            else:
-                fig.circle(x=ind, y=to_plot[0][ind], color="black")
-                ind += 1
-        elif ind < len(scans_x):
-            if not hasBlueLabel:
-                fig.circle(x=ind, y=to_plot[1][ind - 8], color="blue", legend_label="Predicted Average Noise Values")
-                if ind < len(extractedData[0]):
-                    if not hasRlabel:
-                        fig.circle(x=ind, y=extractedData[0][ind], color="red", legend_label="Actual Average Noise "
-                                                                                             "Values")
-                        ind += 1
-                    else:
-                        fig.circle(x=ind, y=extractedData[0][ind], color="red")
-                        ind += 1
-                else:
-                    ind += 1
-            else:
-                fig.circle(x=ind, y=to_plot[1][ind - 8], color="blue")
-                if ind < len(extractedData[0]):
-                    if not hasRlabel:
-                        fig.circle(x=ind, y=extractedData[0][ind], color="red", legend_label="Actual Average Noise "
-                                                                                             "Values")
-                        ind += 1
-                    else:
-                        fig.circle(x=ind, y=extractedData[0][ind], color="red")
-                        ind += 1
-                else:
-                    ind += 1
-
-    fig.line(x=scans_x, y=cut_off, color="yellow", legend_label="Log Value of Noise Values of Ten Scans at Which "
-                                                                "Scanning Can Stop")
-    fig.legend.location = "top_right"
-    fig.legend.click_policy = "hide"
-    fig.legend.title = "Legend For Predictive Function"
-    show(fig)
+    # extractedData = extracting_data(interp_list)
+    #
+    # i = 0
+    # # for scan in extractedData[0]:
+    # for scan in noise_levels_y:
+    #     if i <= 8:
+    #         given_scans.append(scan)
+    #         i += 1
+    #     else:
+    #         predicted_scans.append(scan)
+    #         i += 1
+    #
+    # to_plot = []
+    # to_plot.append(given_scans)
+    # to_plot.append(predicted_scans)
+    #
+    # TOOLS = 'pan, hover,box_zoom,box_select,crosshair,reset,save'
+    # fig = figure(
+    #     tools=TOOLS,
+    #     title="Number of Scans for Sample " + sample_type,
+    #     background_fill_color="white",
+    #     background_fill_alpha=1,
+    #     x_axis_label="Average from Scans up to this Scan:",
+    #     y_axis_label="Average Noise Level",
+    # )
+    #
+    # # print(scans_x)
+    # print(to_plot[1])
+    #
+    # ind = 1
+    # while ind < (len(scans_x)):
+    #     if ind < (num_scans):
+    #         fig.circle(x=ind, y=to_plot[0][ind - 1], color="black", legend_label="Data From Initial 10 Scans Provided")
+    #         ind += 1
+    #     else:
+    #         print(str(ind) + "\t\t\t" + str(ind - 10))
+    #         fig.circle(x=ind, y=to_plot[1][ind - 10], color="blue", legend_label="Predicted Average Noise Values")
+    #         if ind < len(extractedData[0]):
+    #             fig.circle(x=ind, y=extractedData[0][ind], color="red", legend_label="Actual Average Noise Values")
+    #         ind += 1
+    #
+    # fig.line(x=scans_x[:len(scans_x) - 1], y=cut_off, color="yellow", legend_label="Log Value of Noise Values of Ten "
+    #                                                                                "Scans at Which Scanning Can Stop")
+    # fig.legend.location = "top_right"
+    # fig.legend.click_policy = "hide"
+    # fig.legend.title = "Legend For Predictive Function"
+    # show(fig)
 
 
 # def run_all(files):
@@ -836,38 +819,38 @@ def predict_num_scans(data, verbose=False, percent_of_log=0.4, num_scans=10):
     if num_scans > (len(interp_list) + 1):
         num_scans = len(interp_list)
     returned_data = extracting_data(interp_list[:num_scans])
-    returned_indices = returned_data[1]
-    returned_diff_list = returned_data[0]
+    # returned_indices = returned_data[1]
+    # returned_diff_list = returned_data[0]
     returned_diff_list_listed = []
     returned_indices_listed = []
-    for item in returned_diff_list:
+
+    for item in returned_data[0]:
         returned_diff_list_listed.append(item)
-    for item in returned_indices:
+    for item in returned_data[1]:
         returned_indices_listed.append(item)
+
     cut_off_point_info = predict_cut_off(returned_diff_list_listed[: num_scans - 1], percent_of_log)
     cut_off_point = cut_off_point_info[2]
     number_of_scans = find_cut_off(returned_diff_list_listed[: num_scans - 1], cut_off_point)
 
-    i = 0
+    i = 1
     num_scans_listed = []
-    while i < len(number_of_scans[2]):
+    while i <= number_of_scans[0]:
         num_scans_listed.append(i)
         i += 1
+    # print("[0]: - " + str(number_of_scans[0]) + "\n[1]: - " + str(number_of_scans[1]) + "\n[2]: - " + str(number_of_scans[2]))
+    # print(str(len(number_of_scans)))
     plot_predicted(num_scans_listed, number_of_scans[2], cut_off_point, interp_list, sample_type, num_scans)
 
     if verbose:
-        first_ten_average_variance = cut_off_point_info[0]
-        log_of_ftav = cut_off_point_info[1]
         print(
             " *** Messages starting with \" ***\" are messages containing additional data, other than the number of "
-            "additional scans needed.")
-        print(" *** Average of initial 10 values: " + str(first_ten_average_variance))
-        print(" *** Log of average of inital 10 values: " + str(log_of_ftav))
-        print(" *** Cut off val, based on log of average of initial 10 values: " + str(cut_off_point))
-        print(" *** Cut-off at scan number: " + str(number_of_scans[0]))
-        print(" *** Value at scan " + str(number_of_scans[0]) + "(scans at which cut-off point is reached): "
-              + str(number_of_scans[1]))
-
+            "additional scans needed." + "\n *** Average of initial 10 values: " + str(cut_off_point_info[0]) +
+            "\n *** Log of average of initial 10 values: " + str(cut_off_point_info[1]) +
+            "\n *** Cut off val, based on log of average of initial 10 values: " + str(cut_off_point_info[2]) +
+            "\n *** Cut-off at scan number: " + str(number_of_scans[0]) +
+            "\n *** Value at scan " + str(number_of_scans[0]) + "(scans at which cut-off point is reached): " +
+            str(number_of_scans[1]))
     return number_of_scans[0] - 10
 
 
