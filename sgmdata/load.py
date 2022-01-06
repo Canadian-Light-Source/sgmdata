@@ -421,6 +421,8 @@ class SGMData(object):
             self.npartitions = 3
         if not hasattr(self, 'threads'):
             self.threads = 4
+        if not hasattr(self, 'was_interpolated'):
+            self.was_interpolated = False
         files = [os.path.abspath(file) for file in files]
         self.scans = {k.split('/')[-1].split(".")[0]: [] for k in files}
         self.interp_params = {}
