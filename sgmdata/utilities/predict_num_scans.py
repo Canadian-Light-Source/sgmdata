@@ -41,9 +41,7 @@ def file_retrieval(path):
     if ".hdf5" not in path[-6:]:
         raise ValueError("Argument must be an hdf5 file. An hdf5 file was not passed in. Please try again with an hdf5"
                          " file.")
-    list_of_files = []
-    for filename in glob.iglob(path, recursive=True):
-        list_of_files.append(filename)
+    list_of_files = [filename for filename in glob.iglob(path, recursive=True)]
     if len(list_of_files) == 0:
         raise ValueError("There are no files that match the given pattern. Please try again with a different pattern.")
     return sgmdata.load.SGMData(list_of_files)
@@ -788,29 +786,17 @@ def predict_num_scans(data, verbose=False, percent_of_log=0.4, num_scans=10):
     file = list(data.__dict__['scans'].keys())
     sample_name = list(data.__dict__['scans'][file[0]].__dict__.keys())
     sample_type = data.__dict__['scans'][file[0]].__getitem__(sample_name[0])['sample']
-
-    if num_scans > (len(interp_list) + 1):
+    if num_scans >= (len(interp_list)):
         num_scans = len(interp_list)
     returned_data = extracting_data(interp_list[:num_scans])
-    returned_diff_list_listed = []
-    returned_indices_listed = []
-
-    for item in returned_data[0]:
-        returned_diff_list_listed.append(item)
-    for item in returned_data[1]:
-        returned_indices_listed.append(item)
-
+    returned_diff_list_listed = [item for item in returned_data[0]]
     cut_off_point_info = predict_cut_off(returned_diff_list_listed[: num_scans - 1], percent_of_log)
-    cut_off_point = cut_off_point_info[2]
-    number_of_scans = find_cut_off(returned_diff_list_listed[: num_scans - 1], cut_off_point)
-
+    number_of_scans = find_cut_off(returned_diff_list_listed[: num_scans - 1], cut_off_point_info[2])
     i = 1
     num_scans_listed = []
     while i <= number_of_scans[0]:
         num_scans_listed.append(i)
         i += 1
-    plot_predicted(num_scans_listed[num_scans - 1:], number_of_scans[1], cut_off_point, interp_list, sample_type, num_scans)
-
     if verbose:
         print(
             " *** Messages starting with \" ***\" are messages containing additional data, other than the number of "
@@ -820,9 +806,11 @@ def predict_num_scans(data, verbose=False, percent_of_log=0.4, num_scans=10):
             "\n *** Cut-off at scan number: " + str(number_of_scans[0]) +
             "\n *** Value at scan " + str(number_of_scans[0]) + "(scans at which cut-off point is reached): " +
             str(number_of_scans[1][-1]))
+        plot_predicted(num_scans_listed[num_scans - 1:], number_of_scans[1], cut_off_point_info[2], interp_list,
+                       sample_type, num_scans)
     return number_of_scans[0] - 10
 
 
-sample = file_retrieval('C:/Users/roseh/Desktop/Internship/SignalToNoiseConvergence/h5Files/*Bee*.hdf5')
+sample = file_retrieval('C:/Users/roseh/Desktop/Internship/SignalToNoiseConvergence/h5Files/*Nitrate*.hdf5')
 print(predict_num_scans(sample, True))
 
