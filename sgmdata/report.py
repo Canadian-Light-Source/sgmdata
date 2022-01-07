@@ -184,6 +184,7 @@ class ReportBuilder(object):
                 del index[i]
                 continue
             find = [(h[1], h[2]) for h in holder if alpha in re.findall(r'^\bHolder\s([A-Za-z])\s*-', h[1])]
+            find.append([(h[1], h[2]) for h in holder if alpha in re.findall(r'^\bHolder\s([A-Za-z])([A-Za-z0-9)\s*-', h[1])])
             if find:
                 holders.append(find[0][0])
             else:
