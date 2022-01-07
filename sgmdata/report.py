@@ -175,7 +175,7 @@ class ReportBuilder(object):
         holders = list()
         for i, p in enumerate(positions):
             try:
-                alpha = re.findall(r'^([A-Za-z])-[0-9]+.*', p)[0]
+                alpha = re.findall(r'^([A-Za-z]|[A-Za-z][A-Za-z0-9])-[0-9]+.*', p)[0]
             except:
                 print("No position in", p)
                 del edges[i]
@@ -183,8 +183,7 @@ class ReportBuilder(object):
                 del notes[i]
                 del index[i]
                 continue
-            find = [(h[1], h[2]) for h in holder if alpha in re.findall(r'^\bHolder\s([A-Za-z])\s*-', h[1])]
-            find.append([(h[1], h[2]) for h in holder if alpha in re.findall(r'^\bHolder\s([A-Za-z])([A-Za-z0-9)\s*-', h[1])])
+            find = [(h[1], h[2]) for h in holder if alpha in re.findall(r'^\bHolder\s([A-Za-z]|[A-Za-z][A-Za-z0-9])\s*-', h[1])]
             if find:
                 holders.append(find[0][0])
             else:
