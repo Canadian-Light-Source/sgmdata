@@ -45,6 +45,7 @@ def file_retrieval(path):
     if len(list_of_files) == 0:
         raise ValueError("There are no files that match the given pattern. Please try again with a different pattern.")
     return sgmdata.load.SGMData(list_of_files)
+    # return list_of_files
 
 
 def check_sample_fitness(sgm_data):
@@ -108,7 +109,6 @@ def check_sample_fitness(sgm_data):
                         " same sample. ")
         interp_list = sgm_data.interpolate(resolution=0.1)
     return interp_list
-
 
 # # # Primarily for testing, not in final code.
 def lowest_variance(d_list):
@@ -811,6 +811,6 @@ def predict_num_scans(data, verbose=False, percent_of_log=0.4, num_scans=10):
     return number_of_scans[0] - 10
 
 
-sample = file_retrieval('C:/Users/roseh/Desktop/Internship/SignalToNoiseConvergence/h5Files/*Nitrate*.hdf5')
+sample = file_retrieval('C:/Users/roseh/Desktop/Internship/SignalToNoiseConvergence/h5Files/*Si-Phenyl*.hdf5')
+print(sample)
 print(predict_num_scans(sample, True))
-
