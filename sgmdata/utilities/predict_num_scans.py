@@ -45,7 +45,6 @@ def file_retrieval(path):
     if len(list_of_files) == 0:
         raise ValueError("There are no files that match the given pattern. Please try again with a different pattern.")
     return sgmdata.load.SGMData(list_of_files)
-    # return list_of_files
 
 
 def check_sample_fitness(sgm_data):
@@ -64,7 +63,7 @@ def check_sample_fitness(sgm_data):
         > **interp_list** *(type: list of pandas dataframes)* -- the interpolated data for the SGMData object passed
             in by the user.
     """
-    interp = False  # this is a temporary variable, delete later
+    interp = True  # this is a temporary variable, delete later
     file = list(sgm_data.__dict__['scans'].keys())
     sample_name = list(sgm_data.__dict__['scans'][file[0]].__dict__.keys())
     sample_type = sgm_data.__dict__['scans'][file[0]].__getitem__(sample_name[0])['sample']
@@ -73,13 +72,13 @@ def check_sample_fitness(sgm_data):
     #         if sgm_data.interpolated is True: #this is what we want in the end, but cannot use yet
     if interp is True:  # this is just a temp replacement for the above line. Remove later.
 
-        print("SGMQuery required for sample " + str(sample_type))
+        print("Sample " + str(sample_type) + "'s data already interpolated. Fetching interpolated data...")
         for item in sgm_data.__dict__['scans']:
             for entry in sgm_data.__dict__['scans'][item]:
                 interp_list.append(pandas.DataFrame.from_dict(sgm_data.__dict__['scans'][item].__dict__[entry]
                                                               ['binned']['dataframe']))
     else:
-        print("interpolation needed")
+        print("Sample " + str(sample_type) + "'s data not yet interpolated. Fetching data to interpolate...")
         if len(sgm_data.__dict__['scans']) == 0:
             raise ValueError(
                 "hdf5 file must contain scans to be able to predict the number of scans required. The hdf5 "
@@ -109,6 +108,7 @@ def check_sample_fitness(sgm_data):
                         " same sample. ")
         interp_list = sgm_data.interpolate(resolution=0.1)
     return interp_list
+
 
 # # # Primarily for testing, not in final code.
 def lowest_variance(d_list):
@@ -812,5 +812,4 @@ def predict_num_scans(data, verbose=False, percent_of_log=0.4, num_scans=10):
 
 
 sample = file_retrieval('C:/Users/roseh/Desktop/Internship/SignalToNoiseConvergence/h5Files/*Si-Phenyl*.hdf5')
-print(dir(sample))
 print(predict_num_scans(sample, True))
