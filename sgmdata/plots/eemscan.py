@@ -128,7 +128,8 @@ def plot(**kwargs):
     #Interactive plot widgets:
     select = CheckboxButtonGroup(name="Detector Select:", labels=['sdd1', 'sdd2', 'sdd3', 'sdd4'], active=[0],
                                 height=height*1//20, width=width*1//2)
-    button = Button(label="Download XAS", button_type="success", height=height*1//15, width=width*1//4)
+    button = Button(label="Download XAS", button_type="success", height_policy='min',
+                    height=height*1//15, width=width*1//4)
     checkbox_group = RadioGroup(labels=["dx/dy", "1/y", "None"], active=2, name="Functions",
                                 height=height*1//15, width=width*1//4)
     flslider = Slider(start=10, end=2560, value=1280, step=10, title="Line Peak", sizing_mode="fixed",
