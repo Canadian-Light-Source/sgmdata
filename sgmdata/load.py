@@ -590,7 +590,7 @@ class SGMData(object):
                 df.drop(columns=roi_cols, inplace=True)
                 data = {k: df.filter(regex=("%s.*" % k), axis=1).to_numpy() for k in keys}
                 data.update({df.index.name: np.array(df.index), 'emission': np.linspace(0, 2560, 256)})
-                data.update({'image': data['sdd1']})
+                data.update({'image': data['sdd1'], 'filename': self.sample})
                 kwargs.update(data)
                 return eemscan.plot(**kwargs)
             elif scantype == 'XRF':
@@ -601,7 +601,7 @@ class SGMData(object):
                 data = {k: df.filter(regex=("%s.*" % k), axis=1).to_numpy() for k in keys}
                 data = {k: v for k, v in data.items() if v.size}
                 data.update({n: df.index.levels[i] for i, n in enumerate(list(df.index.names))})
-                data.update({'emission': np.linspace(0, 2560, 256)})
+                data.update({'emission': np.linspace(0, 2560, 256), 'filename': self.sample})
                 kwargs.update(data)
                 xrfmap.plot_interp(**kwargs)
 
