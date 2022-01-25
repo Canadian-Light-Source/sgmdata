@@ -99,7 +99,7 @@ def plot(**kwargs):
                     palette="Spectral11")
     color_bar = ColorBar(color_mapper=color_mapper, label_standoff=12, border_line_color=None, location=(0, 0))
 
-    xrf = Figure(plot_width=225, plot_height=600, y_range=plot.y_range, tools="save,hover,box_zoom, pan",
+    xrf = Figure(plot_width=150, plot_height=600, y_range=plot.y_range, tools="save,hover,box_zoom, pan",
                  title="XRF Projection")
     fluo = Rect(x='y', y='x', width='width', height='height', fill_alpha=0.1, line_color=None, fill_color='yellow')
     xrf.add_glyph(peak_source, fluo)
@@ -107,7 +107,7 @@ def plot(**kwargs):
     xrf.yaxis.visible = False
     xrf.xaxis.major_label_orientation = "vertical"
 
-    xas = Figure(plot_width=600, plot_height=225, x_range=plot.x_range, tools="save,hover,box_zoom,wheel_zoom,pan",
+    xas = Figure(plot_width=600, plot_height=150, x_range=plot.x_range, tools="save,hover,box_zoom,wheel_zoom,pan",
                  title="XAS Projection")
     xas.line('en', 'proj_y', source=xas_source, line_color='purple', alpha=0.6, legend_label="EEMs")
     xas.line('en', 'tey', source=aux_source, line_color='black', alpha=0.6, legend_label="TEY")
@@ -129,8 +129,7 @@ def plot(**kwargs):
     wdslider = Slider(start=20, end=500, value=100, step=10, title="Line Width", sizing_mode="fixed", height=30,
                       width=150)
     checkbox_group = RadioGroup(labels=["dx/dy", "1/y", "None"], active=2, name="Functions", width=150)
-    select = CheckboxButtonGroup(name="Detector Select:", labels=['sdd1', 'sdd2', 'sdd3', 'sdd4'], active=[0],
-                                 )
+    select = CheckboxButtonGroup(name="Detector Select:", labels=['sdd1', 'sdd2', 'sdd3', 'sdd4'], active=[0],width=150)
     select_callback = CustomJS(args=dict(s1=source, xrf=xrf_source, xas=xas_source, xy=xy_source, sel=rect_source,
                                          flslider=flslider, wdslider=wdslider, alter=checkbox_group, det=select), code=get_callback('select'))
 
@@ -167,7 +166,7 @@ def plot(**kwargs):
     checkbox_group.js_on_change('active', callback_flslider)
 
     slider = RangeSlider(title="Color Scale:", start=0, end=4 * np.amax(kwargs['sdd1']),
-                         value=(0, np.amax(kwargs['sdd1'])), step=20, height=30)
+                         value=(0, np.amax(kwargs['sdd1'])), step=20, height=30, width=150)
     slider.js_on_change('value', callback_color_range)
 
     select_palette = Select(title="Colormap Select:", options=['Viridis', 'Spectral', 'Inferno'], value='Spectral',
