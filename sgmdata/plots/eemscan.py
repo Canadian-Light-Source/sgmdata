@@ -1,4 +1,4 @@
-from bokeh.layouts import column, row, gridplot
+from bokeh.layouts import column, row, gridplot, layout
 from bokeh.palettes import all_palettes
 from bokeh.models import CustomJS, ColumnDataSource, Select, RangeSlider, ColorBar, LinearColorMapper, Rect, Button, \
     CheckboxButtonGroup, Slider, RadioGroup
@@ -183,9 +183,12 @@ def plot(**kwargs):
     functions = row(button, checkbox_group)
     options = column(select, functions, fluo, slider, select_palette)
     if sizing_mode == 'scale_both' or scale < 0.6:
-        layout = gridplot([[xas, None, options], [plot, xrf]], sizing_mode=sizing_mode)
+        lout = layout([
+            [xas, options],
+            [plot, xrf]
+        ], sizing_mode=sizing_mode)
     else:
-        layout = gridplot([[xas, options], [plot, xrf]], sizing_mode=sizing_mode)
+        lout = gridplot([[xas, options], [plot, xrf]], sizing_mode=sizing_mode)
     if kwargs.get('json', False):
-        return json.dumps(json_item(layout, "eems"))
-    show(layout)
+        return json.dumps(json_item(lout, "eems"))
+    show(lout)
