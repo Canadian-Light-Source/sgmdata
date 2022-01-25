@@ -97,7 +97,8 @@ def plot(**kwargs):
 
     im = plot.image(image='image', y='emission', x='en', dh='bins', dw='delta', source=source,
                     palette="Spectral11")
-    color_bar = ColorBar(color_mapper=color_mapper, label_standoff=12, border_line_color=None, location=(0, 0))
+    color_bar = ColorBar(color_mapper=color_mapper, label_standoff=12, border_line_color=None, location=(0, 0),
+                         height=height, width=width*1//10)
 
     xrf = Figure(plot_width=width*3//8, plot_height=height, y_range=plot.y_range, tools="save,hover,box_zoom, pan",
                  title="XRF Projection")
@@ -127,9 +128,9 @@ def plot(**kwargs):
     #Interactive plot widgets:
     select = CheckboxButtonGroup(name="Detector Select:", labels=['sdd1', 'sdd2', 'sdd3', 'sdd4'], active=[0],
                                 height=height*1//20, width=width*1//2)
-    button = Button(label="Download XAS", button_type="success", height=height*1//20, width=width*1//4)
+    button = Button(label="Download XAS", button_type="success", height=height*1//15, width=width*1//4)
     checkbox_group = RadioGroup(labels=["dx/dy", "1/y", "None"], active=2, name="Functions",
-                                height=height*1//20, width=width*1//4)
+                                height=height*1//15, width=width*1//4)
     flslider = Slider(start=10, end=2560, value=1280, step=10, title="Line Peak", sizing_mode="fixed",
                       height=height*1//20, width=width*1//4)
     wdslider = Slider(start=20, end=500, value=100, step=10, title="Line Width", sizing_mode="fixed",
@@ -137,7 +138,7 @@ def plot(**kwargs):
     slider = RangeSlider(title="Color Scale:", start=0, end=4 * np.amax(kwargs['sdd1']),
                          value=(0, np.amax(kwargs['sdd1'])), step=20, height=height*1//20, width=width*1//2)
     select_palette = Select(title="Colormap Select:", options=['Viridis', 'Spectral', 'Inferno'], value='Spectral',
-                            height=height*1//20, width=width*1//4)
+                            height=height*1//20, width=width*1//2)
 
     #Declaring CustomJS Callbacks
     select_callback = CustomJS(args=dict(s1=source, xrf=xrf_source, xas=xas_source, xy=xy_source, sel=rect_source,
