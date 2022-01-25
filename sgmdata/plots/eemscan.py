@@ -128,18 +128,19 @@ def plot(**kwargs):
     #Interactive plot widgets:
     select = CheckboxButtonGroup(name="Detector Select:", labels=['sdd1', 'sdd2', 'sdd3', 'sdd4'], active=[0],
                                 height=height*1//20, width=width*3//8)
-    button = Button(label="Download XAS", button_type="success", height_policy='min',
+    button = Button(label="Download XAS", button_type="success", width_policy='min',
                     height=height*1//15, width=width*3//16)
-    checkbox_group = RadioGroup(labels=["dx/dy", "1/y", "None"], active=2, name="Functions",
+    checkbox_group = RadioGroup(labels=["dx/dy", "1/y", "None"], active=2, name="Functions", height_policy="min",
                                 height=height*1//15, width=width*3//16)
-    flslider = Slider(start=10, end=2560, value=1280, step=10, title="Line Peak", sizing_mode="fixed",
+    flslider = Slider(start=10, end=2560, value=1280, step=10, title="Line Peak", height_policy="min",
                       height=height*1//20, width=width*3//16)
-    wdslider = Slider(start=20, end=500, value=100, step=10, title="Line Width", sizing_mode="fixed",
+    wdslider = Slider(start=20, end=500, value=100, step=10, title="Line Width", height_policy="min",
                       height=height*1//20, width=width*3//16)
     slider = RangeSlider(title="Color Scale:", start=0, end=4 * np.amax(kwargs['sdd1']),
-                         value=(0, np.amax(kwargs['sdd1'])), step=20, height=height*1//20, width=width*3//8)
+                         value=(0, np.amax(kwargs['sdd1'])), step=20, height_policy="min",
+                         height=height*1//20, width=width*3//8)
     select_palette = Select(title="Colormap Select:", options=['Viridis', 'Spectral', 'Inferno'], value='Spectral',
-                            height=height*1//20, width=width*3//8)
+                            height_policy="min", height=height*1//20, width=width*3//8)
 
     #Declaring CustomJS Callbacks
     select_callback = CustomJS(args=dict(s1=source, xrf=xrf_source, xas=xas_source, xy=xy_source, sel=rect_source,
