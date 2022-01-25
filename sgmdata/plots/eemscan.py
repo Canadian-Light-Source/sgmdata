@@ -98,7 +98,7 @@ def plot(**kwargs):
     im = plot.image(image='image', y='emission', x='en', dh='bins', dw='delta', source=source,
                     palette="Spectral11")
     color_bar = ColorBar(color_mapper=color_mapper, label_standoff=12, border_line_color=None, location=(0, 0),
-                         height=height*9//10, width=width*1//20)
+                         height=height*8//10, width=width*1//20)
 
     xrf = Figure(plot_width=width*1//2, plot_height=height, y_range=plot.y_range, tools="save,hover,box_zoom, pan",
                  title="XRF Projection")
