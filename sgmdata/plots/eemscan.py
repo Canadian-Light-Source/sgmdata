@@ -33,7 +33,7 @@ def plot(**kwargs):
     #Check vars
     sizing_mode = kwargs.get('sizing_mode', 'fixed')
     scale = kwargs.get('scale', 1)
-    height, width = (600*scale, 600*scale)
+    height, width = (int(600*scale), int(600*scale))
     if 'emission' not in kwargs.keys():
         kwargs['emission'] = np.linspace(0, 2560, 256)
     if 'io' in kwargs.keys() and np.any(kwargs['io']):
@@ -99,7 +99,7 @@ def plot(**kwargs):
                     palette="Spectral11")
     color_bar = ColorBar(color_mapper=color_mapper, label_standoff=12, border_line_color=None, location=(0, 0))
 
-    xrf = Figure(plot_width=width*3/8, plot_height=height, y_range=plot.y_range, tools="save,hover,box_zoom, pan",
+    xrf = Figure(plot_width=width*3//8, plot_height=height, y_range=plot.y_range, tools="save,hover,box_zoom, pan",
                  title="XRF Projection")
     fluo = Rect(x='y', y='x', width='width', height='height', fill_alpha=0.1, line_color=None, fill_color='yellow')
     xrf.add_glyph(peak_source, fluo)
@@ -107,7 +107,7 @@ def plot(**kwargs):
     xrf.yaxis.visible = False
     xrf.xaxis.major_label_orientation = "vertical"
 
-    xas = Figure(plot_width=width, plot_height=height*3/8, x_range=plot.x_range, tools="save,hover,box_zoom,wheel_zoom,pan",
+    xas = Figure(plot_width=width, plot_height=height*3//8, x_range=plot.x_range, tools="save,hover,box_zoom,wheel_zoom,pan",
                  title="XAS Projection")
     xas.line('en', 'proj_y', source=xas_source, line_color='purple', alpha=0.6, legend_label="EEMs")
     xas.line('en', 'tey', source=aux_source, line_color='black', alpha=0.6, legend_label="TEY")
@@ -126,18 +126,18 @@ def plot(**kwargs):
 
     #Interactive plot widgets:
     select = CheckboxButtonGroup(name="Detector Select:", labels=['sdd1', 'sdd2', 'sdd3', 'sdd4'], active=[0],
-                                height=height*1/10, width=width*3/8)
-    button = Button(label="Download XAS", button_type="success", height=height*1/10, width=width*3/8)
+                                height=height*1//10, width=width*3//8)
+    button = Button(label="Download XAS", button_type="success", height=height*1//10, width=width*3//8)
     checkbox_group = RadioGroup(labels=["dx/dy", "1/y", "None"], active=2, name="Functions",
-                                height=height*1/10, width=width*1/4)
+                                height=height*1//10, width=width*1//4)
     flslider = Slider(start=10, end=2560, value=1280, step=10, title="Line Peak", sizing_mode="fixed",
-                      height=height*1/20, width=width*1/4)
+                      height=height*1//20, width=width*1//4)
     wdslider = Slider(start=20, end=500, value=100, step=10, title="Line Width", sizing_mode="fixed",
-                      height=height*1/20, width=width*1/4)
+                      height=height*1//20, width=width*1//4)
     slider = RangeSlider(title="Color Scale:", start=0, end=4 * np.amax(kwargs['sdd1']),
-                         value=(0, np.amax(kwargs['sdd1'])), step=20, height=height*1/20, width=width*3/8)
+                         value=(0, np.amax(kwargs['sdd1'])), step=20, height=height*1//20, width=width*3//8)
     select_palette = Select(title="Colormap Select:", options=['Viridis', 'Spectral', 'Inferno'], value='Spectral',
-                            height=height*1/20, width=width*1/4)
+                            height=height*1//20, width=width*1//4)
 
     #Declaring CustomJS Callbacks
     select_callback = CustomJS(args=dict(s1=source, xrf=xrf_source, xas=xas_source, xy=xy_source, sel=rect_source,
