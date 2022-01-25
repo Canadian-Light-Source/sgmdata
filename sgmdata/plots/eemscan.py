@@ -109,7 +109,7 @@ def plot(**kwargs):
     xrf.xaxis.major_label_orientation = "vertical"
 
     xas = Figure(plot_width=width, plot_height=height*3//8, x_range=plot.x_range, tools="save,hover,box_zoom,wheel_zoom,pan",
-                 sizing_mode="stretch_both", title="XAS Projection")
+                 height_policy='max', title="XAS Projection")
     xas.line('en', 'proj_y', source=xas_source, line_color='purple', alpha=0.6, legend_label="EEMs")
     xas.line('en', 'tey', source=aux_source, line_color='black', alpha=0.6, legend_label="TEY")
     xas.line('en', 'pd', source=aux_source, line_color="navy", alpha=0.6, legend_label="Diode")
