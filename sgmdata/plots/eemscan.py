@@ -109,7 +109,7 @@ def plot(**kwargs):
     xrf.xaxis.major_label_orientation = "vertical"
 
     xas = Figure(plot_width=width, plot_height=height*3//8, x_range=plot.x_range, tools="save,hover,box_zoom,wheel_zoom,pan",
-                 sizing_mode="stretch_height", title="XAS Projection")
+                 sizing_mode="stretch_both", title="XAS Projection")
     xas.line('en', 'proj_y', source=xas_source, line_color='purple', alpha=0.6, legend_label="EEMs")
     xas.line('en', 'tey', source=aux_source, line_color='black', alpha=0.6, legend_label="TEY")
     xas.line('en', 'pd', source=aux_source, line_color="navy", alpha=0.6, legend_label="Diode")
@@ -127,20 +127,20 @@ def plot(**kwargs):
 
     #Interactive plot widgets:
     select = CheckboxButtonGroup(name="Detector Select:", labels=['sdd1', 'sdd2', 'sdd3', 'sdd4'], active=[0],
-                                height_policy="min", height=height*1//20, width=width*3//8)
-    button = Button(label="Download XAS", button_type="success", width_policy='min',
+                                height_policy="min", width_policy="min", height=height*1//20, width=width*3//8)
+    button = Button(label="Download XAS", button_type="success", height_policy="min", width_policy="min",
                     height=height*1//15, width=width*3//16)
-    checkbox_group = RadioGroup(labels=["dx/dy", "1/y", "None"], active=2, name="Functions", height_policy="min",
+    checkbox_group = RadioGroup(labels=["dx/dy", "1/y", "None"], active=2, name="Functions", height_policy="min", width_policy="min",
                                 height=height*1//15, width=width*3//16)
-    flslider = Slider(start=10, end=2560, value=1280, step=10, title="Line Peak", height_policy="min",
+    flslider = Slider(start=10, end=2560, value=1280, step=10, title="Line Peak", height_policy="min", width_policy="min",
                       height=height*1//20, width=width*3//16)
-    wdslider = Slider(start=20, end=500, value=100, step=10, title="Line Width", height_policy="min",
+    wdslider = Slider(start=20, end=500, value=100, step=10, title="Line Width", height_policy="min", width_policy="min",
                       height=height*1//20, width=width*3//16)
     slider = RangeSlider(title="Color Scale:", start=0, end=4 * np.amax(kwargs['sdd1']),
-                         value=(0, np.amax(kwargs['sdd1'])), step=20, height_policy="min",
+                         value=(0, np.amax(kwargs['sdd1'])), step=20, height_policy="min", width_policy="min",
                          height=height*1//20, width=width*3//8)
     select_palette = Select(title="Colormap Select:", options=['Viridis', 'Spectral', 'Inferno'], value='Spectral',
-                            height_policy="min", height=height*1//20, width=width*3//8)
+                            height_policy="min", width_policy="min", height=height*1//20, width=width*3//8)
 
     #Declaring CustomJS Callbacks
     select_callback = CustomJS(args=dict(s1=source, xrf=xrf_source, xas=xas_source, xy=xy_source, sel=rect_source,
