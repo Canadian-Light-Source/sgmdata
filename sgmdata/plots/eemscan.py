@@ -127,20 +127,20 @@ def plot(**kwargs):
 
     #Interactive plot widgets:
     select = CheckboxButtonGroup(name="Detector Select:", labels=['sdd1', 'sdd2', 'sdd3', 'sdd4'], active=[0],
-                                height_policy="min", width_policy="min", height=height*1//20, width=width*3//8)
+                                min_height=height*1//25, height_policy="min", width_policy="min", height=height*1//20, width=width*3//8)
     button = Button(label="Download XAS", button_type="success", height_policy="min", width_policy="min",
-                    height=height*1//15, width=width*3//16)
+                    min_height=height*1//15, height=height*1//15, width=width*3//16)
     checkbox_group = RadioGroup(labels=["dx/dy", "1/y", "None"], active=2, name="Functions", height_policy="min", width_policy="min",
-                                height=height*1//15, width=width*3//16)
+                                min_height=height*1//15, height=height*1//15, width=width*3//16)
     flslider = Slider(start=10, end=2560, value=1280, step=10, title="Line Peak", height_policy="min", width_policy="min",
-                      height=height*1//20, width=width*3//16)
+                      min_height=height*1//25, height=height*1//20, width=width*3//16)
     wdslider = Slider(start=20, end=500, value=100, step=10, title="Line Width", height_policy="min", width_policy="min",
-                      height=height*1//20, width=width*3//16)
+                      min_height=height*1//25, height=height*1//20, width=width*3//16)
     slider = RangeSlider(title="Color Scale:", start=0, end=4 * np.amax(kwargs['sdd1']),
                          value=(0, np.amax(kwargs['sdd1'])), step=20, height_policy="min", width_policy="min",
-                         height=height*1//20, width=width*3//8)
+                         min_height=height*1//25, height=height*1//20, width=width*3//8)
     select_palette = Select(title="Colormap Select:", options=['Viridis', 'Spectral', 'Inferno'], value='Spectral',
-                            height_policy="min", width_policy="min", height=height*1//20, width=width*3//8)
+                            min_height=height*1//25, height_policy="min", width_policy="min", height=height*1//20, width=width*3//8)
 
     #Declaring CustomJS Callbacks
     select_callback = CustomJS(args=dict(s1=source, xrf=xrf_source, xas=xas_source, xy=xy_source, sel=rect_source,
@@ -185,8 +185,8 @@ def plot(**kwargs):
     fluo = row(flslider, wdslider)
     functions = row(button, checkbox_group)
     options = column(select, functions, fluo, slider, select_palette)
-    if sizing_mode == 'scale_both':
-        layout = gridplot([[xas, None], [plot, xrf, options]], sizing_mode=sizing_mode)
+    if sizing_mode == 'scale_both' or scale < 0.6:
+        layout = gridplot([[xas, None, options], [plot, xrf]], sizing_mode=sizing_mode)
     else:
         layout = gridplot([[xas, options], [plot, xrf]], sizing_mode=sizing_mode)
     if kwargs.get('json', False):
