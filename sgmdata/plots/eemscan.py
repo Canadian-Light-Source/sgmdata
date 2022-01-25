@@ -8,6 +8,7 @@ from bokeh import events
 import bokeh
 import json
 import numpy as np
+import os
 
 try:
     shell = get_ipython().__class__.__name__
@@ -24,7 +25,7 @@ version = '1.x.x' if '1' or '0' in bokeh.__version__[0] else '2.x.x'
 
 
 def get_callback(name):
-    with open('callbacks/eemscan/' + name + f'_{version}.js', 'r') as f:
+    with open(os.path.dirname(os.path.abspath(__file__)) + '/callbacks/eemscan/' + name + f'_{version}.js', 'r') as f:
         js = f.read()
     return js
 
