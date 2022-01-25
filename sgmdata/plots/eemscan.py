@@ -184,8 +184,8 @@ def plot(**kwargs):
     options = column(select, functions, fluo, slider, select_palette)
     if sizing_mode == 'scale_both' or scale < 0.6:
         lout = layout([
-            [xas, options],
-            [plot, xrf]
+            [xas],
+            [plot, xrf, options]
         ], sizing_mode=sizing_mode)
     else:
         lout = gridplot([[xas, options], [plot, xrf]], sizing_mode=sizing_mode)
