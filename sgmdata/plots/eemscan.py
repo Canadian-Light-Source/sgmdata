@@ -30,7 +30,10 @@ def get_callback(name):
     return js
 
 def plot(**kwargs):
-    sizing_mode = kwargs.get('sizing_mode', 'stretch_both')
+    #Check vars
+    sizing_mode = kwargs.get('sizing_mode', 'fixed')
+    scale = kwargs.get('scale', 1)
+    height, width = (600*scale, 600*scale)
     if 'emission' not in kwargs.keys():
         kwargs['emission'] = np.linspace(0, 2560, 256)
     if 'io' in kwargs.keys() and np.any(kwargs['io']):
@@ -42,6 +45,8 @@ def plot(**kwargs):
 
     delta = max(kwargs['en']) - min(kwargs['en'])
     bins = max(kwargs['emission']) - min(kwargs['emission'])
+
+    #Data Sources
     source = ColumnDataSource(dict(image=[kwargs['image'].T],
                                    sdd1=[kwargs['sdd1'].T],
                                    sdd2=[kwargs['sdd2'].T],
@@ -51,7 +56,6 @@ def plot(**kwargs):
                                    emission=[min(kwargs['emission'])],
                                    delta=[delta],
                                    bins=[bins]))
-
     xrf_source = ColumnDataSource(data=dict(proj_x=np.sum(source.data['image'][0], axis=1),
                                             emission=kwargs['emission'],
                                             proj_x_tot=np.sum(source.data['image'][0], axis=1),
@@ -61,12 +65,10 @@ def plot(**kwargs):
                                             sdd3=np.sum(source.data['sdd3'][0], axis=1),
                                             sdd4=np.sum(source.data['sdd4'][0], axis=1))
                                   )
-
     proj_y = np.sum(source.data['image'][0], axis=0)
     tey_max = np.amax(kwargs['tey'])
     pd_max = np.amax(kwargs['pd'])
     io_max = np.amax(kwargs['i0'])
-
     if tey_max == 0:
         tey_max = 1
     if pd_max == 0:
@@ -78,28 +80,26 @@ def plot(**kwargs):
                                             pd=(kwargs['pd'] / pd_max) * np.amax(proj_y),
                                             i0=(kwargs['i0'] / io_max) * np.amax(proj_y)
                                             ))
-
     xas_source = ColumnDataSource(data=dict(proj_y=proj_y,
                                             en=kwargs['en'],
                                             en_tot=kwargs['en'],
                                             proj_y_tot=np.sum(source.data['image'][0], axis=0),
                                             ))
-
     xy_source = ColumnDataSource(data=dict(xaxis=[np.linspace(min(kwargs['en']), max(kwargs['en']), len(kwargs['en']))],
                                            yaxis=[kwargs['emission']]))
-
     rect_source = ColumnDataSource({'x': [], 'y': [], 'width': [], 'height': []})
     peak_source = ColumnDataSource({'x': [], 'y': [], 'width': [], 'height': []})
 
 
-    plot = Figure(plot_width=600, plot_height=600, tools="box_select,save,box_zoom, wheel_zoom,hover,pan,reset")
+    #Plots & Glyphs
+    plot = Figure(plot_width=width, plot_height=height, tools="box_select,save,box_zoom, wheel_zoom,hover,pan,reset")
     color_mapper = LinearColorMapper(palette="Spectral11", low=1, high=np.amax(kwargs['sdd1']))
 
     im = plot.image(image='image', y='emission', x='en', dh='bins', dw='delta', source=source,
                     palette="Spectral11")
     color_bar = ColorBar(color_mapper=color_mapper, label_standoff=12, border_line_color=None, location=(0, 0))
 
-    xrf = Figure(plot_width=150, plot_height=600, y_range=plot.y_range, tools="save,hover,box_zoom, pan",
+    xrf = Figure(plot_width=width*3/8, plot_height=height, y_range=plot.y_range, tools="save,hover,box_zoom, pan",
                  title="XRF Projection")
     fluo = Rect(x='y', y='x', width='width', height='height', fill_alpha=0.1, line_color=None, fill_color='yellow')
     xrf.add_glyph(peak_source, fluo)
@@ -107,7 +107,7 @@ def plot(**kwargs):
     xrf.yaxis.visible = False
     xrf.xaxis.major_label_orientation = "vertical"
 
-    xas = Figure(plot_width=600, plot_height=150, x_range=plot.x_range, tools="save,hover,box_zoom,wheel_zoom,pan",
+    xas = Figure(plot_width=width, plot_height=height*3/8, x_range=plot.x_range, tools="save,hover,box_zoom,wheel_zoom,pan",
                  title="XAS Projection")
     xas.line('en', 'proj_y', source=xas_source, line_color='purple', alpha=0.6, legend_label="EEMs")
     xas.line('en', 'tey', source=aux_source, line_color='black', alpha=0.6, legend_label="TEY")
@@ -124,15 +124,25 @@ def plot(**kwargs):
     plot.xaxis.axis_label = 'Incident Energy (eV)'
     plot.yaxis.axis_label = 'Emisison Energy (eV)'
 
-    flslider = Slider(start=10, end=2560, value=1280, step=10, title="Line Peak", sizing_mode="fixed", height=30,
-                      width=150)
-    wdslider = Slider(start=20, end=500, value=100, step=10, title="Line Width", sizing_mode="fixed", height=30,
-                      width=150)
-    checkbox_group = RadioGroup(labels=["dx/dy", "1/y", "None"], active=2, name="Functions", width=150)
-    select = CheckboxButtonGroup(name="Detector Select:", labels=['sdd1', 'sdd2', 'sdd3', 'sdd4'], active=[0],width=150)
-    select_callback = CustomJS(args=dict(s1=source, xrf=xrf_source, xas=xas_source, xy=xy_source, sel=rect_source,
-                                         flslider=flslider, wdslider=wdslider, alter=checkbox_group, det=select), code=get_callback('select'))
+    #Interactive plot widgets:
+    select = CheckboxButtonGroup(name="Detector Select:", labels=['sdd1', 'sdd2', 'sdd3', 'sdd4'], active=[0],
+                                height=height*1/10, width=width*3/8)
+    button = Button(label="Download XAS", button_type="success", height=height*1/10, width=width*3/8)
+    checkbox_group = RadioGroup(labels=["dx/dy", "1/y", "None"], active=2, name="Functions",
+                                height=height*1/10, width=width*1/4)
+    flslider = Slider(start=10, end=2560, value=1280, step=10, title="Line Peak", sizing_mode="fixed",
+                      height=height*1/20, width=width*1/4)
+    wdslider = Slider(start=20, end=500, value=100, step=10, title="Line Width", sizing_mode="fixed",
+                      height=height*1/20, width=width*1/4)
+    slider = RangeSlider(title="Color Scale:", start=0, end=4 * np.amax(kwargs['sdd1']),
+                         value=(0, np.amax(kwargs['sdd1'])), step=20, height=height*1/20, width=width*3/8)
+    select_palette = Select(title="Colormap Select:", options=['Viridis', 'Spectral', 'Inferno'], value='Spectral',
+                            height=height*1/20, width=width*1/4)
 
+    #Declaring CustomJS Callbacks
+    select_callback = CustomJS(args=dict(s1=source, xrf=xrf_source, xas=xas_source, xy=xy_source, sel=rect_source,
+                                         flslider=flslider, wdslider=wdslider, alter=checkbox_group, det=select),
+                               code=get_callback('select'))
     reset_callback = CustomJS(args=dict(s1=source,
                                         xrf=xrf_source,
                                         xas=xas_source,
@@ -141,15 +151,10 @@ def plot(**kwargs):
                                         alter=checkbox_group,
                                         det=select,
                                         fluo=peak_source), code=get_callback('reset'))
-
-    plot.js_on_event(events.SelectionGeometry, select_callback)
-    plot.js_on_event(events.Reset, reset_callback)
-
     plot.add_layout(color_bar, 'left')
     det_select = CustomJS(args=dict(source=source, xrf=xrf_source), code=get_callback('det_select'))
     callback_color_palette = CustomJS(args=dict(im=im, cl=color_bar), code=get_callback('color_palette'))
     callback_color_range = CustomJS(args=dict(im=im, cl=color_bar), code=get_callback('color_range'))
-
     callback_flslider = CustomJS(args=dict(s1=source,
                                            xy=xy_source,
                                            fluo=peak_source,
@@ -160,27 +165,20 @@ def plot(**kwargs):
                                            sel=rect_source,
                                            alter=checkbox_group
                                            ), code=get_callback('flslider'))
+    download = CustomJS(args=dict(s2=xas_source, aux=aux_source, filename=f"{filename}.csv"), code=get_callback('download'))
 
+    #Linking callbacks
+    plot.js_on_event(events.SelectionGeometry, select_callback)
+    plot.js_on_event(events.Reset, reset_callback)
     flslider.js_on_change('value', callback_flslider)
     wdslider.js_on_change('value', callback_flslider)
     checkbox_group.js_on_change('active', callback_flslider)
-
-    slider = RangeSlider(title="Color Scale:", start=0, end=4 * np.amax(kwargs['sdd1']),
-                         value=(0, np.amax(kwargs['sdd1'])), step=20, height=30, width=150)
     slider.js_on_change('value', callback_color_range)
-
-    select_palette = Select(title="Colormap Select:", options=['Viridis', 'Spectral', 'Inferno'], value='Spectral',
-                            width=150)
     select_palette.js_on_change('value', callback_color_palette)
-
     select.js_on_change('active', det_select, callback_flslider)
-
-    button = Button(label="Download XAS", button_type="success", width=150)
-
-    download = CustomJS(args=dict(s2=xas_source, aux=aux_source, filename=f"{filename}.csv"), code=get_callback('download'))
-
     button.js_on_event(events.ButtonClick, download)
 
+    #Layout
     fluo = row(flslider, wdslider)
     functions = row(button, checkbox_group)
     options = column(select, functions, fluo, slider, select_palette)
