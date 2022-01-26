@@ -6,7 +6,7 @@ var d2 = xrf.data;
 var d3 = xas.data;
 var xlength = xarr.length;
 var sum = 0.0;
-var alter = alter.active;
+var alt = alter.active;
 var inds;
 var skip = false;
 
@@ -36,7 +36,7 @@ else if(rect['x'] && rect['x'].length){
 }
 else{
     det.active = [0];
-    alter = 2;
+    alt = 2;
     d2['proj_x'] = d2['proj_x_tot'];
     d2['emission'] = d2['emission_tot'];
     d3['en'] = d3['en_tot'];
@@ -60,7 +60,7 @@ if (!skip){
                 return (index - i) % xlength === 0;
             }).reduce((a, b) => a + b, 0));
     }
-    if (alter === 0){
+    if (alt === 0){
         length = d3['proj_y'].length;
         for(i=1; i < length; i++){
             var last = i - 1;
@@ -77,7 +77,7 @@ if (!skip){
         d3['proj_y'] = d3['proj_y'].filter((element, index) => {return index < length - 1})
         d3['en'] = d3['en'].filter((element, index) => {return index < length - 1});
     }
-    if (alter === 1){
+    if (alt === 1){
         length = d3['proj_y'].length;
         var y_max = Math.max(...d3['proj_y']);
         var y_min = Math.min(...d3['proj_y']);

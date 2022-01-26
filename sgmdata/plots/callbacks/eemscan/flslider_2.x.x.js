@@ -8,12 +8,11 @@ const d1 = s1.data['image'][0];
 const d2 = xrf.data;
 const d3 = xas.data;
 const xlength = xarr.length;
-const ylength = yarr.length;
 const sum = 0.0;
 const inds = {x0: xarr[0], x1: xarr[xarr.length -1], y0: cent - wid/2, y1: cent + wid/2};
 let max = Math.max(...d2['proj_x']);
 let min = Math.min(...d2['proj_x']);
-const alter = alter.active;
+const alt = alter.active;
 
 rect['y'] = [max/2 + min/2];
 rect['x'] = [cent];
@@ -42,7 +41,7 @@ for(i=xstart; i < xend; i++){
         temp.filter(function(value, index, Arr){
             return (index -i) % xlength  === 0;}).reduce((a, b) => a + b, 0));
 }
-if (alter === 0){
+if (alt === 0){
     const length = d3['proj_y'].length;
     for(i = 1; i < length; i++){
         const last = i - 1;
@@ -59,7 +58,7 @@ if (alter === 0){
     d3['proj_y'] = d3['proj_y'].filter((element, index) => {return index < length - 1})
     d3['en'] = d3['en'].filter((element, index) => {return index < length - 1});
 }
-if (alter === 1){
+if (alt === 1){
     const length = d3['proj_y'].length;
     const y_max = Math.max(...d3['proj_y']);
     const y_min = Math.min(...d3['proj_y']);
