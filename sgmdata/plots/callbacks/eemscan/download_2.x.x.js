@@ -1,6 +1,7 @@
 var sdd = s2.data;
 var aux_data = aux.data;
 var filetext = 'Energy,I0,TEY,Diode,SDD\\n';
+var i;
 
 xstart = aux_data['en'].findIndex((x) => x >=sdd['en'][0])
 for (i=0; i < sdd['en'].length; i++) {
