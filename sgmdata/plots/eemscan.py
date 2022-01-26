@@ -21,7 +21,7 @@ except NameError:
     output_file("bokeh.html")
 
 required = ['image', 'sdd1', 'sdd2', 'sdd3', 'sdd4', 'emission', 'en', 'tey', 'pd', 'io', 'i0']
-version = '1.x.x' if '1' or '0' in bokeh.__version__[0] else '2.x.x'
+version = '1.x.x' if '1' in bokeh.__version__[0] or '0' in bokeh.__version__[0] else '2.x.x'
 
 
 def get_callback(name):
@@ -137,7 +137,7 @@ def plot(**kwargs):
     slider = RangeSlider(title="Color Scale:", start=0, end=4 * np.amax(kwargs['sdd1']),
                          value=(0, np.amax(kwargs['sdd1'])), step=20, height=height*1//20, width=width*3//8)
     select_palette = Select(title="Colormap Select:", options=['Viridis', 'Spectral', 'Inferno'], value='Spectral',
-                             height=height*1//20, width=width*3//8)
+                             height=height*1//25, width=width*3//8)
 
     #Declaring CustomJS Callbacks
     select_callback = CustomJS(args=dict(s1=source, xrf=xrf_source, xas=xas_source, xy=xy_source, sel=rect_source,
