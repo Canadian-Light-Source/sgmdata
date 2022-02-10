@@ -9,6 +9,8 @@ var sum = 0.0;
 var alt = alter.active;
 var inds;
 var skip = false;
+let i, length, ystart, yend, xstart, xend, temp;
+
 
 if ('geometry' in cb_obj){
     inds = cb_obj['geometry'];
@@ -45,7 +47,6 @@ else{
 }
 
 if (!skip){
-    let i, length, ystart, yend, xstart, xend, temp;
     d3['proj_y'] = []
     d3['en'] = []
     ystart = yarr.findIndex((y) => y >= inds['y0'])

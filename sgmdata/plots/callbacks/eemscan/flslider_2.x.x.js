@@ -13,7 +13,7 @@ const inds = {x0: xarr[0], x1: xarr[xarr.length -1], y0: cent - wid/2, y1: cent 
 let max = Math.max(...d2['proj_x']);
 let min = Math.min(...d2['proj_x']);
 const alt = alter.active;
-let ystart, yend, xstart, xend;
+let ystart, yend, xstart, xend, temp;
 
 rect['y'] = [max/2 + min/2];
 rect['x'] = [cent];
@@ -49,9 +49,9 @@ if (alt === 0){
         const fa = d3['proj_y'][last];
         const fb = d3['proj_y'][i];
         const diff = Math.round(fb-fa);
-        a = d3['en'][last];
-        b = d3['en'][i];
-        add = a + b;
+        let a = d3['en'][last];
+        let b = d3['en'][i];
+        let add = a + b;
         const diff2 = Math.abs(b - a);
         d3['proj_y'][last] = (diff) / (diff2);
         d3['en'][last] = (add)/ 2;
