@@ -260,6 +260,7 @@ class SGMScan(DisplayDict):
                 keys = xrfmap.required
                 if 'fit' in self.keys():
                     df = self['fit']['dataframe']
+                    df.fillna(0, inplace=True )
                     emission = self['fit']['emission']
                     peaks = self['fit']['peaks']
                     width = self['fit']['width']
@@ -280,6 +281,7 @@ class SGMScan(DisplayDict):
                     df = self['binned']['dataframe']
                     roi_cols = df.filter(regex="sdd[1-4]_[0-2].*").columns
                     df.drop(columns=roi_cols, inplace=True)
+                    df.fillna(0, inplace=True )
                     data = {k: df.filter(regex=("%s.*" % k), axis=1).to_numpy() for k in keys}
                     data = {k: v for k, v in data.items() if v.size}
                     data.update({n: df.index.levels[i] for i, n in enumerate(list(df.index.names))})
