@@ -351,7 +351,7 @@ def test_beam_dump(detector, indep):
 
 
 
-def scan_health(df, verbose=False, sdd_max=105000):
+def scan_health(df, verbose=False, sdd_max=105000, length=None):
     """
     ### Description:
     -----
@@ -382,7 +382,9 @@ def scan_health(df, verbose=False, sdd_max=105000):
     dump = np.amax([test_beam_dump((k,v), EN)[1] for k,v in det.items()])
     abrupt = np.amax([test_abrupt_change((k,v))[1] for k,v in det.items()])
     rate = np.mean([test_detector_count_rates((k,v), sdds_range=(0, sdd_max))[1] for k,v in det.items() if k != 'i0' and k != 'pd'])
-
+    if length:
+        if abs(len(EN) - length) > 5:
+            abrupt = 100
     if verbose:
         print("----------- BEAM DUMP RESULTS ----------")
         print("Likelihood of Beam-dump:", dump, '%')
@@ -400,46 +402,7 @@ def scan_health(df, verbose=False, sdd_max=105000):
     
     return dump, abrupt, rate
 
-def plot1d(xarr,yarr, title="Plot", labels=[]):
-    """
-    ### Description:
-    -----
-    Convenience function for plotting a bokeh lineplot, assumes Bokeh is already loaded.
 
-    ### Args:
-    -----
-        >**xarr** *(array-like)* --  Independent array-like object, or list of array-like objects.
-        >**yarr** *(array-like)* -- Dependent array-like object, or list of array-like objects, same shape as xarr
-        >**title** *(str)* -- Plot title
-        >**labels** *(list(str))* --  Legend labels for multiple objects, defaults to Curve0, Curve1, etc.
-
-    returns None
-    """
-    TOOLS = 'pan, hover,box_zoom,box_select,crosshair,reset,save'
-
-    fig = figure(
-            tools=TOOLS,
-            title=title,
-            background_fill_color="white",
-            background_fill_alpha=1,
-            x_axis_label = "x",
-            y_axis_label = "y",
-    )
-    colors = []
-    for i in range(np.floor(len(yarr)/6).astype(int)+1):
-        colors += ['purple', 'firebrick', 'red', 'orange', 'black', 'navy']
-    colors = iter(colors)
-    if not isinstance(xarr, list):
-        xarr = [xarr]
-    if not len(xarr) == len(yarr):
-        yarr = [yarr]
-    if not any(labels):
-        labels = ["Curve" + str(i) for i,_ in enumerate(xarr)]
-    for i,x in enumerate(xarr):
-        fig.line(x=x, y=yarr[i], color=next(colors), legend_label=labels[i])
-    fig.legend.location = "top_left"
-    fig.legend.click_policy="hide"
-    show(fig)
 
 def badscans(interp, **kwargs):
     """
@@ -457,8 +420,9 @@ def badscans(interp, **kwargs):
     dump = kwargs.get('dump', 30)
     sat = kwargs.get('sat', 60)
     sdd_max = kwargs.get('sdd_max', 50000)
+    length = np.bincount([len(i) for i in interp]).argmax()
     bad_scans = []
-    health = [scan_health(i, sdd_max=sdd_max) for i in interp]
+    health = [scan_health(i, sdd_max=sdd_max, length=length) for i in interp]
     pbar = tqdm(health)
     for i,t in enumerate(pbar):
         pbar.set_description("Finding bad scans...")
@@ -466,7 +430,6 @@ def badscans(interp, **kwargs):
             print(i, t)
             bad_scans.append(i)
     return bad_scans
-
 
 
 def preprocess(sample, **kwargs):
@@ -640,3 +603,45 @@ def create_csv(sample, mcas=None, **kwargs):
         df.to_csv(out + '/' + slugify(s) + f'_ROI-{roi[0]}_{roi[1]}.csv')
         dfs.append(df)
     return dfs
+
+
+def plot1d(xarr,yarr, title="Plot", labels=[]):
+    """
+    ### Description:
+    -----
+    Convenience function for plotting a bokeh lineplot, assumes Bokeh is already loaded.
+
+    ### Args:
+    -----
+        >**xarr** *(array-like)* --  Independent array-like object, or list of array-like objects.
+        >**yarr** *(array-like)* -- Dependent array-like object, or list of array-like objects, same shape as xarr
+        >**title** *(str)* -- Plot title
+        >**labels** *(list(str))* --  Legend labels for multiple objects, defaults to Curve0, Curve1, etc.
+
+    returns None
+    """
+    TOOLS = 'pan, hover,box_zoom,box_select,crosshair,reset,save'
+
+    fig = figure(
+            tools=TOOLS,
+            title=title,
+            background_fill_color="white",
+            background_fill_alpha=1,
+            x_axis_label = "x",
+            y_axis_label = "y",
+    )
+    colors = []
+    for i in range(np.floor(len(yarr)/6).astype(int)+1):
+        colors += ['purple', 'firebrick', 'red', 'orange', 'black', 'navy']
+    colors = iter(colors)
+    if not isinstance(xarr, list):
+        xarr = [xarr]
+    if not len(xarr) == len(yarr):
+        yarr = [yarr]
+    if not any(labels):
+        labels = ["Curve" + str(i) for i,_ in enumerate(xarr)]
+    for i,x in enumerate(xarr):
+        fig.line(x=x, y=yarr[i], color=next(colors), legend_label=labels[i])
+    fig.legend.location = "top_left"
+    fig.legend.click_policy="hide"
+    show(fig)
