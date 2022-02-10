@@ -260,7 +260,55 @@ class SGMScan(DisplayDict):
                          k in s})
                     data.update({k: self.other[s].compute() for s in self.other.keys() for k in keys if s in k})
                     kwargs.update(data)
-                    xrfmap.plot_xyz(**kwargs)
+                    return xrfmap.plot_xyz(**kwargs)
+
+                  
+        def __repr__(self):
+            represent = ""
+            for key in self.keys():
+                represent += f"\t {key}:\n\t\t\t"
+                val = self[key]
+                if isinstance(val, dict):
+                    for k in val.keys():
+                        if hasattr(val[k], 'shape') and hasattr(val[k], 'dtype'):
+                            represent += f"{k} : array(shape:{val[k].shape}, type:{val[k].dtype}), \n\t\t\t"
+                        else:
+                            represent += f"{k} : {val[k]},\n\t\t\t"
+                    represent += "\n\t"
+                else:
+                    represent += f"{val} \n\t"
+            return represent
+
+
+        def _repr_html_(self):
+            entry = [
+                "<td>",
+                str(self.sample),
+                "</td>",
+                "<td>",
+                str(self.command),
+                "</td>",
+                "<td>",
+                str(list(self.independent.keys())),
+                "</td>",
+                "<td>",
+                str(list(self.signals.keys())),
+                "</td>",
+                "<td>",
+                str(list(self.other.keys())),
+                "</td>",
+            ]
+            return " ".join(entry)
+
+
+        def _repr_console_(self):
+            final_data = 'sample:\t' + str(self.sample) + '\t\t|\t\t'
+            final_data = final_data + 'command:\t' + str(self.command) + '\t\t|\t\t'
+            final_data = final_data + 'independent:\t' + str(self.independent.keys()) + '\t\t|\t\t'
+            final_data = final_data + 'signals:\t' + str(self.signals.keys()) + '\t\t|\t\t'
+            final_data = final_data + 'other:\t' + str(self.other.keys()) + '\t\t|\t\t'
+            return final_data
+
 
     def __init__(self, *args, **kwargs):
         kw_sorted = []
@@ -299,6 +347,36 @@ class SGMScan(DisplayDict):
         table.append("</tbody></table>")
 
         return "\n".join(table)
+
+
+    def _repr_console_(self):
+        needed_info = ['entry', 'sample', 'command', 'independent', 'signals', 'other']
+        if sys_has_tab:
+            temp_data = []
+            final_data = []
+            for key in self.keys():
+                temp_data.append(key)
+                for title in self[key].keys():
+
+                    if title in needed_info:
+                        temp_data.append(self.__dict__[key][title])
+                final_data.append(temp_data.copy())
+                temp_data.clear()
+            return tabulate(final_data, headers=needed_info)
+        else:
+            temp_data = ''
+            final_data = ''
+            for key in self.keys():
+                temp_data = temp_data + 'Entry:\t'
+                temp_data = temp_data + str(key)
+                for title in self[key].keys():
+
+                    if title in needed_info:
+                        temp_data = temp_data + '\t\t|\t\t'
+                        temp_data = temp_data + (str(title) + ":\t" + str(self.__dict__[key][title]))
+                final_data = final_data + ('\n' + str(temp_data))
+                temp_data = ''
+            return final_data
 
     def __getitem__(self, item):
         return self.__dict__[item]
@@ -369,18 +447,40 @@ class SGMData(object):
             if 'type' in self.__dict__.keys():
                 pass
             else:
-                if 'scan' in self.command[0] and "en" == self.command[1]:
-                    keys = eemscan.required
-                    df = self.data
-                    roi_cols = df.filter(regex="sdd[1-4]_[0-2].*").columns
-                    df.drop(columns=roi_cols, inplace=True)
-                    data = {k: df.filter(regex=("%s.*" % k), axis=1).to_numpy() for k in keys}
-                    data.update({df.index.name: np.array(df.index), 'emission': np.linspace(0, 2560, 256)})
-                    data.update({'image': data['sdd1']})
-                    kwargs.update(data)
-                    return eemscan.plot(**data)
-                elif 'mesh' in self.command[0]:
-                    pass
+                try:
+                    if 'scan' in self.command[0] and "en" == self.command[1]:
+                        scantype = 'EEMS'
+                    elif 'mesh' in self.command[0]:
+                        scantype = 'XRF'
+                except AttributeError:
+                    try:
+                        if len(self.data.index.names) == 1:
+                            scantype = 'EEMS'
+                        elif len(self.data.index.names) == 2:
+                            scantype = 'XRF'
+                    except AttributeError:
+                        return
+            if scantype == 'EEMS':
+                keys = eemscan.required
+                df = self.data
+                roi_cols = df.filter(regex="sdd[1-4]_[0-2].*").columns
+                df.drop(columns=roi_cols, inplace=True)
+                data = {k: df.filter(regex=("%s.*" % k), axis=1).to_numpy() for k in keys}
+                data.update({df.index.name: np.array(df.index), 'emission': np.linspace(0, 2560, 256)})
+                data.update({'image': data['sdd1'], 'filename': self.sample})
+                kwargs.update(data)
+                return eemscan.plot(**kwargs)
+            elif scantype == 'XRF':
+                keys = xrfmap.required
+                df = self.data
+                roi_cols = df.filter(regex="sdd[1-4]_[0-2].*").columns
+                df.drop(columns=roi_cols, inplace=True)
+                data = {k: df.filter(regex=("%s.*" % k), axis=1).to_numpy() for k in keys}
+                data = {k: v for k, v in data.items() if v.size}
+                data.update({n: df.index.levels[i] for i, n in enumerate(list(df.index.names))})
+                data.update({'emission': np.linspace(0, 2560, 256), 'filename': self.sample})
+                kwargs.update(data)
+                xrfmap.plot_interp(**kwargs)
 
     def __init__(self, files, **kwargs):
         self.__dict__.update(kwargs)
@@ -391,6 +491,11 @@ class SGMData(object):
         if not hasattr(self, 'threads'):
             self.threads = 4
         files = [os.path.abspath(file) for file in files]
+        #Not sure if this is important/works, but trying to make sure that dask workers have the right path for non-admin users.
+        if not any([os.path.exists(f) for f in files]) and os.path.exists(f'/home/jovyan/data/{files[0]}'):
+            files = [file.replace(f'/home/jovyan/data/{self.user}/', '/home/jovyan/data/') for file in files]
+        if not any([os.path.exists(f) for f in files]) and os.path.exists(f'./data/'):
+            files = [file.replace(f'/home/jovyan/', './') for file in files]
         try:
             files_sorted = sorted(files, key=(lambda x: datetime.datetime.strptime(time.ctime(os.path.getctime(x)),
                                                                                    '%a %b %d %H:%M:%S %Y')))
@@ -398,6 +503,7 @@ class SGMData(object):
             # Following line modified so that self.scans will have the same contents regardless of OS.
             files_sorted = sorted([(os.path.normpath(k)).split('\\')[-1].split('/')[-1].split(".")[0] for k in files])
         self.scans = {(os.path.normpath(k)).split('\\')[-1].split('/')[-1].split(".")[0]: {} for k in files_sorted}
+
         self.interp_params = {}
         with ThreadPool(self.threads) as pool:
             L = list(tqdm(pool.imap_unordered(self._load_data, files), total=len(files)))

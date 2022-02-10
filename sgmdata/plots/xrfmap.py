@@ -5,14 +5,21 @@ from bokeh.models import CustomJS, ColumnDataSource, Select, RangeSlider, ColorB
 from bokeh.plotting import Figure, show
 from bokeh.embed import json_item
 from bokeh import events
-
+import bokeh
 from sgmdata.utilities.lib import scan_lib, elements
 from sgmdata.xrffit import gaussians
 import json
 import numpy as np
+import os
 
 required = ['image', 'sdd1', 'sdd2', 'sdd3', 'sdd4', 'tey', 'xp', 'yp', 'emission']
+version = '1.x.x' if '1' in bokeh.__version__[0] or '0' in bokeh.__version__[0] else '2.x.x'
 
+
+def get_callback(name):
+    with open(os.path.dirname(os.path.abspath(__file__)) + '/callbacks/xrfmap/' + name + f'_{version}.js', 'r') as f:
+        js = f.read()
+    return js
 
 def make_data(df, keys, sgm_data):
     data = {k: df.filter(regex=("%s.*" % k), axis=1).to_numpy() for k in keys}
@@ -26,6 +33,7 @@ def make_data(df, keys, sgm_data):
 
 
 def plot(**kwargs):
+    sizing_mode = kwargs.get('sizing_mode', 'stretch_both')
     # Create datasources
     if 'emission' not in kwargs.keys():
         kwargs['emission'] = np.linspace(0, 2560, 256)
@@ -126,71 +134,15 @@ def plot(**kwargs):
     xrf.legend.click_policy = "hide"
 
     ##Change Detector Source for image
-    det_callback = CustomJS(args=dict(source=img_source), code="""
-            var sdd1 = source.data['im1'][0];
-            var sdd2 = source.data['im2'][0];
-            var sdd3 = source.data['im3'][0];
-            var sdd4 = source.data['im4'][0];
-            var tey = source.data['im5'][0];
-            var d = source.data['image'];
-            var f = cb_obj.value;
-            if (f == "sdd1") {
-                d[0] = sdd1;
-            }
-            if (f == "sdd2") {
-                d[0] = sdd2;
-            }
-            if (f == "sdd3") {
-                d[0] = sdd3;
-            }
-            if (f == "sdd4") {
-                d[0] = sdd4;
-            }
-            if (f == "tey") {
-                d[0] = tey;
-            }
-            source.change.emit();
-    """)
+    det_callback = CustomJS(args=dict(source=img_source), code=get_callback('det_select'))
     det_select = Select(title="Detector Select:", options=['sdd1', 'sdd2', 'sdd3', 'sdd4', 'tey'], value='sdd1')
     det_select.js_on_change('value', det_callback)
 
-    # Color Palettes
-    viridis = all_palettes['Viridis'][256]
-    inferno = all_palettes['Inferno'][256]
-    spectral = all_palettes['Spectral'][11]
-    colorblind = all_palettes['Colorblind'][4]
-
     ##Color Palette Change
-    callback_color_palette = CustomJS(args=dict(im=im, cl=color_bar), code="""
-            var p = "Inferno11";
-            var f = cb_obj.value;
-            if (f == "Viridis") {
-                im.glyph.color_mapper.palette = %s;
-                cl.color_mapper.palette = %s;
-            }
-            if (f == "Spectral") {
-                im.glyph.color_mapper.palette = %s;
-                cl.color_mapper.palette = %s;
-            }
-            if (f == "Inferno") {
-                im.glyph.color_mapper.palette = %s;
-                cl.color_mapper.palette = %s;
-            }
-            if (f == "Colorblind") {
-                im.glyph.color_mapper.palette = %s;
-                cl.color_mapper.palette = %s;
-            }
-    """ % (viridis, viridis, spectral, spectral, inferno, inferno, colorblind, colorblind))
+    callback_color_palette = CustomJS(args=dict(im=im, cl=color_bar), code=get_callback('color_palette'))
 
     ##Color Intensity Change Callback
-    callback_color_range = CustomJS(args=dict(im=im, cl=color_bar), code="""
-            var o_min = cb_obj.value[0];
-            var o_max = cb_obj.value[1];
-            im.glyph.color_mapper.low = o_min;
-            im.glyph.color_mapper.high = o_max;
-            cl.color_mapper.low = o_min;
-            cl.color_mapper.high = o_max;
-    """)
+    callback_color_range = CustomJS(args=dict(im=im, cl=color_bar), code=get_callback('color_range'))
 
     ##Change Pallette Selectbox
     palette_select = Select(title="Colormap Select:", options=['Viridis', 'Spectral', 'Inferno'], value='Spectral')
@@ -202,33 +154,7 @@ def plot(**kwargs):
 
     if 'peaks' in kwargs.keys() and 'width' in kwargs.keys():
         ##ROI change
-        callback_roi_select = CustomJS(args=dict(source=img_source, mca=mca_source, det=det_select), code="""
-                var cur = det.properties.value.spec['value'];
-                var sel = cb_obj.value[0];
-                var data = mca.data;
-                var sdd1 = data['sdd1'][sel];
-                var sdd2 = data['sdd2'][sel];
-                var sdd3 = data['sdd3'][sel];
-                var sdd4 = data['sdd4'][sel];
-                var img = source.data['image'];
-                if (cur == "sdd1") {
-                    img[0] = sdd1;
-                }
-                if (cur == "sdd2") {
-                    img[0] = sdd2;
-                }
-                if (cur == "sdd3") {
-                    img[0] = sdd3;
-                }
-                if (cur == "sdd4") {
-                    img[0] = sdd4;
-                }
-                source.data['im1'][0] = sdd1;
-                source.data['im2'][0] = sdd2;
-                source.data['im3'][0] = sdd3;
-                source.data['im4'][0] = sdd4;
-                source.change.emit();
-        """)
+        callback_roi_select = CustomJS(args=dict(source=img_source, mca=mca_source, det=det_select), code=get_callback('roi_select'))
         roi_menu = [(i, "%.1f" % e) for i, e in enumerate(kwargs['peaks'])]
         roi_slider = Select(title="Fluorescence Line:", options=roi_menu, value="%.1f" % kwargs['peaks'][max_var])
         roi_slider.js_on_change('value', callback_roi_select)
@@ -238,7 +164,7 @@ def plot(**kwargs):
     else:
         options = column(det_select, intensity_slider, palette_select, xrf)
 
-    layout = gridplot([[plot, options]])
+    layout = gridplot([[plot, options]], sizing_mode=sizing_mode)
     if kwargs.get('json', False):
         return json.dumps(json_item(layout, "xrf"))
     show(layout)
@@ -250,6 +176,7 @@ def plot_interp(**kwargs):
         Keywords:
             **kwargs (dict):  DataDict from plot function.
     """
+    sizing_mode = kwargs.get('sizing_mode', 'stretch_both')
     # Verify the data in kwargs
     if 'xp' in kwargs.keys() and 'yp' in kwargs.keys():
         x = kwargs['xp']
@@ -357,79 +284,15 @@ def plot_interp(**kwargs):
                                       im=im,
                                       det=det_select,
                                       rect=rect_source,
-                                      sdd=sdd_source), code="""
-            var fluo_min = sl.value[0] / 10;
-            var fluo_max = sl.value[1] / 10;
-            var peak = rect.data['x'];
-            var d = source.data['image'];
-            var f = det.value;
-            var cul_image = new Array();
-
-            function sumArrays(...arrays) {
-              const n = arrays.reduce((max, xs) => Math.max(max, xs.length), 0);
-              const result = Float64Array.from({ length: n });
-              return result.map((_, i) => arrays.map(xs => xs[i] || 0).reduce((sum, x) => sum + x, 0));
-            }
-
-            if (f.includes('sdd')){
-                var image =  sdd.data[f];
-                console.log("Summing image for sdd: " + f)
-                for (i = fluo_min; i < fluo_max; i++) {
-                    cul_image.push(image[i]);
-                }
-                d[0] = sumArrays(...cul_image);
-
-            }
-            if (f == "tey") {
-                var tey = source.data['tey'];
-                d[0] = tey[0];
-
-            }
-            rect.data['x'][0] = 10*(fluo_min + fluo_max) / 2;
-            rect.data['width'][0] = Math.abs(fluo_max - fluo_min)*10 
-            rect.change.emit();
-            source.change.emit();
-    """)
+                                      sdd=sdd_source), code=get_callback('det_sum_select'))
     det_select.js_on_change('value', det_callback)
     slider.js_on_change('value', det_callback)
 
-    # Color Palettes
-    viridis = all_palettes['Viridis'][256]
-    inferno = all_palettes['Inferno'][256]
-    spectral = all_palettes['Spectral'][11]
-    colorblind = all_palettes['Colorblind'][4]
-
     # Color Palette Change
-    callback_color_palette = CustomJS(args=dict(im=im, cl=color_bar), code="""
-            var p = "Inferno11";
-            var f = cb_obj.value;
-            if (f == "Viridis") {
-                im.glyph.color_mapper.palette = %s;
-                cl.color_mapper.palette = %s;
-            }
-            if (f == "Spectral") {
-                im.glyph.color_mapper.palette = %s;
-                cl.color_mapper.palette = %s;
-            }
-            if (f == "Inferno") {
-                im.glyph.color_mapper.palette = %s;
-                cl.color_mapper.palette = %s;
-            }
-            if (f == "Colorblind") {
-                im.glyph.color_mapper.palette = %s;
-                cl.color_mapper.palette = %s;
-            }
-    """ % (viridis, viridis, spectral, spectral, inferno, inferno, colorblind, colorblind))
+    callback_color_palette = CustomJS(args=dict(im=im, cl=color_bar), code=get_callback('color_palette'))
 
     # Color Intensity Change Callback
-    callback_color_range = CustomJS(args=dict(im=im, cl=color_bar), code="""
-            var o_min = cb_obj.value[0];
-            var o_max = cb_obj.value[1];
-            im.glyph.color_mapper.low = o_min;
-            im.glyph.color_mapper.high = o_max;
-            cl.color_mapper.low = o_min;
-            cl.color_mapper.high = o_max;
-    """)
+    callback_color_range = CustomJS(args=dict(im=im, cl=color_bar), code=get_callback('color_range'))
 
     # Change Pallette Selectbox
     palette_select = Select(title="Colormap Select:", options=['Viridis', 'Spectral', 'Inferno'], value='Viridis')
@@ -442,7 +305,7 @@ def plot_interp(**kwargs):
 
     options = column(det_select, intensity_slider, palette_select, xrf, slider)
 
-    layout = gridplot([[plot, options]])
+    layout = gridplot([[plot, options]], sizing_mode=sizing_mode)
     if kwargs.get('json', False):
         return json.dumps(json_item(layout, "xrf"))
     show(layout)
@@ -456,6 +319,7 @@ def plot_xyz(shift=False, table=False, **kwargs):
             table (bool):  False (default) - displays helper tool / datatable for macro generation at SGM.
             **kwargs (dict):  DataDict from plot function.
     """
+    sizing_mode = kwargs.get('sizing_mode', 'stretch_both')
     # Verify the data in kwargs
     if 'xp' in kwargs.keys() and 'yp' in kwargs.keys():
         x = kwargs['xp']
@@ -533,128 +397,17 @@ def plot_xyz(shift=False, table=False, **kwargs):
         table_delete = Button(label="Delete Row", button_type="danger")
 
         # Create dictionary to pass to Spec Jupyter Client.
-        macro_callback = CustomJS(args=dict(clip=clipboard_source, lib=scan_lib, tx=text_area, tbl=data_table), code="""
-            var text = tx.value;
-            var samples = clip.data['sample'];
-            var edges = clip.data['edges'];
-            var nscans = clip.data['nscans'];
-            var pos = clip.data['coords'];
-            var type = clip.data['type'];
-            var scan;
-            var ncols;
-            var typenum = 1;
-
-            text = "plate = [\\n";
-            for (i = 0; i < pos.length; i++) {
-                scan = lib[edges[i]]
-                if (type[i] == "reference"){
-                    typenum = 2;
-                }
-                else{
-                    typenum = 1;
-                }
-                if (edges[i] == "EEMs"){
-                    text += "{'sample': '" + samples[i] + "'";
-                    text += ", 'type': " + typenum.toString();
-                    text += ", 'scan': '" + scan + "'";
-                    text += ", 'coords': " + pos[i] + "},\\n";          
-                }
-                else{
-                    ncols = Math.ceil(nscans[i] / 10);
-                    scan = scan.replace('col', ncols.toString());
-                    text += "{'sample': '" + samples[i] + " - " + edges[i] + "'";
-                    text += ", 'type': " + typenum.toString();
-                    text += ", 'scan': '" + scan + "'";
-                    text += ", 'coords': " + pos[i] + "},\\n";
-                }
-            }
-            text += "]";
-            tx.value = text;
-
-        """)
+        macro_callback = CustomJS(args=dict(clip=clipboard_source, lib=scan_lib, tx=text_area, tbl=data_table),
+                                  code=get_callback('macro_build'))
 
         # Callback to delete row of datatable
-        delete_callback = CustomJS(args=dict(clip=clipboard_source), code="""
-            var sel = clip.selected.indices[0];
-            var co = clip.data['coords'];
-            var sam = clip.data['sample'];
-            var edge = clip.data['edges'];
-            var nscans = clip.data['nscans'];
-            var type = clip.data['type'];
-
-            function isDefined(x) {
-                var undefined;
-                return x !== undefined;
-            }
-
-            console.log(sel);
-            if(isDefined(sel)){
-                co.splice(sel, 1);
-                sam.splice(sel, 1);
-                edge.splice(sel, 1);
-                nscans.splice(sel, 1);
-                type.splice(sel, 1);
-                clip.change.emit();
-            }
-        """)
+        delete_callback = CustomJS(args=dict(clip=clipboard_source), code=get_callback('delete_row'))
 
         table_delete.js_on_event(events.ButtonClick, delete_callback)
         table_macro.js_on_event(events.ButtonClick, macro_callback)
 
         # Callback to collect x,y position on tap and push to clipboard & datatable
-        clipboard_callback = CustomJS(args=dict(clip=clipboard_source), code="""
-            var x = cb_obj.x;
-            var y = cb_obj.y;
-            var co = clip.data['coords'];
-            var sam = clip.data['sample'];
-            var edge = clip.data['edges'];
-            var nscans = clip.data['nscans'];
-            var type = clip.data['type'];
-
-            co.push("(" + x.toString() + ", " + y.toString() + ")");
-            sam.push("Sample " + sam.length.toString());
-            edge.push("C");
-            nscans.push(10);
-            type.push("sample");
-            clip.change.emit();
-
-            function fallbackCopyTextToClipboard(text) {
-              var textArea = document.createElement("textarea");
-              textArea.value = text;
-
-              // Avoid scrolling to bottom
-              textArea.style.top = "0";
-              textArea.style.left = "0";
-              textArea.style.position = "fixed";
-
-              document.body.appendChild(textArea);
-              textArea.focus();
-              textArea.select();
-
-              try {
-                var successful = document.execCommand('copy');
-                var msg = successful ? 'successful' : 'unsuccessful';
-                console.log('Fallback: Copying text command was ' + msg);
-              } catch (err) {
-                console.error('Fallback: Oops, unable to copy', err);
-              }
-
-              document.body.removeChild(textArea);
-            }
-            function copyTextToClipboard(text) {
-              if (!navigator.clipboard) {
-                fallbackCopyTextToClipboard(text);
-                return;
-              }
-              navigator.clipboard.writeText(text).then(function() {
-                console.log('Async: Copying to clipboard was successful!');
-              }, function(err) {
-                console.error('Async: Could not copy text: ', err);
-              });
-            }
-
-            copyTextToClipboard(co[co.length -1])
-        """)
+        clipboard_callback = CustomJS(args=dict(clip=clipboard_source), code=get_callback('clipboard'))
 
     # Create XRF Map plot
     plot = Figure(plot_width=600,
@@ -716,68 +469,16 @@ def plot_xyz(shift=False, table=False, **kwargs):
     det_select = Select(title="Detector Select:", options=['sdd1', 'sdd2', 'sdd3', 'sdd4', 'tey'], value='sdd3')
 
     # Change Detector Source for image
-    det_callback = CustomJS(args=dict(source=source, sl=slider, im=im, det=det_select, rect=rect_source), code="""
-            var fluo = sl.value; 
-            var idx = fluo / 51;
-            var peak = rect.data['x'];
-            var d = source.data['z'];
-            var f = det.value;
-            if (f.includes('sdd')){
-                var sdd =  source.data[f + '-' + idx.toString()];
-                for (i = 0; i < d.length; i++) {
-                    d[i] = sdd[i];
-                }
-            }
-            if (f == "tey") {
-                var tey = source.data['tey'];
-                for (i = 0; i < d.length; i++) {
-                    d[i] = tey[i];
-                }
-            }
-            peak[0] = fluo;
-            rect.change.emit();
-            source.change.emit();
-    """)
+    det_callback = CustomJS(args=dict(source=source, sl=slider, im=im, det=det_select, rect=rect_source),
+                            code=get_callback('det_select_xyz'))
     det_select.js_on_change('value', det_callback)
     slider.js_on_change('value', det_callback)
 
-    # Color Palettes
-    viridis = all_palettes['Viridis'][256]
-    inferno = all_palettes['Inferno'][256]
-    spectral = all_palettes['Spectral'][11]
-    colorblind = all_palettes['Colorblind'][4]
-
     # Color Palette Change
-    callback_color_palette = CustomJS(args=dict(im=im, cl=color_bar), code="""
-            var p = "Inferno11";
-            var f = cb_obj.value;
-            if (f == "Viridis") {
-                im.glyph.fill_color.transform.palette = %s;
-                cl.color_mapper.palette = %s;
-            }
-            if (f == "Spectral") {
-                im.glyph.fill_color.transform.palette = %s;
-                cl.color_mapper.palette = %s;
-            }
-            if (f == "Inferno") {
-                im.glyph.fill_color.transform.palette = %s;
-                cl.color_mapper.palette = %s;
-            }
-            if (f == "Colorblind") {
-                im.glyph.fill_color.transform.palette = %s;
-                cl.color_mapper.palette = %s;
-            }
-    """ % (viridis, viridis, spectral, spectral, inferno, inferno, colorblind, colorblind))
+    callback_color_palette = CustomJS(args=dict(im=im, cl=color_bar), code=get_callback('color_palette'))
 
     # Color Intensity Change Callback
-    callback_color_range = CustomJS(args=dict(im=im, cl=color_bar), code="""
-            var o_min = cb_obj.value[0];
-            var o_max = cb_obj.value[1];
-            im.glyph.fill_color.transform.low = o_min;
-            im.glyph.fill_color.transform.high = o_max;
-            cl.color_mapper.low = o_min;
-            cl.color_mapper.high = o_max;
-    """)
+    callback_color_range = CustomJS(args=dict(im=im, cl=color_bar), code=get_callback('color_range'))
 
     # Change Pallette Selectbox
     palette_select = Select(title="Colormap Select:", options=['Viridis', 'Spectral', 'Inferno'], value='Viridis')
@@ -793,7 +494,7 @@ def plot_xyz(shift=False, table=False, **kwargs):
         layout = gridplot([[plot, options],
                            [data_table, column(table_macro, table_delete, text_area)]])
     else:
-        layout = gridplot([[plot, options]])
+        layout = gridplot([[plot, options]], sizing_mode=sizing_mode)
     if kwargs.get('json', False):
         return json.dumps(json_item(layout, "xrf"))
     show(layout)
