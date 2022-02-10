@@ -46,6 +46,7 @@ else{
 
 if (!skip){
     var i, length;
+    let ystart, yend, xstart, xend;
     d3['proj_y'] = []
     d3['en'] = []
     ystart = yarr.findIndex((y) => y >= inds['y0'])
@@ -67,9 +68,9 @@ if (!skip){
             var fa = d3['proj_y'][last];
             var fb = d3['proj_y'][i];
             var diff = Math.round(fb-fa);
-            a = d3['en'][last];
-            b = d3['en'][i];
-            add = a + b;
+            let a = d3['en'][last];
+            let b = d3['en'][i];
+            let add = a + b;
             var diff2 = Math.abs(b - a);
             d3['proj_y'][last] = (diff) / (diff2);
             d3['en'][last] = (add)/ 2;

@@ -13,6 +13,7 @@ const inds = {x0: xarr[0], x1: xarr[xarr.length -1], y0: cent - wid/2, y1: cent 
 let max = Math.max(...d2['proj_x']);
 let min = Math.min(...d2['proj_x']);
 const alt = alter.active;
+let ystart, yend, xstart, xend;
 
 rect['y'] = [max/2 + min/2];
 rect['x'] = [cent];
