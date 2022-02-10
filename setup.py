@@ -22,6 +22,10 @@ setup(
     ],
     packages=find_packages(),
     include_package_data=True,
+    package_data={"sgmdata": [
+        "plots/callbacks/eemscan/*.js",
+        "plots/callbacks/xrfmap/*.js",
+    ]},
     install_requires=[
         "blosc==1.10.2",
         "lz4==3.1.3",
