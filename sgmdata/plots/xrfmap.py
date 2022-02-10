@@ -424,6 +424,7 @@ def plot_xyz(shift=False, table=False, **kwargs):
     plot.ygrid.grid_line_color = None
     if table:
         plot.js_on_event('tap', clipboard_callback)
+
     im = plot.rect(x='x', y='y', color={'field': 'z', 'transform': color_mapper}, width=width, height=height,
                    source=source, name="xrf-plot")
 
@@ -465,31 +466,31 @@ def plot_xyz(shift=False, table=False, **kwargs):
     xrf.legend.background_fill_alpha = 0.6
 
     slider = Slider(start=0, end=2560, step=51, value=765,
-                    title="Fluorescent Line: ")
-    det_select = Select(title="Detector Select:", options=['sdd1', 'sdd2', 'sdd3', 'sdd4', 'tey'], value='sdd3')
+                    title="Fluorescent Line: ", width=300)
+    det_select = Select(title="Detector Select:", options=['sdd1', 'sdd2', 'sdd3', 'sdd4', 'tey'], value='sdd3', width=300)
 
     # Change Detector Source for image
     det_callback = CustomJS(args=dict(source=source, sl=slider, im=im, det=det_select, rect=rect_source),
-                            code=get_callback('det_select_xyz'))
+                            code=get_callback('det_select_xyz'), width=300)
     det_select.js_on_change('value', det_callback)
     slider.js_on_change('value', det_callback)
 
     # Color Palette Change
-    callback_color_palette = CustomJS(args=dict(im=im, cl=color_bar), code=get_callback('color_palette'))
+    callback_color_palette = CustomJS(args=dict(im=im, cl=color_bar), code=get_callback('color_palette'), width=300)
 
     # Color Intensity Change Callback
-    callback_color_range = CustomJS(args=dict(im=im, cl=color_bar), code=get_callback('color_range'))
+    callback_color_range = CustomJS(args=dict(im=im, cl=color_bar), code=get_callback('color_range'), width=300)
 
     # Change Pallette Selectbox
-    palette_select = Select(title="Colormap Select:", options=['Viridis', 'Spectral', 'Inferno'], value='Viridis')
+    palette_select = Select(title="Colormap Select:", options=['Viridis', 'Spectral', 'Inferno'], value='Viridis', width=300)
     palette_select.js_on_change('value', callback_color_palette)
     # Change Color Intensity Slider
     color_max = np.max([np.amax(x, axis=1) for x in [sdd1, sdd2, sdd3, sdd4]])
     intensity_slider = RangeSlider(title="Color Scale:", start=0, end=2 * color_max,
-                                   value=(0, np.amax(z)), step=20, )
+                                   value=(0, np.amax(z)), step=20, width=300)
     intensity_slider.js_on_change('value', callback_color_range)
 
-    options = column(det_select, intensity_slider, palette_select, xrf, slider)
+    options = column(det_select, palette_select, intensity_slider, xrf, slider)
     if table:
         layout = gridplot([[plot, options],
                            [data_table, column(table_macro, table_delete, text_area)]])

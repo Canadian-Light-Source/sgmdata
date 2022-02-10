@@ -44,15 +44,27 @@ const Inferno256 = [0x000003ff, 0x000004ff, 0x000006ff, 0x010007ff, 0x010109ff, 
                 0xf1e968ff, 0xf1eb6cff, 0xf1ed70ff, 0xf1ee74ff, 0xf1f079ff, 0xf1f27dff, 0xf2f381ff, 0xf2f485ff, 0xf3f689ff, 0xf4f78dff, 0xf5f891ff, 0xf6fa95ff,
                 0xf7fb99ff, 0xf9fc9dff, 0xfafda0ff, 0xfcfea4ff]
 const f = cb_obj.value;
-if (f == "Viridis") {
-    im.glyph.color_mapper.palette = Viridis256;
+if (f === "Viridis") {
+    if (typeof im.glyph.color_mapper !== 'undefined'){
+        im.glyph.color_mapper.palette = Viridis256;
+    }else{
+        im.glyph.fill_color.transform.palette = Viridis256;
+    }
     cl.color_mapper.palette = Viridis256;
 }
-if (f == "Spectral") {
-    im.glyph.color_mapper.palette = Spectral;
+if (f === "Spectral") {
+    if (typeof im.glyph.color_mapper !== 'undefined'){
+        im.glyph.color_mapper.palette = Spectral;
+    }else{
+        im.glyph.fill_color.transform.palette = Spectral;
+    }
     cl.color_mapper.palette = Spectral;
 }
-if (f == "Inferno") {
-    im.glyph.color_mapper.palette = Inferno256;
+if (f === "Inferno") {
+    if (typeof im.glyph.color_mapper !== 'undefined'){
+        im.glyph.color_mapper.palette = Inferno256;
+    }else{
+        im.glyph.fill_color.transform.palette = Inferno256;
+    }
     cl.color_mapper.palette = Inferno256;
 }
