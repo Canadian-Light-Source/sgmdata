@@ -611,6 +611,8 @@ class SGMData(object):
             self.npartitions = 3
         if not hasattr(self, 'threads'):
             self.threads = 4
+        if not hasattr(self, 'was_interpolated'):
+            self.was_interpolated = False
         self.user = kwargs.get('user', os.environ.get('JUPYTERHUB_USER'))
         self.shift = kwargs.get('shift', 0.5)
         files = [os.path.abspath(file) for file in files]
@@ -638,7 +640,7 @@ class SGMData(object):
                 del self.scans[e]
         self.scans.update({k: SGMScan(**v) for d in L for k, v in d.items()})
         self.entries = self.scans.items
-        self.was_interpolated = False
+        # self.was_interpolated = False
 
     def _find_data(self, node, indep=None, other=False):
         data = {}
