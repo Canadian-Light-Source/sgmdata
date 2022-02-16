@@ -370,6 +370,7 @@ def predict_num_scans(data, verbose=False, percent_of_log=0.4, num_scans=10):
     -----
         >*(int)*: The predicted number of additional scans that should be taken of a sample.
     """
+    print("\nHELLO!\n")
     interp_list = check_sample_fitness(data)
     file = list(data.__dict__['scans'].keys())
     sample_name = list(data.__dict__['scans'][file[0]].__dict__.keys())

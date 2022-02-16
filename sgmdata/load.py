@@ -787,7 +787,6 @@ class SGMData(object):
         with ThreadPool(self.threads) as pool:
             results = list(tqdm(pool.imap_unordered(_interpolate, entries), total=len(entries)))
         self.interpolated = True
-        print("hello")
         return results
 
     def _interpolate(self, entry, **kwargs):
