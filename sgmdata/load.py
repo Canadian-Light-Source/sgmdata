@@ -638,7 +638,7 @@ class SGMData(object):
                 del self.scans[e]
         self.scans.update({k: SGMScan(**v) for d in L for k, v in d.items()})
         self.entries = self.scans.items
-        self.interpolated = False
+        self.was_interpolated = False
 
     def _find_data(self, node, indep=None, other=False):
         data = {}
@@ -786,7 +786,7 @@ class SGMData(object):
                 entries.append(entry)
         with ThreadPool(self.threads) as pool:
             results = list(tqdm(pool.imap_unordered(_interpolate, entries), total=len(entries)))
-            self.interpolated = True
+            self.was_interpolated = True
         return results
 
     def _interpolate(self, entry, **kwargs):
