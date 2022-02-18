@@ -471,15 +471,15 @@ def plot_xyz(shift=False, table=False, **kwargs):
 
     # Change Detector Source for image
     det_callback = CustomJS(args=dict(source=source, sl=slider, im=im, det=det_select, rect=rect_source),
-                            code=get_callback('det_select_xyz'), width=300)
+                            code=get_callback('det_select_xyz'))
     det_select.js_on_change('value', det_callback)
     slider.js_on_change('value', det_callback)
 
     # Color Palette Change
-    callback_color_palette = CustomJS(args=dict(im=im, cl=color_bar), code=get_callback('color_palette'), width=300)
+    callback_color_palette = CustomJS(args=dict(im=im, cl=color_bar), code=get_callback('color_palette'))
 
     # Color Intensity Change Callback
-    callback_color_range = CustomJS(args=dict(im=im, cl=color_bar), code=get_callback('color_range'), width=300)
+    callback_color_range = CustomJS(args=dict(im=im, cl=color_bar), code=get_callback('color_range'))
 
     # Change Pallette Selectbox
     palette_select = Select(title="Colormap Select:", options=['Viridis', 'Spectral', 'Inferno'], value='Viridis', width=300)
