@@ -638,6 +638,7 @@ class SGMData(object):
                 del self.scans[e]
         self.scans.update({k: SGMScan(**v) for d in L for k, v in d.items()})
         self.entries = self.scans.items
+        self.interpolated = False
 
     def _find_data(self, node, indep=None, other=False):
         data = {}
@@ -785,13 +786,18 @@ class SGMData(object):
                 entries.append(entry)
         with ThreadPool(self.threads) as pool:
             results = list(tqdm(pool.imap_unordered(_interpolate, entries), total=len(entries)))
+        self.interpolated = True
         results = [r for r in results if r is not None]
         return results
 
     def _interpolate(self, entry, **kwargs):
         compute = kwargs.get('compute', True)
         if compute:
-            return entry.interpolate(**kwargs)
+            try:
+                return entry.interpolate(**kwargs)
+            except Exception as e:
+                print(f"Exception raise while interpolating {entry}: {e}")
+                return None
         else:
             independent = entry['independent']
             signals = entry['signals']
