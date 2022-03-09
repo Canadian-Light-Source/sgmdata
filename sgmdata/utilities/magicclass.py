@@ -2,7 +2,10 @@ from collections import OrderedDict
 
 
 class DisplayDict(OrderedDict):
-
+    """
+    ### Description
+    >dict class extension that includes repr_html for key,value display in Jupyter.
+    """
 
     def __init__(self, *args, **kwargs):
         super(DisplayDict, self).__init__(*args, **kwargs)
@@ -33,6 +36,7 @@ class DisplayDict(OrderedDict):
 
     def _repr_console_(self):
         """
+        ### Description
         Takes own data and organizes it into a console-friendly table.
         """
         final_data = ''
@@ -47,6 +51,21 @@ class DisplayDict(OrderedDict):
 
 
 class OneList(list):
+    """
+    ### Description:
+    >List extension that will return the sole item of the list if len(list) == 1
+
+    ### Usage:
+    ```python
+    data = {"key":1}
+    l = OneList([data])
+    assert l == data
+    print(l['key'])  #prints 1
+    l.append(2)
+    print(l[1]) #prints 2
+    assert l == data #raises Error
+    ```
+    """
     def __init__(self, iterable, **kwargs):
         self.l = list(iterable)
         for i in range(0, len(self.l)):

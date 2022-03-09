@@ -74,6 +74,18 @@ def fit_amp(args):
 
 
 def fit_peaks(emission, sdd, bounds=[]):
+    """
+    ### Description:
+    Method for fitting multiple interpolated SDD numpy arrays with a sum of gaussians.
+
+    ### Args:
+    >**emission** *(ndarray)*  -- labels for xrf bins
+
+    >**sdd** *(list)* -- list of sdd detector signals filtered from dataframe.
+
+    ### Keywords:
+    >**bounds** *(list)* -- list of len 2, included start and stop bin of mcas to be fit.
+    """
     if not isinstance(sdd, list):
         sdd = [sdd]
     names = [list(s)[0].split('-')[0] for s in sdd]
