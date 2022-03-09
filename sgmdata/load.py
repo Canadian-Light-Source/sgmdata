@@ -64,7 +64,23 @@ class SGMScan(DisplayDict):
                     warnings.warn(f"No dataframe loaded in scan dictionary. Have you run interpolate yet?")
 
         def interpolate(self, **kwargs):
-            f"""{interpolate.__doc__}"""
+            """
+            ### Description:
+                Creates the bins required for each independent axes to be histogrammed into for interpolation,
+                then uses dask dataframe groupby commands to perform a linear interpolation.
+
+            ### Args:
+                >**independent** *(dict)* -- Dictionary of independent axes from SGMScan.entry
+                >**signals** *(dict)* -- Dictionary of signals from SGMScan.entry
+
+            ### Keywords:
+                >**start** *(list or number)* -- starting position of the new array
+                >**stop**  *(list or number)* -- ending position of the new array
+                >**bins** *(list of numbers or arrays)* --  this can be an array of bin values for each axes,
+                                                          or can be the number of bins desired.
+                >**resolution** *(list or number)* -- used instead of bins to define the bin to bin distance.
+                >**sig_digits** *(int)* -- used to overide the default uncertainty of the interpolation axis of 2 (e.g. 0.01)
+            """
             independent = self['independent']
             signals = self['signals']
             kwargs['npartitions'] = self.npartitions
@@ -519,7 +535,14 @@ class SGMData(object):
             return df_scas
 
         def write(self, filename=None):
-            f"""{SGMScan.DataDict.write.__doc__}"""
+            """
+            ### Description:
+            -----
+                Write data to NeXuS formatted data file.
+            ### Keyword:
+            -----
+                >**filename** *(str / os.path)* -- path/name of file for output.
+            """
             if 'sdd3' in self['signals']:
                 signal = u'sdd3'
             elif 'ge32' in self['signals']:
@@ -778,7 +801,23 @@ class SGMData(object):
         return {file_root: entries}
 
     def interpolate(self, **kwargs):
-        f"""{interpolate.__doc__}"""
+        """
+        ### Description:
+        Batch interpolation of underlying scans.  Creates the bins required for each independent axes to be histogrammed
+        into for interpolation, then uses dask dataframe groupby commands to perform a linear interpolation.
+
+        ### Args:
+            >**independent** *(dict)* -- Dictionary of independent axes from SGMScan.entry
+            >**signals** *(dict)* -- Dictionary of signals from SGMScan.entry
+
+        ### Keywords:
+            >**start** *(list or number)* -- starting position of the new array
+            >**stop**  *(list or number)* -- ending position of the new array
+            >**bins** *(list of numbers or arrays)* --  this can be an array of bin values for each axes,
+                                                      or can be the number of bins desired.
+            >**resolution** *(list or number)* -- used instead of bins to define the bin to bin distance.
+            >**sig_digits** *(int)* -- used to overide the default uncertainty of the interpolation axis of 2 (e.g. 0.01)
+        """
         _interpolate = partial(self._interpolate, **kwargs)
         entries = []
         for file, val in self.entries():
