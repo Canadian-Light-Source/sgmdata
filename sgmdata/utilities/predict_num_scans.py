@@ -395,5 +395,5 @@ def predict_num_scans(data, verbose=False, percent_of_log=0.4, num_scans=10):
             str(number_of_scans[1][-1]))
         plot_predicted(num_scans_listed[num_scans - 1:], number_of_scans[1], cut_off_point_info[2], interp_list,
                        sample_type, num_scans)
-    return number_of_scans[0] - 10
+    return number_of_scans[0] - num_scans
 
