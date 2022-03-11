@@ -33,7 +33,6 @@ def check_sample_fitness(sgm_data):
     file = list(sgm_data.__dict__['scans'].keys())
     sample_name = list(sgm_data.__dict__['scans'][file[0]].__dict__.keys())
     sample_type = sgm_data.__dict__['scans'][file[0]].__getitem__(sample_name[0])['sample']
-    sgm_data.interpolate(resolution=0.1)
     interp_list = []
     if sgm_data.interpolated is True:
         print("Sample " + str(sample_type) + "'s data already interpolated. Fetching interpolated data...")
