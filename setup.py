@@ -29,7 +29,7 @@ setup(
     install_requires=[
         "blosc==1.10.2",
         "lz4==3.1.3",
-        "dask[complete]==2021.09.0",
+        "dask[complete]>=2021.03.0",
         "msgpack==1.0.2",
         "pandas==1.3.3",
         "h5py==3.4.0",
