@@ -31,7 +31,7 @@ setup(
         "lz4==3.1.3",
         "dask[complete]>=2021.03.0",
         "msgpack==1.0.2",
-        "pandas==1.3.3",
+        "pandas>=1.1.5",
         "h5py==3.4.0",
         "bokeh>=1.4.0",
         "numpy>=1.18.3",
