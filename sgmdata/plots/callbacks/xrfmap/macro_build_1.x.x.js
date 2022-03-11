@@ -9,7 +9,7 @@ var ncols;
 var typenum = 1;
 var i;
 
-text = "plate = [\\n";
+text = "plate = [\n";
 for (i = 0; i < pos.length; i++) {
     scan = lib[edges[i]]
     if (type[i] == "reference"){
@@ -22,7 +22,7 @@ for (i = 0; i < pos.length; i++) {
         text += "{'sample': '" + samples[i] + "'";
         text += ", 'type': " + typenum.toString();
         text += ", 'scan': '" + scan + "'";
-        text += ", 'coords': " + pos[i] + "},\\n";
+        text += ", 'coords': " + pos[i] + "},\n";
     }
     else{
         ncols = Math.ceil(nscans[i] / 10);
@@ -30,7 +30,7 @@ for (i = 0; i < pos.length; i++) {
         text += "{'sample': '" + samples[i] + " - " + edges[i] + "'";
         text += ", 'type': " + typenum.toString();
         text += ", 'scan': '" + scan + "'";
-        text += ", 'coords': " + pos[i] + "},\\n";
+        text += ", 'coords': " + pos[i] + "},\n";
     }
 }
 text += "]";
