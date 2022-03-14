@@ -37,10 +37,30 @@ if 'tabulate' in sys.modules:
 class SGMScan(DisplayDict):
     """
     ### Description:
-    -----
-        Data class for storing dask arrays for SGM data files that have been grouped into 'NXentry',
-        and then divided into signals, independent axes, and other data.  Contains convenience classes
-        for interpolation.
+    >Data class for storing dask arrays for SGM data files that have been grouped into 'NXentry',
+     and then divided into signals, independent axes, and other data.  Contains convenience classes
+     for interpolation.
+
+    ### Functions:
+    >**interpolate()** -- for each scan entry in self.items() there is a SGMScan.entry.interpolate() function,
+    see interpolate() documentation.
+
+    >**plot()** -- for each scan entry in self.items() there exists a SGMScan.entry.plot() method for displaying the 
+    contained data with bokeh.
+
+    >**fit_mcas()** -- for each scan entry in self.items() there exists a SGMScan.entry.fit_mcas() method for gaussian
+    peak fitting of the interpolated mca data. Returns resulting dataframe.
+
+    >**get_arr()** -- for each scan entry in self.items() there exists a SGMScan.entry.get_arr() which will return a numpy array
+    from an stored interpolated dataframe by using a keyword filter:
+    ```python
+        from sgmdata import SGMData
+
+        data = SGMData('file.nxs')
+        data.interpolate()
+        sdd1 = data.get_arr('sdd1')
+        sdd1.shape # (1290, 256)
+    ```
     """
 
     class DataDict(DisplayDict):
@@ -48,14 +68,11 @@ class SGMScan(DisplayDict):
         def get_arr(self, detector):
             """
             ### Description:
-            -----
-                Function to return a numpy array from the internal pandas dataframe, for a given detector.
+            >Function to return a numpy array from the internal pandas dataframe, for a given detector.
             ### Args:
-            -----
-                >**detector** *(str)* -- Name of detector.
+            >**detector** *(str)* -- Name of detector.
             ### Returns:
-            -----
-                >**detector** *(ndarray)*
+            >**detector** *(ndarray)*
             """
             if isinstance(detector, str):
                 try:
@@ -135,11 +152,9 @@ class SGMScan(DisplayDict):
         def read(self, filename=None):
             """
             ### Description
-            -----
-                Function to load in already processed data from file.
+            >Function to load in already processed data from file.
             ### Keywords
-            -----
-                >**filename** *(str)* -- path to file on disk.
+            >**filename** *(str)* -- path to file on disk.
             """
             if not filename:
                 return []
@@ -184,11 +199,9 @@ class SGMScan(DisplayDict):
         def write(self, filename=None):
             """
             ### Description:
-            -----
-                Write data to NeXuS formatted data file.
+            >Write data to NeXuS formatted data file.
             ### Keyword:
-            -----
-                >**filename** *(str / os.path)* -- path/name of file for output.
+            >**filename** *(str / os.path)* -- path/name of file for output.
             """
             if 'sdd3' in self['signals']:
                 signal = u'sdd3'
@@ -242,8 +255,7 @@ class SGMScan(DisplayDict):
         def plot(self, **kwargs):
             """
             ### Description
-            -----
-                Determines the appropriate plot based on independent axis number and name.
+            >Determines the appropriate plot based on independent axis number and name.
             """
             dim = len(self.independent)
             if dim == 1 and 'en' in self.independent.keys():
@@ -434,38 +446,40 @@ class SGMScan(DisplayDict):
 class SGMData(object):
     """
     ### Description:
-    -----
         Class for loading in data from h5py or h5pyd files for raw SGM data.
         To substantiate pass the class pass a single (or list of) system file paths
-        (or hsds path).  e.g. data = SGMData('/path/to/my/file.nxs') or SGMData(['1.h5', '2.h5'])
+        (or hsds path).  e.g. data = SGMData('/path/to/my/file.nxs') or SGMData(['1.h5', '2.h5']).
         The data is auto grouped into three classifications: "independent", "signals", and "other".
         You can view the data dictionary representation in a Jupyter cell by just invoking the SGMData() object.
 
     ### Args:
-    -----
         >**file_paths** *(str or list)* List of file names to be loaded in by the data module.
 
     ### Keywords:
-    -----
         >**npartitions** *(type: integer)* -- choose how many divisions (threads)
                                        to split the file data arrays into.
+
         >**scheduler** *(type: str)* -- use specific dask cluster for operations, e.g. 'dscheduler:8786'
+
         >**axes** *(type: list(str))* -- names of the axes to use as independent axis and ignore
                                   spec command issued
+
         >**threads** *(type: int)* -- set the number of threads in threadpool used to load in data.
+
         >**scan_type** *(type: str)* -- used to filter the type of scan loaded, e.g. 'cmesh', '
+
         >**shift** *(type: float)*  -- default 0.5.  Shifting 'x' axis data on consecutive passes of stage
                                 for cmesh scans.
 
     ### Functions:
-    -----
-        >**interpolate()** -- takes in same parameters as SGMScan.entry.interpolate()
+        >**interpolate()** -- botch operation on all scans in SGMData, takes in same parameters as interpolate(),
+        see interpolate() documentation.
 
         >**mean()** -- averages all interpolated data together (organized by sample, scan type & range), returns list, saves data
                   under a dictionary in SGMData().averaged
 
-    Attributes
-    -----
+
+    ### Attributes
         >**scans** *(SGMScan)* By default the query will create an SGMData object containing your data, this can be turned off with the data keyword.
 
         >**averaged** *(list)*. Contains the averaged data from all interpolated datasets contained in the scan.
@@ -825,7 +839,6 @@ class SGMData(object):
                 entries.append(entry)
         with ThreadPool(self.threads) as pool:
             results = list(tqdm(pool.imap_unordered(_interpolate, entries), total=len(entries)))
-        results = [r for r in results if r is not None]
         self.interpolated = True
         return results
 

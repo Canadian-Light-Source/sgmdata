@@ -34,38 +34,44 @@ except ImportError:
 class SGMQuery(object):
     """
     ### Description:
-    -----
-        You can find your data in the SGMLive database by using the SGMQuery module (when using the [SGM JupyterHub](
-        https://sgm-hub.lightsource.ca) ). The following documentation details the keywords that you can use to customize your
-         search.
+    >You can find your data in the SGMLive database by using the SGMQuery module (when using the [SGM JupyterHub](
+     https://sgm-hub.lightsource.ca) ). The following documentation details the keywords that you can use to customize your
+     search.
 
     ### Keywords:
-    -----
-        >**sample** *(str:required)* -- At minimum you'll need to provide the keyword "sample", corresponding the sample
-                                        name in the database as a default this will grab all the data under that sample
-                                        name.
+    >**sample** *(str:required)* -- At minimum you'll need to provide the keyword "sample", corresponding the sample
+                                    name in the database as a default this will grab all the data under that sample
+                                    name.
 
-        >**daterange** *(tuple:optional)* -- This can be used to sort through sample data by the day that it was
-                                            acquired. This is designed to take a tuple of the form ("start-date",
-                                            "end-date") where the strings are of the form "YYYY-MM-DD". You can also
-                                            just use a single string of the same form, instead of a tuple, this will
-                                            make the assumption that "end-date" == now().
+    >**daterange** *(tuple:optional)* -- This can be used to sort through sample data by the day that it was
+                                        acquired. This is designed to take a tuple of the form ("start-date",
+                                        "end-date") where the strings are of the form "YYYY-MM-DD". You can also
+                                        just use a single string of the same form, instead of a tuple, this will
+                                        make the assumption that "end-date" == now().
 
-        >**data** *(bool:optional)* -- As a default (True) the SGMQuery object will try to load the the data from disk,
-                                        if this is not the desired behaviour set data=False.
+    >**data** *(bool:optional)* -- As a default (True) the SGMQuery object will try to load the the data from disk,
+                                    if this is not the desired behaviour set data=False.
 
-        >**user** *(str:optional:staffonly)* -- Can be used to select the username in SGMLive from which the sample query is
-                                                performed. Not available to non-staff.
+    >**user** *(str:optional:staffonly)* -- Can be used to select the username in SGMLive from which the sample query is
+                                            performed. Not available to non-staff.
 
-        >**processed** *(bool:optional)* -- Can be used to return the paths for the processed data (already interpolated) instead
-                                            of the raw. You would generally set data = False for this option.
+    >**processed** *(bool:optional)* -- Can be used to return the paths for the processed data (already interpolated) instead
+                                        of the raw. You would generally set data = False for this option.
 
-    ### Attributes
-    -----
-        >**data** *(object)* --  By default the query will create an SGMData object containing your data, this can be turned off
+    ### Attributes:
+    >**data** *(object)* --  By default the query will create an SGMData object containing your data, this can be turned off
                                  with the data keyword.
 
-        >**paths** *(list)* -- Contains the local paths to your data (or processed_data if processed=True).
+    >**paths** *(list)* -- Contains the local paths to your data (or processed_data if processed=True).
+
+    ### Example Usage:
+    ```python
+    from sgmdata import SGMQuery
+
+    sgmq = SGMQuery(sample="TiO2 - C", processed=True)
+    data = sgmq.data
+    data.averaged['TiO2 - C'].plot()
+    ```
     """
 
     def __init__(self, **kwargs):

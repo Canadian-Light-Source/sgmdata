@@ -20,22 +20,44 @@ from dask.distributed import Client
 class ReportBuilder(object):
     """
     ### Description
-    -----
-        LaTeX document builder for SGMData mail-in program.  Requires connection to CLS internal confluence site, and
-        assembles documents from the experimental logs saved therein.
+    >LaTeX document builder for SGMData mail-in program.  Requires connection to CLS internal confluence site, and
+    assembles documents from the experimental logs saved therein.
 
     ### Args
-    -----
-        > **proposal** *(str)* -- Project proprosal number (in the title of the confluence page)
-        > **principal** *(str)* -- The last name of the PI for the project, included in the title of the confluence page.
-        > **cycle** *(int)* -- The cycle for which the report data was collected.
-        > **session** *(int)* -- The experiment number from SGMLive
-        > **shifts** *(int)* -- The number of shifts used to collected this data (information can be found in SGMLive
+    > **proposal** *(str)* -- Project proprosal number (in the title of the confluence page)
+
+    > **principal** *(str)* -- The last name of the PI for the project, included in the title of the confluence page.
+
+    > **cycle** *(int)* -- The cycle for which the report data was collected.
+
+    > **session** *(int)* -- The experiment number from SGMLive
+
+    > **shifts** *(int)* -- The number of shifts used to collected this data (information can be found in SGMLive
                                 usage data)
 
     ### Functions
-        > **create_sample_report(plots=True, key=None, process=True)** -- If initialization has gone smoothly, you can
-                                                                        create the sample report.
+    > **create_sample_report(plots=True, key=None, process=True)** -- If initialization of object has
+    gone smoothly, you can create the sample report.
+
+    >> kwargs:  plots - create plots; key - specific sample holder, e.g. 'Holder A - 5803b7d0'; process - interpolate
+    and average data not already processed in user account.  For additional kwargs, see preprocess [documentation](
+    /Utilities.html#preprocess).
+
+    ### Attributes:
+    >**log** *(str)* --  Data collected from confluence API, can be useful for debugging.
+
+    >**paths** *(list)* -- Contains the local paths to your data (or processed_data if processed=True).
+
+    ### Example Usage:
+    ```python
+    from sgmdata import SGMQuery
+
+    sgmq = SGMQuery(sample="TiO2 - C", processed=True)
+    data = sgmq.data
+    data.averaged['TiO2 - C'].plot()
+    ```
+
+
     """
 
     def __init__(self, proposal, principal, cycle, session, shifts, **kwargs):
