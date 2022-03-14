@@ -1,6 +1,6 @@
 
 # API
-## SGMData(object)
+## SGMData
 -----
 
 ### Description:
@@ -42,7 +42,7 @@ under a dictionary in SGMData().averaged
 
 >**averaged** *(list)*. Contains the averaged data from all interpolated datasets contained in the scan.
 
-## SGMScan(object)
+## SGMScan
 -----
 
 ### Description:
@@ -71,7 +71,7 @@ sdd1 = data.get_arr('sdd1')
 sdd1.shape # (1290, 256)
 ```
 
-## SGMQuery(object)
+## SGMQuery
 -----
 
 ### Description:
@@ -114,7 +114,7 @@ data = sgmq.data
 data.averaged['TiO2 - C'].plot()
 ```
 
-## ReportBuilder(object)
+## ReportBuilder
 -----
 
 ### Description
@@ -137,11 +137,27 @@ usage data)
 > **create_sample_report(plots=True, key=None, process=True)** -- If initialization of object has
 gone smoothly, you can create the sample report.
 
->> kwargs:  plots - create plots; key - specific sample holder, e.g. 'Holder A - a8asdk5'; process - interpolate
+>> kwargs:  plots - create plots; key - specific sample holder, e.g. 'Holder A - 5803b7d0'; process - interpolate
 and average data not already processed in user account.  For additional kwargs, see preprocess [documentation](
 /Utilities.html#preprocess).
 
-## interpolate():
+### Attributes:
+>**log** *(str)* --  Data collected from confluence API, can be useful for debugging.
+
+>**paths** *(list)* -- Contains the local paths to your data (or processed_data if processed=True).
+
+### Example Usage:
+```python
+from sgmdata import SGMQuery
+
+sgmq = SGMQuery(sample="TiO2 - C", processed=True)
+data = sgmq.data
+data.averaged['TiO2 - C'].plot()
+```
+
+
+
+## interpolate()
 -----
 
 ### Description:
@@ -165,7 +181,7 @@ or can be the number of bins desired.
 
 >**sig_digits** *(int)* -- used to overide the default uncertainty of the interpolation axis of 2 (e.g. 0.01)
 
-## fit_peaks():
+## fit_peaks()
 _____
 
 ### Description:

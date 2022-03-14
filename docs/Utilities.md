@@ -103,6 +103,29 @@ preprocess(sample="TiO2", user='regiert', resolution=0.1)
 ### Returns:
 >(tuple):  (Discontiunty %,  Beam-dump %,  Saturation %)
 
+## predict_num_scans
+-----
+
+### Description:
+-----
+Takes the SGMData object of a sample and uses a combination of other functions to predict how many additional
+scans should be taken of that sample.
+### Args:
+-----
+> **data** *(type: SGMData object)* -- The SGMData object for the sample on which the user would like more
+information.
+> **verbose** *(type: optional boolean)* -- Default value is False. If set to True, gives user additional data
+on how the additional number of scans needed was calculated.
+> **percent_of_log** *(type: optional float)* -- Default value is 0.4. The average of the noise values of the
+first ten scans is taken, and the log of it is found. Scans continue to be taken, and the average of the
+noise values of the most recent ten scans is taken. The log of this average is taken,and if it's less than
+percent_of_log multiplied by the log of the first ten averages, then scanning stops.
+> **num_scans** *(type: optional int)* -- Default value is 10. The number of scans from the scans provided by
+the user, that the user would like to be used to predict the number of additional scans to take.
+### Returns:
+-----
+>*(int)*: The predicted number of additional scans that should be taken of a sample.
+
 ## create_csv
 -----
 

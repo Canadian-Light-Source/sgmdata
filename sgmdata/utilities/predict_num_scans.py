@@ -1,17 +1,10 @@
-import glob
-import asyncio
-import h5py
 import pandas
 import numpy as np
 from lmfit import Model
-from collections import OrderedDict
 import math
-from bokeh.plotting import figure, ColumnDataSource
-from bokeh.models import HoverTool, CustomJS, BooleanFilter, LinearColorMapper, LogColorMapper, ColorBar
+from bokeh.plotting import figure
 from bokeh.io import show
-import sgmdata
-from sgmdata.load import SGMData
-from sgmdata.search import SGMQuery
+
 
 
 def check_sample_fitness(sgm_data):
