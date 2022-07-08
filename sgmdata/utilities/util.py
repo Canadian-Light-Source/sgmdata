@@ -579,7 +579,10 @@ def create_csv(sample, mcas=None, **kwargs):
     ## Find and collect data.
     dfs = []
     for s in sample:
-        sgmq = SGMQuery(sample=s, user=user, processed=True)
+        try:
+            sgmq = SGMQuery(sample=s, user=user, processed=True)
+        except IndexError:
+            sgmq = SGMQuery(sample=s, user=user)
         data = sgmq.data
         ## get or create processed data.
         try:
