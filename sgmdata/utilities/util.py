@@ -595,25 +595,24 @@ def create_csv(sample, mcas=None, **kwargs):
             averaged = data.averaged[s]
         except AttributeError as a:
             if step:
-                for _, d in data.scans.items():
-                    for _, e in d.items():
-                        x = [v for k,v in e.independent.items()]
+                for k1, d in data.scans.items():
+                    for k2, e in d.items():
+                        x = [(k,v) for k,v in e['independent'].items()]
                         if len(x) > 1:
                             print("CSV not available for scans with more than 1 independent axis")
                             return
-                        df = dd.from_dask_array(x)
-                        for k, v in e.signals.items():
+                        arrs = [dd.from_dask_array(x[0][1], columns=x[0][0])]
+                        for k, v in e['signals'].items():
                             if len(v.shape) == 2:
                                 columns = [k + "-" + str(i) for i in range(v.shape[1])]
                             elif len(v.shape) == 1:
                                 columns = [k]
                             else:
                                 continue
-                            df = df.merge(dd.from_dask_array(v, columns=columns))
-                        nm = [k for k, v in e.independent.items()]
-                        if len(nm) == 1:
-                            idx = pd.Index(x, name=nm[0])
-                            e.__setattr__('binned', {"dataframe": df, "index": idx})
+                            arrs.append(dd.from_dask_array(v, columns=columns))
+                        df = dd.concat(arrs)
+                        idx = pd.Index(x[0][1], name=x[0][0])
+                        data.scans[k1][k2]['binned'] = {"dataframe": df, "index": idx}
             else:
                 print("Attribute Error: %s" % a)
                 data.interpolate(resolution=0.1)

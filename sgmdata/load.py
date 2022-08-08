@@ -889,18 +889,22 @@ class SGMData(object):
                             sample_scans.update({key: {'data': [scan['binned']['dataframe']], 'signals': signals}})
         average = DisplayDict()
         for k, v in sample_scans.items():
+            key = k.split(":")[0]
+            command = k.split(":")[-1]
             if len(v['data']) > 1:
                 df_concat = pd.concat(v['data'])
-                key = k.split(":")[0]
-                command = k.split(":")[-1]
                 df = df_concat.groupby(df_concat.index).mean()
-                if key in average.keys():
-                    l = average[key] + OneList([
-                        SGMData.Processed(command=command.split('_'), data=df, signals=v['signals'], sample=key)])
-                    average.update({key: l})
-                else:
-                    average.update({key: OneList([
-                        SGMData.Processed(command=command.split('_'), data=df, signals=v['signals'], sample=key)])})
+            elif len(v['data']) == 1:
+                df = v['data'][0]
+            else:
+                break
+            if key in average.keys():
+                l = average[key] + OneList([
+                    SGMData.Processed(command=command.split('_'), data=df, signals=v['signals'], sample=key)])
+                average.update({key: l})
+            else:
+                average.update({key: OneList([
+                    SGMData.Processed(command=command.split('_'), data=df, signals=v['signals'], sample=key)])})
         self.averaged = average
         return average
 
