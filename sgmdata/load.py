@@ -895,7 +895,7 @@ class SGMData(object):
                 df_concat = pd.concat(v['data'])
                 df = df_concat.groupby(df_concat.index).mean()
             elif len(v['data']) == 1:
-                df = v['data'][0]
+                df = v['data'][0].compute()
             else:
                 break
             if key in average.keys():

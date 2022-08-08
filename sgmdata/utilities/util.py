@@ -601,7 +601,8 @@ def create_csv(sample, mcas=None, **kwargs):
                         if len(x) > 1:
                             print("CSV not available for scans with more than 1 independent axis")
                             return
-                        arrs = [dd.from_dask_array(x[0][1], columns=x[0][0])]
+                        en = dd.from_dask_array(x[0][1], columns=[x[0][0]])
+                        first = True
                         for k, v in e['signals'].items():
                             if len(v.shape) == 2:
                                 columns = [k + "-" + str(i) for i in range(v.shape[1])]
@@ -609,8 +610,11 @@ def create_csv(sample, mcas=None, **kwargs):
                                 columns = [k]
                             else:
                                 continue
-                            arrs.append(dd.from_dask_array(v, columns=columns))
-                        df = dd.concat(arrs)
+                            if first:
+                                df = dd.merge(en, dd.from_dask_array(v, columns=columns))
+                                first = False
+                            else:
+                                df = dd.merge(df, dd.from_dask_array(v, columns=columns))
                         idx = pd.Index(x[0][1], name=x[0][0])
                         data.scans[k1][k2]['binned'] = {"dataframe": df, "index": idx}
             else:
