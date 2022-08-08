@@ -3,6 +3,7 @@ import h5pyd
 import numpy as np
 from bokeh.io import show
 from bokeh.plotting import figure
+import dask.dataframe as dd
 
 import pandas as pd
 import os
@@ -454,9 +455,12 @@ def preprocess(sample, **kwargs):
                                 is 105000).
     >**bscan_thresh** *(tuple)* -- (continuous, dumped, and saturated)  these are the threshold percentages from
                                     scan_health that will label a scan as 'bad'.
+    >**query_return** *(bool)* -- return the SGMQuery object instead of the website URL.
 
     ### Returns:
     >(HTML) hyperlink for preprocessed data stored in SGMLive
+    OR:
+    >SGMQuery object if query_return is True
 
     ### Example Usage:
     ```python
@@ -478,10 +482,7 @@ def preprocess(sample, **kwargs):
         bs_args = dict(cont=bs_args[0], dump=bs_args[1], sat=bs_args[2], sdd_max=sdd_max)
     resolution = kwargs.get('resolution', 0.1)
     kwargs.update({'resolution':resolution})
-    if user:
-        sgmq = SGMQuery(sample=sample, data=False, **kwargs)
-    else:
-        sgmq = SGMQuery(sample=sample, data=False, **kwargs)
+    sgmq = SGMQuery(sample=sample, data=False, **kwargs)
     if len(sgmq.paths):
         print("Found %d scans matching sample: %s, for user: %s" % (len(sgmq.paths), sample, user))
         sgm_data = SGMData(sgmq.paths, **kwargs)
@@ -508,7 +509,7 @@ def preprocess(sample, **kwargs):
             print(f"Averaged {len(sgm_data.scans) - len(bscans)} scans for {sample}")
             del sgm_data
             if query_return:
-                return sgmq
+                return SGMQuery(sample=sample, processed=True)
             return HTML(html)
         else:
             if clear:
@@ -540,6 +541,8 @@ def create_csv(sample, mcas=None, **kwargs):
     >**ROI** *(tuple)** --  Set the upper and lower bin number for the Region-of-Interest integration to be used in
                             reducing the dimensionality of energy MCA data.
 
+    >**step** *(bool)* -- If the scans you're interested in are step scans, then set True to bypass the imposed interpolation.
+
     ### Returns:
     >**list(pd.DataFrame)** -- list of dataframes created.
     """
@@ -560,6 +563,9 @@ def create_csv(sample, mcas=None, **kwargs):
 
     ## Get ROI bounds:
     roi = kwargs.get('ROI', (0, 255))
+
+    ## Are the scans step scans?
+    step = kwargs.get('step', False)
 
     ## Get user account name.
     try:
@@ -588,8 +594,29 @@ def create_csv(sample, mcas=None, **kwargs):
         try:
             averaged = data.averaged[s]
         except AttributeError as a:
-            print("Attribute Error: %s" % a)
-            data.interpolate(resolution=0.1)
+            if step:
+                for _, d in data.scans.items():
+                    for _, e in d.items():
+                        x = [v for k,v in e.independent.items()]
+                        if len(x) > 1:
+                            print("CSV not available for scans with more than 1 independent axis")
+                            return
+                        df = dd.from_dask_array(x)
+                        for k, v in e.signals.items():
+                            if len(v.shape) == 2:
+                                columns = [k + "-" + str(i) for i in range(v.shape[1])]
+                            elif len(v.shape) == 1:
+                                columns = [k]
+                            else:
+                                continue
+                            df = df.merge(dd.from_dask_array(v, columns=columns))
+                        nm = [k for k, v in e.independent.items()]
+                        if len(nm) == 1:
+                            idx = pd.Index(x, name=nm[0])
+                            e.__setattr__('binned', {"dataframe": df, "index": idx})
+            else:
+                print("Attribute Error: %s" % a)
+                data.interpolate(resolution=0.1)
             data.mean()
             averaged = data.averaged[s]
         ## extract SDDs
