@@ -509,7 +509,7 @@ def preprocess(sample, **kwargs):
             print(f"Averaged {len(sgm_data.scans) - len(bscans)} scans for {sample}")
             del sgm_data
             if query_return:
-                return SGMQuery(sample=sample, processed=True)
+                return SGMQuery(sample=sample, processed=True, user=user)
             return HTML(html)
         else:
             if clear:
