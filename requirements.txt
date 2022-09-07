@@ -9,3 +9,4 @@ python-slugify
 beautifulsoup4
 matplotlib
 requests
+lmfit
