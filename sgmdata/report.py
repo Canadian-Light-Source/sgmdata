@@ -66,7 +66,7 @@ class ReportBuilder(object):
             raise Exception("Need to provide a valid proposal string; e.g. 33G10000")
         self.proposal = proposal
         if not isinstance(principal, str):
-            raise Exception("Prinicpal invesitigator needs to be string")
+            raise Exception("Principal investigator needs to be a string")
         self.principal = principal
         if not isinstance(cycle, int):
             raise Exception("Cycle needs to be of type int")
@@ -106,7 +106,7 @@ class ReportBuilder(object):
                 self.account = acc[0]
                 self.find_samples_and_edges()
             else:
-                print("Coulnd't find account information for project. Exiting.")
+                print("Couldn't find account information for project. Exiting.")
 
     def get_confluence_log(self):
         password = getpass.getpass("Enter password:")
@@ -343,7 +343,7 @@ to those samples will be contained therein.
                     sample_tex = self.texcrub(sample)
                     ssec += "The excitation emission matrices for sample %s is displayed in Figure \\ref{fig:%s_%d}, " \
                             "this (un-normalized) data is acquired by sweeping the incident energy through " \
-                            "the entire energy range of the beamline.  The signal from the 4 energy resolving " \
+                            "the entire energy range of the beamline.  The signal from the four energy resolving " \
                             "silicon drift detectors are displayed in the left of the pane.  The right-most pane displays the accumulated " \
                             "XRF projection from this EEMs sweep. A more interactive view can be found by clicking " \
                             "\\href{%s}{here}. \n" % (
@@ -356,7 +356,7 @@ to those samples will be contained therein.
                             "\\centering \n" \
                             "\\includegraphics[width=0.8\\linewidth]{%s.png} \n" \
                             "\\caption{Excitation Emission Matrix (EEMs) of sample %s (four left) " \
-                            "taken with incident energy spanning 250 - 2000eV, included is the " \
+                            "taken with incident energy spanning 250 - 2000 eV, included is the " \
                             "projected fluorescence signal (right). This data can be accessed at " \
                             "\\url{%s}. \\\\ \n} \n" \
                             "\\label{fig:%s_%d} \n" \
@@ -401,7 +401,7 @@ to those samples will be contained therein.
                 ssec += "\\begin{figure} \n" \
                         "\\centering \n" \
                         "\\includegraphics[width=0.8\\linewidth]{%s.png}\n" \
-                        "\\caption{X-ray absorption scan detector signals of sample %s (top)" \
+                        "\\caption{X-ray absorption scan detector signals of sample %s (top) " \
                         "averaged from multiple scans (un-normalized), also included are the " \
                         "incoming intensity scalar signals (bottom). This data can be accessed in full at " \
                         "\\url{%s}. \\\\ \n} \n" \
