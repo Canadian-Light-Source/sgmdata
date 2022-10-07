@@ -898,7 +898,7 @@ class SGMData(object):
                 if hasattr(v['data'][0], 'compute'):
                     df = v['data'][0].compute()
                 else:
-                    df = v['data']['0']
+                    df = v['data'][0]
             else:
                 break
             if key in average.keys():
