@@ -1,5 +1,13 @@
 import numpy as np
 
+try:
+    shell = get_ipython().__class__.__name__
+    if shell == 'ZMQInteractiveShell':
+        from tqdm.notebook import tqdm  # Jupyter notebook or qtconsole
+    else:
+        from tqdm import tqdm  # Other type (?)
+except NameError:
+    from tqdm import tqdm
 # Scan health functions (from Habib)
 
 def get_moving_average(data, window_size=4):
