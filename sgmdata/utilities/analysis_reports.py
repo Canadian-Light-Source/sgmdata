@@ -102,7 +102,7 @@ def norm_arr(a, max):
     return a
 
 
-def make_eemsreport(avg, emission=None, i0=None):
+def make_eemsreport(avg, emission=None, i0=1):
     if not emission:
         sig = avg.get_arr("sdd1")
         emission = np.linspace(10, sig.shape[1] * 10, sig.shape[1])
@@ -127,10 +127,10 @@ def make_eemsreport(avg, emission=None, i0=None):
     tey = avg.get_arr("tey")
     m_tey = max(tey)
     pd = norm_arr(avg.get_arr("pd"), m_tey)
-    sdd1 = norm_arr(avg.get_arr("sdd1"), m_tey, i0 = i0)
-    sdd2 = norm_arr(avg.get_arr("sdd2"), m_tey, i0 = i0)
-    sdd3 = norm_arr(avg.get_arr("sdd3"), m_tey, i0 = i0)
-    sdd4 = norm_arr(avg.get_arr("sdd4"), m_tey, i0 = i0)
+    sdd1 = norm_arr(avg.get_arr("sdd1"), m_tey)
+    sdd2 = norm_arr(avg.get_arr("sdd2"), m_tey)
+    sdd3 = norm_arr(avg.get_arr("sdd3"), m_tey)
+    sdd4 = norm_arr(avg.get_arr("sdd4"), m_tey)
     xas_plots = [{
         "title": "XRF Plot",
         "kind": "lineplot",
@@ -138,10 +138,10 @@ def make_eemsreport(avg, emission=None, i0=None):
             "x": ["Energy (eV)"] + list(avg.data.index),
             "y1": [["pd"] + list(pd),
                    ["tey"] + list(tey),
-                   ["sdd1"] + list(sdd1[:, int(p - fit['widths'][i]):int(p + fit['widths'][i])].sum(axis=1)),
-                   ["sdd2"] + list(sdd2[:, int(p - fit['widths'][i]):int(p + fit['widths'][i])].sum(axis=1)),
-                   ["sdd3"] + list(sdd3[:, int(p - fit['widths'][i]):int(p + fit['widths'][i])].sum(axis=1)),
-                   ["sdd4"] + list(sdd4[:, int(p - fit['widths'][i]):int(p + fit['widths'][i])].sum(axis=1))
+                   ["sdd1"] + list(sdd1[:, int(p - fit['widths'][i]):int(p + fit['widths'][i])].sum(axis=1)/i0),
+                   ["sdd2"] + list(sdd2[:, int(p - fit['widths'][i]):int(p + fit['widths'][i])].sum(axis=1)/i0),
+                   ["sdd3"] + list(sdd3[:, int(p - fit['widths'][i]):int(p + fit['widths'][i])].sum(axis=1)/i0),
+                   ["sdd4"] + list(sdd4[:, int(p - fit['widths'][i]):int(p + fit['widths'][i])].sum(axis=1)/i0)
                    ],
             "x-label": "Energy (eV)",
             "y1-label": "Absorption (a.u.)",
