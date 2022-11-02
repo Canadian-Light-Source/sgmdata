@@ -138,7 +138,7 @@ def preprocess(sample, **kwargs):
         print("Interpolating...", end=" ")
         interp = sgm_data.interpolate(**kwargs)
         if report:
-            bs_args.update({'report': [k for k in sgm_data.scans['keys']]})
+            bs_args.update({'report': [k for k in sgm_data.scans.keys()]})
         sgmq.write_proc(sgm_data.scans)
         bscans, report = badscans(interp, **bs_args)
         if len(bscans) != len(sgm_data.scans):
