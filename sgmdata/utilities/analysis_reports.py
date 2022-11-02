@@ -37,7 +37,7 @@ def high_var(avg, emission=[], detector='sdd3'):
     """
     sig = avg.get_arr(detector)
     if not len(emission):
-        emission = np.linspace(0, sig.shape[1] * 10, sig.shape[1])
+        emission = np.linspace(10, sig.shape[1] * 10, sig.shape[1])
     xrf_var = np.var(sig, axis=0)
     var_peaks, _ = find_peaks(xrf_var, distance=10, height=np.mean(xrf_var))
     peaks = [emission[v] for v in var_peaks]
@@ -61,7 +61,7 @@ def sel_roi(avg, emission=[], depth=20):
     detectors = ['sdd1', 'sdd2', 'sdd3', 'sdd4']
     if not len(emission):
         sig = avg.get_arr("sdd1")
-        emission = np.linspace(0, sig.shape[1] * 10, sig.shape[1])
+        emission = np.linspace(10, sig.shape[1] * 10, sig.shape[1])
     start_end = [depth, -1 * depth]
     fit = {"peaks": [], "heights": [], "widths": []}
     for selection in start_end:
@@ -97,3 +97,70 @@ def sel_roi(avg, emission=[], depth=20):
     return fit
 
 
+def norm_arr(a, max):
+    a = max * (a / np.amax(a))
+    return a
+
+
+def make_eemsreport(avg, emission=None, i0=None):
+    if not emission:
+        sig = avg.get_arr("sdd1")
+        emission = np.linspace(10, sig.shape[1] * 10, sig.shape[1])
+    fit = sel_roi(avg, emission=emission)
+    xrf_plot = [{
+        "title": "XRF Plot",
+        "kind": "lineplot",
+        "data": {
+            "x": ["Emission Energy (eV)"] + list(emission),
+            "y1": [["sdd1"] + list(avg.get_arr("sdd1").sum(axis=0)),
+                   ["sdd2"] + list(avg.get_arr("sdd2").sum(axis=0)),
+                   ["sdd3"] + list(avg.get_arr("sdd3").sum(axis=0)),
+                   ["sdd4"] + list(avg.get_arr("sdd4").sum(axis=0))
+                   ],
+            "x-label": "Emission Energy (eV)",
+            "y1-label": "Fluorescence",
+            "aspect-ratio": 1.5,
+            "annotations": [{"value": p, "text": f"ROI{i}"} for i, p in enumerate(fit['peaks'])]
+        },
+        "style": "col-12"
+    }]
+    tey = avg.get_arr("tey")
+    m_tey = max(tey)
+    pd = norm_arr(avg.get_arr("pd"), m_tey)
+    sdd1 = norm_arr(avg.get_arr("sdd1"), m_tey, i0 = i0)
+    sdd2 = norm_arr(avg.get_arr("sdd2"), m_tey, i0 = i0)
+    sdd3 = norm_arr(avg.get_arr("sdd3"), m_tey, i0 = i0)
+    sdd4 = norm_arr(avg.get_arr("sdd4"), m_tey, i0 = i0)
+    xas_plots = [{
+        "title": "XRF Plot",
+        "kind": "lineplot",
+        "data": {
+            "x": ["Energy (eV)"] + list(avg.data.index),
+            "y1": [["pd"] + list(pd),
+                   ["tey"] + list(tey),
+                   ["sdd1"] + list(sdd1[:, int(p - fit['widths'][i]):int(p + fit['widths'][i])].sum(axis=1)),
+                   ["sdd2"] + list(sdd2[:, int(p - fit['widths'][i]):int(p + fit['widths'][i])].sum(axis=1)),
+                   ["sdd3"] + list(sdd3[:, int(p - fit['widths'][i]):int(p + fit['widths'][i])].sum(axis=1)),
+                   ["sdd4"] + list(sdd4[:, int(p - fit['widths'][i]):int(p + fit['widths'][i])].sum(axis=1))
+                   ],
+            "x-label": "Energy (eV)",
+            "y1-label": "Absorption (a.u.)",
+            "aspect-ratio": 1.5,
+            "annotations": [{"value": p, "text": f"ROI{i}"} for i, p in enumerate(fit['peaks'])]
+        },
+        "style": "col-12"
+    } for i, p in enumerate(fit['peaks'])]
+
+    report = [{
+            "title": "Fluorescence Region of Interest Selection",
+            "style": "row",
+            "content": xrf_plot
+        },
+        {
+            "title": "X-ray Absorption Spectra",
+            "style": "row",
+            "content": xas_plots
+        }
+    ]
+
+    return report
