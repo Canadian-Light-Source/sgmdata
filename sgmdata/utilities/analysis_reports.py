@@ -132,16 +132,16 @@ def make_eemsreport(avg, emission=None, i0=1):
     sdd3 = norm_arr(avg.get_arr("sdd3"), m_tey)
     sdd4 = norm_arr(avg.get_arr("sdd4"), m_tey)
     xas_plots = [{
-        "title": "XRF Plot",
+        "title": f"XAS Plot for ROI{i}",
         "kind": "lineplot",
         "data": {
             "x": ["Energy (eV)"] + list(avg.data.index),
-            "y1": [["pd"] + list(pd),
-                   ["tey"] + list(tey),
-                   ["sdd1"] + list(sdd1[:, int(p - fit['widths'][i]):int(p + fit['widths'][i])].sum(axis=1)/i0),
-                   ["sdd2"] + list(sdd2[:, int(p - fit['widths'][i]):int(p + fit['widths'][i])].sum(axis=1)/i0),
-                   ["sdd3"] + list(sdd3[:, int(p - fit['widths'][i]):int(p + fit['widths'][i])].sum(axis=1)/i0),
-                   ["sdd4"] + list(sdd4[:, int(p - fit['widths'][i]):int(p + fit['widths'][i])].sum(axis=1)/i0)
+            "y1": [["pd"] + list(pd.sum(axis=1)),
+                   ["tey"] + list(tey.sum(axis=1)),
+                   ["sdd1"] + list(sdd1[:, int(p/10 - fit['widths'][i]):int(p/10 + fit['widths'][i])].sum(axis=1)/i0),
+                   ["sdd2"] + list(sdd2[:, int(p/10 - fit['widths'][i]):int(p/10 + fit['widths'][i])].sum(axis=1)/i0),
+                   ["sdd3"] + list(sdd3[:, int(p/10 - fit['widths'][i]):int(p/10 + fit['widths'][i])].sum(axis=1)/i0),
+                   ["sdd4"] + list(sdd4[:, int(p/10 - fit['widths'][i]):int(p/10 + fit['widths'][i])].sum(axis=1)/i0)
                    ],
             "x-label": "Energy (eV)",
             "y1-label": "Absorption (a.u.)",
