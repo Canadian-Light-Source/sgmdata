@@ -138,15 +138,14 @@ def make_eemsreport(avg, emission=None, i0=1):
             "x": ["Energy (eV)"] + list(avg.data.index),
             "y1": [["pd"] + list(pd.sum(axis=1)),
                    ["tey"] + list(tey.sum(axis=1)),
-                   ["sdd1"] + list(sdd1[:, int(p/10 - fit['widths'][i]):int(p/10 + fit['widths'][i])].sum(axis=1)/i0),
-                   ["sdd2"] + list(sdd2[:, int(p/10 - fit['widths'][i]):int(p/10 + fit['widths'][i])].sum(axis=1)/i0),
-                   ["sdd3"] + list(sdd3[:, int(p/10 - fit['widths'][i]):int(p/10 + fit['widths'][i])].sum(axis=1)/i0),
-                   ["sdd4"] + list(sdd4[:, int(p/10 - fit['widths'][i]):int(p/10 + fit['widths'][i])].sum(axis=1)/i0)
+                   ["sdd1"] + list(sdd1[:, int(p/10 - fit['widths'][i]/10):int(p/10 + fit['widths'][i]/10)].sum(axis=1)/i0),
+                   ["sdd2"] + list(sdd2[:, int(p/10 - fit['widths'][i]/10):int(p/10 + fit['widths'][i]/10)].sum(axis=1)/i0),
+                   ["sdd3"] + list(sdd3[:, int(p/10 - fit['widths'][i]/10):int(p/10 + fit['widths'][i]/10)].sum(axis=1)/i0),
+                   ["sdd4"] + list(sdd4[:, int(p/10 - fit['widths'][i]/10):int(p/10 + fit['widths'][i]/10)].sum(axis=1)/i0)
                    ],
             "x-label": "Energy (eV)",
             "y1-label": "Absorption (a.u.)",
             "aspect-ratio": 1.5,
-            "annotations": [{"value": p, "text": f"ROI{i}"} for i, p in enumerate(fit['peaks'])]
         },
         "style": "col-12"
     } for i, p in enumerate(fit['peaks'])]
