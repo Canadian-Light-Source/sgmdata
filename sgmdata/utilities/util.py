@@ -127,7 +127,6 @@ def preprocess(sample, **kwargs):
     clear = kwargs.get('clear', True)
     query_return = kwargs.get('query', False)
     report = kwargs.get('report', False)
-    client = kwargs.get('client', False)
     if isinstance(bs_args, tuple):
         bs_args = dict(cont=bs_args[0], dump=bs_args[1], sat=bs_args[2], sdd_max=sdd_max)
     resolution = kwargs.get('resolution', 0.1)
@@ -139,7 +138,7 @@ def preprocess(sample, **kwargs):
         print("Interpolating...", end=" ")
         interp = sgm_data.interpolate(**kwargs)
         if report:
-            kwargs['report'] = [k for k in sgm_data.scans['keys']]
+            bs_args.update({'report': [k for k in sgm_data.scans['keys']]})
         sgmq.write_proc(sgm_data.scans)
         bscans, report = badscans(interp, **bs_args)
         if len(bscans) != len(sgm_data.scans):
