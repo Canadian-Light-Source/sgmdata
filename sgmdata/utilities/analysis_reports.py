@@ -103,22 +103,24 @@ def norm_arr(a, max):
     return a
 
 
-def make_eemsreport(sgmdata, emission=None, sample = None, i0=1, bs_args={"report": True}):
+def make_eemsreport(data, emission=None, sample = None, i0=1, bs_args={"report": True}):
     interp = []
-    for f, scan in sgmdata.scans.items():
+    report = []
+    bscan_report = {}
+    for f, scan in data.scans.items():
         for e, entry in scan.items():
             if 'binned' in entry.keys():
                 interp.append(entry['binned']['dataframe'])
-
-    _, bscan_report = badscans(interp, **bs_args)
+    if interp:
+        _, bscan_report = badscans(interp, **bs_args)
     if sample:
-        averaged = {sample: sgmdata.averaged[sample]}
+        averaged = {sample: data.averaged[sample]}
     else:
-        averaged = sgmdata.averaged
+        averaged = data.averaged
     for sample, avg in averaged.items():
         if not emission:
             sig = avg.get_arr("sdd1")
-            emission = np.linspace(10, sig.shape[1] * 10, sig.shape[1])
+            emission = np.linspace(10, sig.shape[1] * 10, sig.shape[1]).tolist()
         fit = sel_roi(avg, emission=emission)
         xrf_plot = [{
             "title": "XRF Plot",
@@ -163,7 +165,7 @@ def make_eemsreport(sgmdata, emission=None, sample = None, i0=1, bs_args={"repor
             "style": "col-12"
         } for i, p in enumerate(fit['peaks'])]
 
-        report = [{
+        report += [{
                 "title": "Fluorescence Region of Interest Selection",
                 "style": "row",
                 "content": xrf_plot
