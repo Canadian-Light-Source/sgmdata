@@ -127,6 +127,7 @@ def preprocess(sample, **kwargs):
     clear = kwargs.get('clear', True)
     query_return = kwargs.get('query', False)
     report = kwargs.get('report', False)
+    i0 = kwargs.get('i0', 1)
     if isinstance(bs_args, tuple):
         bs_args = dict(cont=bs_args[0], dump=bs_args[1], sat=bs_args[2], sdd_max=sdd_max)
     resolution = kwargs.get('resolution', 0.1)
@@ -159,9 +160,7 @@ def preprocess(sample, **kwargs):
             if query_return:
                 return SGMQuery(sample=sample, processed=True, user=user)
             if report:
-                eems_report = make_eemsreport(sgm_data.averaged[sample])
-                if bad_report:
-                    eems_report.append(bad_report)
+                eems_report = make_eemsreport(sgm_data, sample=sample, i0=i0, bs_args=bs_args)
                 return eems_report
             del sgm_data
             return HTML(html)
