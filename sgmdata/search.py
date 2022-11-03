@@ -234,7 +234,7 @@ class SGMQuery(object):
             else:
                 self.raw_paths = ["/home/jovyan/data/" + d[1].split('.')[0] + '.nxs' for d in domains]
             try:
-                self.xasscan_ids = {i: [self.paths[j] for j, p in enumerate(average_ids) if p[3] == d[0]] for i, d in enumerate(domains)}
+                self.xasscan_ids = {i: [j for j, p in enumerate(average_ids) if p[3] == d[0]] for i, d in enumerate(domains)}
             except:
                 self.xasscan_ids = {}
 
