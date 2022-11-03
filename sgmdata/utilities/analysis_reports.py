@@ -1,7 +1,7 @@
 from sgmdata.xrffit import *
 from sgmdata.utilities.util import badscans
 import numpy as np
-
+import json
 
 def fit_peaks_once(emission, sdd):
     """
@@ -178,4 +178,4 @@ def make_eemsreport(data, emission=None, sample = None, i0=1, bs_args={"report":
             bscan_report
         ]
 
-    return report
+    return json.dumps(report)
