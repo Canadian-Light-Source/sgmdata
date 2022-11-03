@@ -136,8 +136,8 @@ class SGMQuery(object):
             if len(self.paths) and len(self.raw_paths):
                 for i, sgmscan in enumerate(self.data.scans.values()):
                     for entry in list(sgmscan.__dict__.values()):
-                        if i in self.xasscan_ids.keys():
-                            entry.read(filename=self.paths[self.xasscan_ids[i]])
+                        if self.xasscan_ids[i]:
+                            entry.read(filename=self.paths[self.xasscan_ids[i][0]])
 
 
     def get_paths(self):
@@ -234,7 +234,7 @@ class SGMQuery(object):
             else:
                 self.raw_paths = ["/home/jovyan/data/" + d[1].split('.')[0] + '.nxs' for d in domains]
             try:
-                self.xasscan_ids = {i: [self.paths[j] for j, p in enumerate(procdomains) if p[3] == d[0]][0] for i, d in enumerate(domains)}
+                self.xasscan_ids = {i: [self.paths[j] for j, p in enumerate(procdomains) if p[3] == d[0]] for i, d in enumerate(domains)}
             except:
                 self.xasscan_ids = {}
 
