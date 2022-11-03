@@ -133,10 +133,11 @@ class SGMQuery(object):
                 processed = SGMData.Processed(sample=self.sample)
                 processed.read(filename=self.avg_path)
                 self.data.averaged = {processed['sample']: OneList([processed])}
-            if len(self.paths) == len(self.raw_paths):
+            if len(self.paths) and len(self.raw_paths):
                 for i, sgmscan in enumerate(self.data.scans.values()):
                     for entry in list(sgmscan.__dict__.values()):
-                        entry.read(filename=self.paths[i])
+                        if i in self.xasscan_ids.keys():
+                            entry.read(filename=self.paths[self.xasscan_ids[i]])
 
 
     def get_paths(self):
@@ -174,7 +175,7 @@ class SGMQuery(object):
         if self.processed:
             if not len(domains):
                 return []
-            SQL = "SELECT average_id, domain, id FROM lims_xasprocessedscan WHERE xasscan_id IN ("
+            SQL = "SELECT average_id, domain, id, xasscan_id FROM lims_xasprocessedscan WHERE xasscan_id IN ("
             for ID in domains:
                 SQL += "'%d', " % ID[0]
             SQL = SQL[:-2] + ");"
@@ -224,7 +225,7 @@ class SGMQuery(object):
 
             if self.admin:
                 self.paths = ["/home/jovyan/data/" + d.split('.')[1] + "/" + d.split('.')[0] + '.nxs' for d in
-                              procdomains]
+                               procdomains]
             else:
                 self.paths = ["/home/jovyan/data/" + d.split('.')[0] + '.nxs' for d in procdomains]
 
@@ -232,7 +233,10 @@ class SGMQuery(object):
                 self.raw_paths = ["/home/jovyan/data/" + d[1].split('.')[1] + "/" + d[1].split('.')[0] + '.nxs' for d in domains]
             else:
                 self.raw_paths = ["/home/jovyan/data/" + d[1].split('.')[0] + '.nxs' for d in domains]
-
+            try:
+                self.xasscan_ids = {i: [self.paths[j] for j, p in enumerate(procdomains) if p[3] == d[0]][0] for i, d in enumerate(domains)}
+            except:
+                self.xasscan_ids = {}
 
         else:
             if self.admin:

@@ -108,7 +108,7 @@ def make_eemsreport(data, emission=None, sample = None, i0=1, bs_args={"report":
     report = []
     bscan_report = {}
     for f, scan in data.scans.items():
-        for e, entry in scan.items():
+        for entry in list(scan.__dict__.values()):
             if 'binned' in entry.keys():
                 interp.append(entry['binned']['dataframe'])
     if interp:
