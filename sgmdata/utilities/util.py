@@ -10,7 +10,7 @@ import os
 import warnings
 
 from sgmdata.utilities.scan_health import badscans
-from sgmdata.utilities.analysis_reports import sel_roi
+from sgmdata.utilities.analysis_reports import make_eemsreport
 
 
 try:
@@ -140,7 +140,7 @@ def preprocess(sample, **kwargs):
         if report:
             bs_args.update({'report': [k for k in sgm_data.scans.keys()]})
         sgmq.write_proc(sgm_data.scans)
-        bscans, report = badscans(interp, **bs_args)
+        bscans, bad_report = badscans(interp, **bs_args)
         if len(bscans) != len(sgm_data.scans):
             print("Removed %d bad scan(s) from average. Averaging..." % len(bscans), end=" ")
             if any(bscans):
@@ -159,9 +159,10 @@ def preprocess(sample, **kwargs):
             if query_return:
                 return SGMQuery(sample=sample, processed=True, user=user)
             if report:
-                report = [report]
-                #report.append(xrf_report(sgm_data))
-                return report
+                eems_report = make_eemsreport(sgm_data.averaged[sample])
+                if bad_report:
+                    eems_report.append(bad_report)
+                return eems_report
             del sgm_data
             return HTML(html)
         else:

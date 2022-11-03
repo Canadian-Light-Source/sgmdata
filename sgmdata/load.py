@@ -530,6 +530,7 @@ class SGMData(object):
                       if 'NXdata' in str(h5[entry + "/" + x].attrs.get('NX_class'))]
             axes = [[str(nm) for nm in h5[nxdata].keys() for s in h5[nxdata].attrs.get('axes') if str(s) in str(nm) or
                      str(nm) in str(s)] for nxdata in NXdata]
+            axes = [[s for s in x if s in NXdata[i].keys()] for i, x in enumerate(axes)] #check axis data exists
             indep_shape = [v.shape for i, d in enumerate(NXdata) for k, v in h5[d].items() if k in axes[i][0]]
 
             data = [{k.replace('_processed', ''): np.squeeze(v) for k, v in h5[d].items() if
