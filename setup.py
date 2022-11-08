@@ -41,6 +41,7 @@ setup(
         "beautifulsoup4",
         "matplotlib",
         "requests",
+        "lmfit"
     ]
 
 
