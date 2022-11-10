@@ -99,7 +99,10 @@ def sel_roi(avg, emission=[], depth=20):
 
 
 def norm_arr(a, max):
-    a = max * (a / np.amax(a))
+    if abs(max) > 0:
+        a = max * (a / np.amax(a))
+        return a
+    a = a /np.amax(a)
     return a
 
 
@@ -137,9 +140,9 @@ def make_eemsreport(data, emission=[], sample = None, i0=1, bs_args={}):
             },
             "style": "col-12"
         }]
-        tey = avg.get_arr("tey")
-        m_tey = np.nanmax(tey)
-        pd = norm_arr(avg.get_arr("pd"), m_tey)
+        tey = np.nan_to_num(avg.get_arr("tey"))
+        m_tey = max(tey)
+        pd = norm_arr(np.nan_to_num(avg.get_arr("pd")), m_tey)
         sdd1 = norm_arr(avg.get_arr("sdd1"), m_tey)
         sdd2 = norm_arr(avg.get_arr("sdd2"), m_tey)
         sdd3 = norm_arr(avg.get_arr("sdd3"), m_tey)
