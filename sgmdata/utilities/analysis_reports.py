@@ -125,10 +125,10 @@ def make_eemsreport(data, emission=[], sample = None, i0=1, bs_args={}):
             "kind": "lineplot",
             "data": {
                 "x": ["Emission Energy (eV)"] + list(emission),
-                "y1": [["sdd1"] + list(avg.get_arr("sdd1").nansum(axis=0)),
-                       ["sdd2"] + list(avg.get_arr("sdd2").nansum(axis=0)),
-                       ["sdd3"] + list(avg.get_arr("sdd3").nansum(axis=0)),
-                       ["sdd4"] + list(avg.get_arr("sdd4").nansum(axis=0))
+                "y1": [["sdd1"] + list(np.nansum(avg.get_arr("sdd1"), axis=0)),
+                       ["sdd2"] + list(np.nansum(avg.get_arr("sdd2"), axis=0)),
+                       ["sdd3"] + list(np.nansum(avg.get_arr("sdd3"), axis=0)),
+                       ["sdd4"] + list(np.nansum(avg.get_arr("sdd4"), axis=0))
                        ],
                 "x-label": "Emission Energy (eV)",
                 "y1-label": "Fluorescence",
@@ -138,7 +138,7 @@ def make_eemsreport(data, emission=[], sample = None, i0=1, bs_args={}):
             "style": "col-12"
         }]
         tey = avg.get_arr("tey")
-        m_tey = max(tey)
+        m_tey = np.nanmax(tey)
         pd = norm_arr(avg.get_arr("pd"), m_tey)
         sdd1 = norm_arr(avg.get_arr("sdd1"), m_tey)
         sdd2 = norm_arr(avg.get_arr("sdd2"), m_tey)
@@ -151,10 +151,10 @@ def make_eemsreport(data, emission=[], sample = None, i0=1, bs_args={}):
                 "x": ["Energy (eV)"] + list(avg.data.index),
                 "y1": [["pd"] + list(pd.sum(axis=1)),
                        ["tey"] + list(tey.sum(axis=1)),
-                       ["sdd1"] + list(sdd1[:, int(p/10 - fit['widths'][i]/10):int(p/10 + fit['widths'][i]/10)].nansum(axis=1)/i0),
-                       ["sdd2"] + list(sdd2[:, int(p/10 - fit['widths'][i]/10):int(p/10 + fit['widths'][i]/10)].nansum(axis=1)/i0),
-                       ["sdd3"] + list(sdd3[:, int(p/10 - fit['widths'][i]/10):int(p/10 + fit['widths'][i]/10)].nansum(axis=1)/i0),
-                       ["sdd4"] + list(sdd4[:, int(p/10 - fit['widths'][i]/10):int(p/10 + fit['widths'][i]/10)].nansum(axis=1)/i0)
+                       ["sdd1"] + list(np.nansum(sdd1[:, int(p/10 - fit['widths'][i]/10):int(p/10 + fit['widths'][i]/10)], axis=1)/i0),
+                       ["sdd2"] + list(np.nansum(sdd2[:, int(p/10 - fit['widths'][i]/10):int(p/10 + fit['widths'][i]/10)], axis=1)/i0),
+                       ["sdd3"] + list(np.nansum(sdd3[:, int(p/10 - fit['widths'][i]/10):int(p/10 + fit['widths'][i]/10)], axis=1)/i0),
+                       ["sdd4"] + list(np.nansum(sdd4[:, int(p/10 - fit['widths'][i]/10):int(p/10 + fit['widths'][i]/10)], axis=1)/i0)
                        ],
                 "x-label": "Energy (eV)",
                 "y1-label": "Absorption (a.u.)",
