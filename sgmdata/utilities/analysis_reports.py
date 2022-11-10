@@ -103,7 +103,7 @@ def norm_arr(a, max):
     return a
 
 
-def make_eemsreport(data, emission=None, sample = None, i0=1, bs_args={}):
+def make_eemsreport(data, emission=[], sample = None, i0=1, bs_args={}):
     interp = []
     report = []
     bs_args.update({'report': [k for k in data.scans.keys()]})
