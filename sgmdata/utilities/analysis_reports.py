@@ -23,7 +23,7 @@ def fit_peaks_once(emission, sdd):
     guess = []
     for i in range(0, len(pks)):
         guess += [pks[i] * 10, hgts['peak_heights'][i], 50]
-    pcalc, pcov = fit_xrf(emission, y, constrain_peaks(guess, 2, 2 * np.amax(y), 5))
+    pcalc, pcov = fit_xrf(emission, y, constrain_peaks(guess, 2, 2 * np.amax(y), 5)) #Some sdds have incorrect bin number.
     wid = pcalc[2::3]
     ctr = pcalc[0::3]
     return pks, hgts, wid, ctr
@@ -60,6 +60,8 @@ def sel_roi(avg, emission=[], depth=20):
     >**bounds** *(list)* -- list of len 2, included start and stop bin of mcas to be fit.
     """
     detectors = ['sdd1', 'sdd2', 'sdd3', 'sdd4']
+    roi_cols = avg.data.filter(regex="sdd[1-4]_[0-2].*").columns
+    avg.data.drop(columns=roi_cols, inplace=True)
     if not len(emission):
         sig = avg.get_arr("sdd1")
         emission = np.linspace(10, sig.shape[1] * 10, sig.shape[1])
@@ -72,8 +74,6 @@ def sel_roi(avg, emission=[], depth=20):
         if selection < 0:
             df = df.tail(-1 * selection).copy()
         max_en = max(df.index) * 1.025  # 2.5% error in mca energy range
-        roi_cols = df.filter(regex="sdd[1-4]_[0-2].*").columns
-        df.drop(columns=roi_cols, inplace=True)
         data = []
         for det in detectors:
             rgx = "%s.*" % det
@@ -95,7 +95,7 @@ def sel_roi(avg, emission=[], depth=20):
     h = [hgt for i, hgt in enumerate(h) if pk[i] < max_en and pk[i] not in close_peaks]
     w = [50 for i in range(len(pks))]
     fit = {"peaks": peaks + pks, "heights": heights + h, "widths": widths + w}
-    return fit
+    return fit, emission
 
 
 def norm_arr(a, max):
@@ -119,10 +119,7 @@ def make_eemsreport(data, emission=None, sample = None, i0=1, bs_args={}):
     else:
         averaged = data.averaged
     for sample, avg in averaged.items():
-        if not emission:
-            sig = avg.get_arr("sdd1")
-            emission = np.linspace(10, sig.shape[1] * 10, sig.shape[1]).tolist()
-        fit = sel_roi(avg, emission=emission)
+        fit, emission = sel_roi(avg, emission=emission)
         xrf_plot = [{
             "title": "XRF Plot",
             "kind": "lineplot",
