@@ -310,6 +310,15 @@ def plot_interp(**kwargs):
         return json.dumps(json_item(layout, "xrf"))
     show(layout)
 
+def shifted(saxis, shift=0.5):
+    """
+    Shift axis data by percentage of difference between consecutive points
+    """
+    shifted_data = np.zeros(len(saxis))
+    shifted_data[0] = saxis[0]
+    for i in range(1, len(saxis)):
+        shifted_data[i] = saxis[i] + shift * (saxis[i] - saxis[i - 1])
+    return shifted_data
 
 def plot_xyz(shift=False, table=False, **kwargs):
     """
@@ -356,14 +365,13 @@ def plot_xyz(shift=False, table=False, **kwargs):
     width = xdelta / (sdd3.shape[0] / float(command[8]))
 
     # Shift the X data to line up the rows at center.
-    # Pre-process the x values. The data needs to be shifted due to how they were collected
+    # Pre-process the slew values. The data needs to be shifted due to how they were collected
     if shift:
-        shift = 0.5
-        shifted_data = np.zeros(len(x))
-        shifted_data[0] = x[0]
-        for i in range(1, len(x)):
-            shifted_data[i] = x[i] + shift * (x[i] - x[i - 1])
-        x = shifted_data
+        slew_axis = command[1]
+        if 'y' in slew_axis or 'z' in slew_axis:
+            y = shifted(y)
+        else:
+            x = shifted(x)
 
     # Set the y and x axes range from actual data.
     yr = Range1d(start=max(y), end=min(y))
