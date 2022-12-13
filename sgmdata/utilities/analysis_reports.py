@@ -179,4 +179,228 @@ def make_eemsreport(data, emission=[], sample = None, i0=1, bs_args={}):
             bscan_report
         ]
 
-    return json.dumps(report)
+    return report
+
+def sel_map_roi(entry, emission=[], max_en=2000):
+    """
+    ### Description:
+    Finds XRF peaks of high variance throughout the image, and return thier ROIs.
+    ### Args:
+    >**avg** *(sgmdata.Processed)* -- Averaged object from running sgmdata.mean().
+    ### Keywords:
+    >**emission** *(ndarray)*  -- labels for xrf bins
+    >**depth** *(int)* -- number of points to take from the beginning and end of the XANES scan.
+    >**bounds** *(list)* -- list of len 2, included start and stop bin of mcas to be fit.
+    """
+    detectors = ['sdd1', 'sdd2', 'sdd3', 'sdd4']
+    roi_cols = entry['binned']['dataframe'].filter(regex="sdd[1-4]_[0-2].*").columns
+    df = entry['binned']['dataframe']
+    df.drop(columns=roi_cols, inplace=True)
+    if not len(emission):
+        sig = df.filter(regex="sdd1.*").to_numpy()
+        emission = np.linspace(10, sig.shape[1] * 10, sig.shape[1])
+    fit = {"peaks": [], "heights": [], "widths": []}
+    data = []
+    for det in detectors:
+        rgx = "%s.*" % det
+        data.append(df.filter(regex=rgx, axis=1))
+        pks, hgts, wid, _ = fit_peaks_once(emission, data)
+    peaks = [emission[p] for p in pks if 230 < emission[p] < max_en]
+    heights = [h for i, h in enumerate(hgts['peak_heights']) if 230 < emission[pks[i]] < max_en]
+    widths = [w for i, w in enumerate(wid) if 230 < emission[pks[i]] < max_en]
+    fit["peaks"].append(peaks)
+    fit["heights"].append(heights)
+    fit["widths"].append(widths)
+
+    peaks = list(set(fit['peaks'][-1]).difference(set(fit['peaks'][0])))
+    heights = [h for i, h in enumerate(fit['heights'][-1]) if fit['peaks'][-1][i] in peaks]
+    widths = [w for i, w in enumerate(fit['widths'][-1]) if fit['peaks'][-1][i] in peaks]
+    pk, h, _ = high_var(entry, emission=emission, detector="sdd3")
+    close_peaks = [p for p in pk for sp in peaks if abs(p - sp) < 12]
+    pks = [p for p in pk if p < max_en and p not in close_peaks]
+    h = [hgt for i, hgt in enumerate(h) if pk[i] < max_en and pk[i] not in close_peaks]
+    w = [50 for i in range(len(pks))]
+    fit = {"peaks": peaks + pks, "heights": heights + h, "widths": widths + w}
+    return fit, emission
+
+def make_xrfmapreport(data, emission=[], sample = None, i0=1):
+    interp = []
+    report = []
+    for f, scan in data.scans.items():
+        for entry in list(scan.__dict__.values()):
+            if 'binned' in entry.keys():
+                interp.append(entry)
+            else:
+                df = entry.interpolate()
+                interp.append(entry)
+    for entry in interp:
+        data = entry['binned']['dataframe']
+        fit, emission = sel_map_roi(entry, emission=emission)
+        xrf_plot = [{
+            "title": "XRF Plot",
+            "kind": "lineplot",
+            "data": {
+                "x": ["Emission Energy (eV)"] + list(emission),
+                "y1": [["sdd1"] + list(np.nansum(entry.get_arr("sdd1"), axis=0)),
+                       ["sdd2"] + list(np.nansum(entry.get_arr("sdd2"), axis=0)),
+                       ["sdd3"] + list(np.nansum(entry.get_arr("sdd3"), axis=0)),
+                       ["sdd4"] + list(np.nansum(entry.get_arr("sdd4"), axis=0))
+                       ],
+                "x-label": "Emission Energy (eV)",
+                "y1-label": "Fluorescence",
+                "aspect-ratio": 1.5,
+                "annotations": [{"value": p, "text": f"ROI{i}"} for i, p in enumerate(fit['peaks'])]
+            },
+            "style": "col-12"
+        }]
+        tey = norm_arr(np.nan_to_num(entry.get_arr("tey")), i0)
+        pd = norm_arr(np.nan_to_num(entry.get_arr("pd")), i0)
+        sdd1 = norm_arr(entry.get_arr("sdd1"), i0)
+        sdd2 = norm_arr(entry.get_arr("sdd2"), i0)
+        sdd3 = norm_arr(entry.get_arr("sdd3"), i0)
+        sdd4 = norm_arr(entry.get_arr("sdd4"), i0)
+        xrfm_plots = [{
+            "title": f"XRF Map for ROI{i}",
+            "kind": "heatmap",
+            "data": {
+                "x": ["xp (mm)"] + list(data.index.get_level_values('xp')),
+                "y": ["yp (mm)"] + list(data.index.get_level_values('yp')),
+
+                "z": [["pd"] + list(np.nansum(pd, axis=1)),
+                       ["tey"] + list(np.nansum(tey, axis=1)),
+                       ["sdd1"] + list(np.nansum(sdd1[:, int(p/10 - fit['widths'][i]/10):int(p/10 + fit['widths'][i]/10)], axis=1)),
+                       ["sdd2"] + list(np.nansum(sdd2[:, int(p/10 - fit['widths'][i]/10):int(p/10 + fit['widths'][i]/10)], axis=1)),
+                       ["sdd3"] + list(np.nansum(sdd3[:, int(p/10 - fit['widths'][i]/10):int(p/10 + fit['widths'][i]/10)], axis=1)),
+                       ["sdd4"] + list(np.nansum(sdd4[:, int(p/10 - fit['widths'][i]/10):int(p/10 + fit['widths'][i]/10)], axis=1))
+                       ],
+                "x-label": "x (mm)",
+                "y-label": "y (mm)",
+                "aspect-ratio": 1.5,
+            },
+            "style": "col-12"
+        } for i, p in enumerate(fit['peaks'])]
+
+        report += [{
+                "title": "Fluorescence Region of Interest Selection",
+                "style": "row",
+                "content": xrf_plot
+            },
+            {
+                "title": "X-ray Fluorescence Maps",
+                "style": "row",
+                "content": xrfm_plots
+            },
+        ]
+
+    return report
+
+def sel_map_roi(entry, emission=[], max_en=2000):
+    """
+    ### Description:
+    Finds XRF peaks of high variance throughout the image, and return thier ROIs.
+    ### Args:
+    >**avg** *(sgmdata.Processed)* -- Averaged object from running sgmdata.mean().
+    ### Keywords:
+    >**emission** *(ndarray)*  -- labels for xrf bins
+    >**depth** *(int)* -- number of points to take from the beginning and end of the XANES scan.
+    >**bounds** *(list)* -- list of len 2, included start and stop bin of mcas to be fit.
+    """
+    detectors = ['sdd1', 'sdd2', 'sdd3', 'sdd4']
+    roi_cols = entry['binned']['dataframe'].filter(regex="sdd[1-4]_[0-2].*").columns
+    df = entry['binned']['dataframe']
+    df.drop(columns=roi_cols, inplace=True)
+    if not len(emission):
+        sig = df.filter(regex="sdd1.*").to_numpy()
+        emission = np.linspace(10, sig.shape[1] * 10, sig.shape[1])
+    fit = {"peaks": [], "heights": [], "widths": []}
+    data = []
+    for det in detectors:
+        rgx = "%s.*" % det
+        data.append(df.filter(regex=rgx, axis=1))
+        pks, hgts, wid, _ = fit_peaks_once(emission, data)
+    peaks = [emission[p] for p in pks if 230 < emission[p] < max_en]
+    heights = [h for i, h in enumerate(hgts['peak_heights']) if 230 < emission[pks[i]] < max_en]
+    widths = [w for i, w in enumerate(wid) if 230 < emission[pks[i]] < max_en]
+    fit["peaks"].append(peaks)
+    fit["heights"].append(heights)
+    fit["widths"].append(widths)
+
+    peaks = list(set(fit['peaks'][-1]).difference(set(fit['peaks'][0])))
+    heights = [h for i, h in enumerate(fit['heights'][-1]) if fit['peaks'][-1][i] in peaks]
+    widths = [w for i, w in enumerate(fit['widths'][-1]) if fit['peaks'][-1][i] in peaks]
+    pk, h, _ = high_var(entry, emission=emission, detector="sdd3")
+    close_peaks = [p for p in pk for sp in peaks if abs(p - sp) < 12]
+    pks = [p for p in pk if p < max_en and p not in close_peaks]
+    h = [hgt for i, hgt in enumerate(h) if pk[i] < max_en and pk[i] not in close_peaks]
+    w = [50 for i in range(len(pks))]
+    fit = {"peaks": peaks + pks, "heights": heights + h, "widths": widths + w}
+    return fit, emission
+
+def make_xrfmapreport(data, emission=[], sample = None, i0=1):
+    interp = []
+    report = []
+    for f, scan in data.scans.items():
+        for entry in list(scan.__dict__.values()):
+            if 'binned' in entry.keys():
+                interp.append(entry)
+            else:
+                df = entry.interpolate()
+                interp.append(entry)
+    for entry in interp:
+        data = entry['binned']['dataframe']
+        fit, emission = sel_map_roi(entry, emission=emission)
+        xrf_plot = [{
+            "title": "XRF Plot",
+            "kind": "lineplot",
+            "data": {
+                "x": ["Emission Energy (eV)"] + list(emission),
+                "y1": [["sdd1"] + list(np.nansum(entry.get_arr("sdd1"), axis=0)),
+                       ["sdd2"] + list(np.nansum(entry.get_arr("sdd2"), axis=0)),
+                       ["sdd3"] + list(np.nansum(entry.get_arr("sdd3"), axis=0)),
+                       ["sdd4"] + list(np.nansum(entry.get_arr("sdd4"), axis=0))
+                       ],
+                "x-label": "Emission Energy (eV)",
+                "y1-label": "Fluorescence",
+                "aspect-ratio": 1.5,
+                "annotations": [{"value": p, "text": f"ROI{i}"} for i, p in enumerate(fit['peaks'])]
+            },
+            "style": "col-12"
+        }]
+        tey = norm_arr(np.nan_to_num(entry.get_arr("tey")), i0)
+        pd = norm_arr(np.nan_to_num(entry.get_arr("pd")), i0)
+        sdd1 = norm_arr(entry.get_arr("sdd1"), i0)
+        sdd2 = norm_arr(entry.get_arr("sdd2"), i0)
+        sdd3 = norm_arr(entry.get_arr("sdd3"), i0)
+        sdd4 = norm_arr(entry.get_arr("sdd4"), i0)
+        xrfm_plots = [{
+            "title": f"XRF Map for ROI{i}",
+            "kind": "heatmap",
+            "data": {
+                "x": ["xp (mm)"] + list(data.index.get_level_values('xp')),
+                "y": ["yp (mm)"] + list(data.index.get_level_values('yp')),
+
+                "z": [["tey"] + list(np.nansum(tey, axis=1)),
+                       ["sdd1"] + list(np.nansum(sdd1[:, int(p/10 - fit['widths'][i]/10):int(p/10 + fit['widths'][i]/10)], axis=1)),
+                       ["sdd2"] + list(np.nansum(sdd2[:, int(p/10 - fit['widths'][i]/10):int(p/10 + fit['widths'][i]/10)], axis=1)),
+                       ["sdd3"] + list(np.nansum(sdd3[:, int(p/10 - fit['widths'][i]/10):int(p/10 + fit['widths'][i]/10)], axis=1)),
+                       ["sdd4"] + list(np.nansum(sdd4[:, int(p/10 - fit['widths'][i]/10):int(p/10 + fit['widths'][i]/10)], axis=1))
+                       ],
+                "selected": ["sdd1", "sdd2", "sdd3", "sdd4"],
+                "aspect-ratio": 1.5,
+            },
+            "style": "col-12"
+        } for i, p in enumerate(fit['peaks'])]
+
+        report += [{
+                "title": "Fluorescence Region of Interest Selection",
+                "style": "row",
+                "content": xrf_plot
+            },
+            {
+                "title": "X-ray Fluorescence Maps",
+                "style": "row",
+                "content": xrfm_plots
+            },
+        ]
+
+    return report
