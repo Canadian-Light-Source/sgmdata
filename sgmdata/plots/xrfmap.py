@@ -383,7 +383,7 @@ def plot_xyz(shift=False, table=False, **kwargs):
     data.update({n: sdd3[:, i] for i, n in enumerate(n3)})
     data.update({n: sdd4[:, i] for i, n in enumerate(n4)})
     data.update({'tey': np.nanmax(data['sdd3-15']) * (tey / np.nanmax(tey))})
-    source = ColumnDataSource(data)
+    source = ColumnDataSource(data, name='xrfm-images')
 
     # XRF Coordinates to Clipboard.
     if table:
@@ -425,7 +425,7 @@ def plot_xyz(shift=False, table=False, **kwargs):
                   y_range=yr,
                   background_fill_color="black",
                   background_fill_alpha=1,
-
+                  name="xrfm-figure"
                   )
 
     plot.xgrid.grid_line_color = None
@@ -434,7 +434,7 @@ def plot_xyz(shift=False, table=False, **kwargs):
         plot.js_on_event('tap', clipboard_callback)
 
     im = plot.rect(x='x', y='y', color={'field': 'z', 'transform': color_mapper}, width=width, height=height,
-                   source=source, name="xrf-plot")
+                   source=source, name="xrfm-plot")
 
     # add image plot annotations
     color_bar = ColorBar(color_mapper=color_mapper, border_line_color=None, location=(0, 0))
