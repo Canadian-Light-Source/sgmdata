@@ -121,9 +121,19 @@ def interpolate(independent, signals, command=None, **kwargs):
     if 'resolution' in kwargs.keys() and 'bins' in kwargs.keys():
         raise KeyError("You can only use the keyword bins, or resolution not both")
     if 'resolution' not in kwargs.keys() and 'bins' not in kwargs.keys():
-        bin_num = [dask_unique(v) for k, v in axis.items()]
-        offset = [abs(stop[i] - start[i]) / (2 * bin_num[i]) for i in range(len(bin_num))]
-        bins = [np.linspace(start[i], stop[i], bin_num[i], endpoint=True) for i in range(len(bin_num))]
+        if command:
+            xrange = (float(command[2]), float(command[3]))
+            yrange = (float(command[6]), float(command[7]))
+            dx = abs(xrange[0] - xrange[1]) / (int(command[4]) * 15)
+            dy = abs(yrange[0] - yrange[1]) / (int(command[-1]))
+            resolution = [dx, dy]
+            bin_num = [int(abs(stop[i] - start[i]) / resolution[i]) for i, _ in enumerate(axis.keys())]
+            offset = [item / 2 for item in resolution]
+            bins = [np.linspace(start[i], stop[i], bin_num[i], endpoint=True) for i in range(len(bin_num))]
+        else:
+            bin_num = [dask_unique(v) for k, v in axis.items()]
+            offset = [abs(stop[i] - start[i]) / (2 * bin_num[i]) for i in range(len(bin_num))]
+            bins = [np.linspace(start[i], stop[i], bin_num[i], endpoint=True) for i in range(len(bin_num))]
     elif 'resolution' in kwargs.keys():
         resolution = kwargs['resolution']
         if not isinstance(kwargs['resolution'], list):
