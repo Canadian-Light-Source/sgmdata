@@ -2,7 +2,7 @@ from bokeh.layouts import column, row, gridplot, layout
 from bokeh.palettes import all_palettes
 from bokeh.models import CustomJS, ColumnDataSource, Select, RangeSlider, ColorBar, LinearColorMapper, Rect, Button, \
     CheckboxButtonGroup, Slider, RadioGroup
-from bokeh.plotting import Figure, output_notebook, output_file, show
+from bokeh.plotting import figure, output_notebook, output_file, show
 from bokeh.embed import json_item
 from bokeh import events
 import bokeh
@@ -92,7 +92,7 @@ def plot(**kwargs):
 
 
     #Plots & Glyphs
-    plot = Figure(plot_width=width, plot_height=height, tools="box_select,save,box_zoom, wheel_zoom,hover,pan,reset")
+    plot = figure(plot_width=width, plot_height=height, tools="box_select,save,box_zoom, wheel_zoom,hover,pan,reset")
     color_mapper = LinearColorMapper(palette="Spectral11", low=1, high=np.amax(kwargs['sdd1']))
 
     im = plot.image(image='image', y='emission', x='en', dh='bins', dw='delta', source=source,
@@ -100,7 +100,7 @@ def plot(**kwargs):
     color_bar = ColorBar(color_mapper=color_mapper, label_standoff=12, border_line_color=None, location=(0, 0),
                          height=height*8//10, width=width*1//20)
 
-    xrf = Figure(plot_width=width*27//64, plot_height=height, y_range=plot.y_range, tools="save,hover,box_zoom, pan",
+    xrf = figure(plot_width=width*27//64, plot_height=height, y_range=plot.y_range, tools="save,hover,box_zoom, pan",
                  title="XRF Projection")
     fluo = Rect(x='y', y='x', width='width', height='height', fill_alpha=0.1, line_color=None, fill_color='yellow')
     xrf.add_glyph(peak_source, fluo)
@@ -108,7 +108,7 @@ def plot(**kwargs):
     xrf.yaxis.visible = False
     xrf.xaxis.major_label_orientation = "vertical"
 
-    xas = Figure(plot_width=width, plot_height=height*27//64, x_range=plot.x_range, tools="save,hover,box_zoom,wheel_zoom,pan",
+    xas = figure(plot_width=width, plot_height=height*27//64, x_range=plot.x_range, tools="save,hover,box_zoom,wheel_zoom,pan",
                   title="XAS Projection")
     xas.line('en', 'proj_y', source=xas_source, line_color='purple', alpha=0.6, legend_label="EEMs")
     xas.line('en', 'tey', source=aux_source, line_color='black', alpha=0.6, legend_label="TEY")
