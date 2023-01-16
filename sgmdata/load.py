@@ -757,15 +757,14 @@ class SGMData(object):
         data = [self._find_data(h5[entry], independent[i], other=True) for i, entry in enumerate(NXentries)]
         # filter for data that is the same length as the independent axis
         try:
-            signals = [{k: da.from_array(v, chunks=tuple(
-                [np.int(np.divide(dim, self.npartitions)) for dim in v.shape])).astype('f4') for k, v in d.items() if
+            signals = [{k: da.from_array(v, chunks='100 MiB').astype('f4') for k, v in d.items() if
                         np.abs(v.shape[0] - list(indep[i].values())[0].shape[0]) < 30} for i, d in enumerate(data)]
         except IndexError:
             return {"ERROR": file_root}
         # group all remaining arrays
         try:
             other_axis = [
-                {k: da.from_array(v, chunks=tuple([np.int(np.divide(dim, 2)) for dim in v.shape])) for k, v in d.items()
+                {k: da.from_array(v, chunks='100 MiB') for k, v in d.items()
                  if
                  np.abs(v.shape[0] - list(indep[i].values())[0].shape[0]) > 2} for i, d in enumerate(data)]
         except:
@@ -773,8 +772,7 @@ class SGMData(object):
         # Reload independent axis data as dataarray
         try:
             indep = [{k: da.from_array(v,
-                                       chunks=tuple(
-                                           [np.int(np.divide(dim, self.npartitions)) for dim in v.shape])).astype(
+                                       chunks='100 MiB').astype(
                 'f4') for k, v in d.items()} for d in indep]
         except:
             return {"ERROR": file_root}

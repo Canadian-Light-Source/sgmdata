@@ -4,9 +4,9 @@ import dask.array as da
 import dask.dataframe as dd
 import pandas as pd
 import warnings
-from dask.diagnostics import ProgressBar
+from dask.distributed import get_client
 
-def label_bins(bins, bin_edges, independent):
+def label_bins(bins, bin_edges, independent, npartitions=4):
     """
         Program creates an array the length of an independent axis and fills it
         with bin center values that the independent array falls into.
@@ -21,10 +21,10 @@ def label_bins(bins, bin_edges, independent):
                 np.logical_and(indep_value >= bin_edges[i][j], indep_value <= bin_edges[i][j + 1]))] = b
     axes = np.squeeze(np.vstack([v for k, v in bin_labels.items()]).T)
     columns = {k: axes if len(axes.shape) == 1 else axes[:, i] for i, k in enumerate(bin_labels.keys())}
-    return pd.DataFrame.from_dict(columns)
+    return dd.DataFrame.from_dict(columns, npartitions=npartitions)
 
 
-def make_df(independent, signals, labels):
+def make_df(independent, signals, labels, npartitions=4):
     c = [k for k, v in independent.items()]
     df = dd.from_delayed(labels)
     for k, v in signals.items():
@@ -34,7 +34,7 @@ def make_df(independent, signals, labels):
             columns = [k]
         else:
             continue
-        df = df.merge(dd.from_dask_array(v, columns=columns))
+        df = df.merge(dd.from_dask_array(v, columns=columns), npartitions=npartitions)
     return df.groupby(c).mean()
 
 def dask_max(value, sig_digits=2):
@@ -87,6 +87,7 @@ def interpolate(independent, signals, command=None, **kwargs):
     npartitions = kwargs.get('npartitions', 3)
     accuracy = kwargs.get('sig_digits', 2)
     axis = independent
+    client = get_client()
     dim = len(axis.keys())
     if 'start' not in kwargs.keys():
         if command:
@@ -162,8 +163,12 @@ def interpolate(independent, signals, command=None, **kwargs):
             bin_num = [int(len(axis[k]) / kwargs['bins']) for i, k in enumerate(axis.keys())]
     bin_edges = [np.linspace(start[i] - offset[i], stop[i] + offset[i], bin_num[i] + 1, endpoint=True) for i in
                  range(len(bin_num))]
-    labels = delayed(label_bins)(bins, bin_edges, independent)
-    df = make_df(independent, signals, labels)
+    if client:
+        bins = client.scatter(bins, broadcast=True)
+        bin_edges = client.scatter(bin_edges, broadcast=True)
+        independent = client.scatter(independent, broadcast=True)
+    labels = delayed(label_bins)(bins, bin_edges, independent, npartitions)
+    df = make_df(independent, signals, labels, npartitions=npartitions)
     nm = [k for k, v in independent.items()]
     if len(nm) == 1:
         idx = pd.Index(bins[0], name=nm[0])
@@ -177,6 +182,8 @@ def interpolate(independent, signals, command=None, **kwargs):
     if compute:
         try:
             df = compute_df(df, idx, method=method)
+            if client:
+                df = client.scatter(df, broadcast=True)
         except Exception as e:
             print("Trouble computing dataframe, error msg: %s" % e)
             return None, None
