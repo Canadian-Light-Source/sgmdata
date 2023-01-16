@@ -11,6 +11,7 @@ def label_bins(bins, bin_edges, independent, npartitions=4):
         Program creates an array the length of an independent axis and fills it
         with bin center values that the independent array falls into.
     """
+    client = get_client()
     bin_labels = {}
     val = independent
     for i, key in enumerate(val.keys()):
@@ -21,7 +22,10 @@ def label_bins(bins, bin_edges, independent, npartitions=4):
                 np.logical_and(indep_value >= bin_edges[i][j], indep_value <= bin_edges[i][j + 1]))] = b
     axes = np.squeeze(np.vstack([v for k, v in bin_labels.items()]).T)
     columns = {k: axes if len(axes.shape) == 1 else axes[:, i] for i, k in enumerate(bin_labels.keys())}
-    return dd.DataFrame.from_dict(columns, npartitions=npartitions)
+    df = pd.DataFrame.from_dict(columns)
+    if client:
+        df = client.scatter(df, broadcast=True)
+    return df
 
 
 def make_df(independent, signals, labels, npartitions=4):
@@ -163,6 +167,9 @@ def interpolate(independent, signals, command=None, **kwargs):
             bin_num = [int(len(axis[k]) / kwargs['bins']) for i, k in enumerate(axis.keys())]
     bin_edges = [np.linspace(start[i] - offset[i], stop[i] + offset[i], bin_num[i] + 1, endpoint=True) for i in
                  range(len(bin_num))]
+    if client:
+        bin_edges = client.scatter(bin_edges, broadcast=True)
+        independent = client.scatter(bin_edges, broadcast=True)
     labels = delayed(label_bins)(bins, bin_edges, independent, npartitions)
     df = make_df(independent, signals, labels, npartitions=npartitions)
     nm = [k for k, v in independent.items()]
