@@ -843,11 +843,12 @@ class SGMData(object):
     def _interpolate(self, entry, **kwargs):
         compute = kwargs.get('compute', True)
         if compute:
-            try:
-                return entry.interpolate(**kwargs)
-            except Exception as e:
-                print(f"Exception raise while interpolating {entry}: {e}")
-                return None
+            return entry.interpolate(**kwargs)
+            # try:
+            #     return entry.interpolate(**kwargs)
+            # except Exception as e:
+            #     print(f"Exception raise while interpolating {entry}: {e}")
+            #     return None
         else:
             independent = entry['independent']
             signals = entry['signals']
