@@ -13,5 +13,5 @@ scan_lib.update({'EEMs': "run_eems 1 544", 'C': "gscan 270 320 col 320", 'N': "g
                  'Mn': "gscan 625 670 col 638", 'Fe': "gscan 690 750 col 711", 'Co': "gscan 765 810 col 780.5",
                  'Ni': "gscan 840 890 col 852.5", 'Cu': "gscan 920 970 col 934", 'Zn': "gscan 1000 1080 col 1060",
                  'Ge': "gscan 1200 1280 col 1260", 'Se': "gscan 1420 1500 col 1500", 'Br': "gscan 1500 1650 col 1565", 'Cr': "gscan 560 595 col 575",
-                 'Ru': "gscan 450 505 col 464", 'La': "gscan 820 870 col 834"
+                 'Ru': "gscan 450 505 col 464", 'La': "gscan 820 870 col 834", 'Ga': "gscan 1100 1180 col 1130"
                  })
