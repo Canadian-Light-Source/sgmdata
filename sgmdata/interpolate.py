@@ -25,11 +25,9 @@ def label_bins(bins, bin_edges, independent, npartitions=4):
     df = pd.DataFrame.from_dict(columns)
     return df
 
-
-def make_df(independent, signals, labels, npartitions=4):
-    client = get_client()
+def make_df(independent, signals, labels):
     c = [k for k, v in independent.items()]
-    dfs = [dd.from_pandas(labels.compute(), npartitions=npartitions)]
+    df = dd.from_delayed(labels)
     for k, v in signals.items():
         if len(v.shape) == 2:
             columns = [k + "-" + str(i) for i in range(v.shape[1])]
@@ -37,8 +35,7 @@ def make_df(independent, signals, labels, npartitions=4):
             columns = [k]
         else:
             continue
-        dfs.append(dd.from_dask_array(v, columns=columns))
-    df = dd.concat(dfs, axis=1)
+        df = df.merge(dd.from_dask_array(v, columns=columns))
     return df.groupby(c).mean()
 
 def dask_max(value, sig_digits=2):
