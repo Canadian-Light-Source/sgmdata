@@ -4,10 +4,9 @@ import dask.array as da
 import dask.dataframe as dd
 import pandas as pd
 import warnings
-from dask.distributed import get_client
-from sys import getsizeof
+from dask.diagnostics import ProgressBar
 
-def label_bins(bins, bin_edges, independent, npartitions=4):
+def label_bins(bins, bin_edges, independent):
     """
         Program creates an array the length of an independent axis and fills it
         with bin center values that the independent array falls into.
@@ -21,9 +20,9 @@ def label_bins(bins, bin_edges, independent, npartitions=4):
             bin_labels[key][np.where(
                 np.logical_and(indep_value >= bin_edges[i][j], indep_value <= bin_edges[i][j + 1]))] = b
     axes = np.squeeze(np.vstack([v for k, v in bin_labels.items()]).T)
-    columns = {k: np.array(axes, dtype=np.float32) if len(axes.shape) == 1 else axes[:, i] for i, k in enumerate(bin_labels.keys())}
-    df = pd.DataFrame.from_dict(columns)
-    return df
+    columns = {k: axes if len(axes.shape) == 1 else axes[:, i] for i, k in enumerate(bin_labels.keys())}
+    return pd.DataFrame.from_dict(columns)
+
 
 def make_df(independent, signals, labels):
     c = [k for k, v in independent.items()]
@@ -88,7 +87,6 @@ def interpolate(independent, signals, command=None, **kwargs):
     npartitions = kwargs.get('npartitions', 3)
     accuracy = kwargs.get('sig_digits', 2)
     axis = independent
-    client = get_client()
     dim = len(axis.keys())
     if 'start' not in kwargs.keys():
         if command:
@@ -123,19 +121,9 @@ def interpolate(independent, signals, command=None, **kwargs):
     if 'resolution' in kwargs.keys() and 'bins' in kwargs.keys():
         raise KeyError("You can only use the keyword bins, or resolution not both")
     if 'resolution' not in kwargs.keys() and 'bins' not in kwargs.keys():
-        if command:
-            xrange = (float(command[2]), float(command[3]))
-            yrange = (float(command[6]), float(command[7]))
-            dx = abs(xrange[0] - xrange[1]) / (int(command[4]) * 15)
-            dy = abs(yrange[0] - yrange[1]) / (int(command[-1]))
-            resolution = [dx, dy]
-            bin_num = [int(abs(stop[i] - start[i]) / resolution[i]) for i, _ in enumerate(axis.keys())]
-            offset = [item / 2 for item in resolution]
-            bins = [np.linspace(start[i], stop[i], bin_num[i], endpoint=True) for i in range(len(bin_num))]
-        else:
-            bin_num = [dask_unique(v) for k, v in axis.items()]
-            offset = [abs(stop[i] - start[i]) / (2 * bin_num[i]) for i in range(len(bin_num))]
-            bins = [np.linspace(start[i], stop[i], bin_num[i], endpoint=True) for i in range(len(bin_num))]
+        bin_num = [dask_unique(v) for k, v in axis.items()]
+        offset = [abs(stop[i] - start[i]) / (2 * bin_num[i]) for i in range(len(bin_num))]
+        bins = [np.linspace(start[i], stop[i], bin_num[i], endpoint=True) for i in range(len(bin_num))]
     elif 'resolution' in kwargs.keys():
         resolution = kwargs['resolution']
         if not isinstance(kwargs['resolution'], list):
@@ -155,14 +143,14 @@ def interpolate(independent, signals, command=None, **kwargs):
             if len(kwargs['bins'][0]) == 1:
                 bin_num = [np.floor(len(np.unique(axis[k])) / kwargs['bins'][i]) for i, k in
                            enumerate(axis.keys())]
-                bins = [np.linspace(start[i], stop[i], bin_num[i], endpoint=True, dtype=np.float32) for i in range(len(bin_num))]
+                bins = [np.linspace(start[i], stop[i], bin_num[i], endpoint=True) for i in range(len(bin_num))]
             else:
                 start = [item[0] for item in kwargs['bins']]
                 stop = [item[1] for item in kwargs['bins']]
                 bin_num = []
         elif isinstance(kwargs['bins'], int):
             bin_num = [int(len(axis[k]) / kwargs['bins']) for i, k in enumerate(axis.keys())]
-    bin_edges = [np.linspace(start[i] - offset[i], stop[i] + offset[i], bin_num[i] + 1, endpoint=True, dtype=np.float32) for i in
+    bin_edges = [np.linspace(start[i] - offset[i], stop[i] + offset[i], bin_num[i] + 1, endpoint=True) for i in
                  range(len(bin_num))]
     labels = delayed(label_bins)(bins, bin_edges, independent)
     df = make_df(independent, signals, labels)
@@ -183,3 +171,5 @@ def interpolate(independent, signals, command=None, **kwargs):
             print("Trouble computing dataframe, error msg: %s" % e)
             return None, None
     return df, idx
+
+
