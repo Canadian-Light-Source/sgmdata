@@ -182,8 +182,6 @@ def interpolate(independent, signals, command=None, **kwargs):
     if compute:
         try:
             df = compute_df(df, idx, method=method)
-            if client:
-                df = client.scatter(df, broadcast=True)
         except Exception as e:
             print("Trouble computing dataframe, error msg: %s" % e)
             return None, None
