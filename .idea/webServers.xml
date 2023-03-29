@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="WebServers">
+    <option name="servers">
+      <webServer id="3b0f4179-d908-4b94-b22f-e88e34f2e221" name="planck.clsi.ca">
+        <fileTransfer rootFolder="/home/arthurz" accessType="SFTP" host="planck.clsi.ca" port="22" sshConfigId="155ccfc1-c910-418e-96b1-2cae1a1a2f5f" sshConfig="arthurz@planck.clsi.ca:22 password">
+          <advancedOptions>
+            <advancedOptions dataProtectionLevel="Private" passiveMode="true" shareSSLContext="true" />
+          </advancedOptions>
+        </fileTransfer>
+      </webServer>
+    </option>
+  </component>
+</project>

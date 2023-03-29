@@ -126,22 +126,24 @@ def preprocess(sample, **kwargs):
     sdd_max = kwargs.get('sdd_max', 105000)
     clear = kwargs.get('clear', True)
     query_return = kwargs.get('query', False)
-    report = kwargs.get('report', False)
+    report = kwargs.get('report', True)
     i0 = kwargs.get('i0', 1)
     if isinstance(bs_args, tuple):
         bs_args = dict(cont=bs_args[0], dump=bs_args[1], sat=bs_args[2], sdd_max=sdd_max)
     resolution = kwargs.get('resolution', 0.1)
     kwargs.update({'resolution':resolution})
-    sgmq = SGMQuery(sample=sample, data=False, **kwargs)
+    sgmq = SGMQuery(sample=sample, **kwargs)
     if len(sgmq.paths):
-        print("Found %d scans matching sample: %s, for user: %s" % (len(sgmq.paths), sample, user))
-        sgm_data = SGMData(sgmq.paths, **kwargs)
-        print("Interpolating...", end=" ")
-        interp = sgm_data.interpolate(**kwargs)
-        if report:
-            bs_args.update({'report': [k for k in sgm_data.scans.keys()]})
-        sgmq.write_proc(sgm_data.scans)
-        bscans, bad_report = badscans(interp, **bs_args)
+        print("Found %d samples matching name: %s, for user: %s" % (len(sgmq.paths), sample, user))
+        for k in sgmq.paths.keys():
+            print(f"Processing ID: {k}")
+            sgm_data = sgmq.data[k]
+            print("Interpolating...", end=" ")
+            interp = sgm_data.interpolate(**kwargs)
+            if report:
+                bs_args.update({'report': [k for k in sgm_data.scans.keys()]})
+            sgmq.write_proc(k)
+            bscans, bad_report = badscans(interp, **bs_args)
         if len(bscans) != len(sgm_data.scans):
             print("Removed %d bad scan(s) from average. Averaging..." % len(bscans), end=" ")
             if any(bscans):
@@ -337,3 +339,61 @@ def plot1d(xarr,yarr, title="Plot", labels=[]):
     fig.legend.location = "top_left"
     fig.legend.click_policy="hide"
     show(fig)
+
+
+"""
+Methods for extracting a spectral density plot from an SGMData file
+"""
+def integrate_time(clock: np.ndarray) -> np.ndarray:
+    clock = np.array(clock)
+    intg_clock = np.zeros(clock.shape)
+    for i in range(len(clock)):
+        intg_clock[i] = np.sum(clock[:i])
+    return intg_clock
+
+
+def calc_fft_spectrum(int_time: np.ndarray, fp: np.ndarray, acq_rate: float) -> tuple:
+    duration = int(np.round_(np.max(int_time)))
+    time_bins = np.linspace(0, duration, acq_rate * duration)
+    binned_sig = np.interp(time_bins, int_time, fp)
+    inv_sig = np.fft.fft(binned_sig)
+    n = np.arange(len(inv_sig))
+    T = len(inv_sig) // acq_rate
+    freq = n / T
+    return freq, np.abs(inv_sig) / len(n)
+
+
+def get_fft_spectra(data: object, channel='i0', acq_rate=20) -> None:
+    """
+    ### Description:
+    Use clock signal in SGM data, with any scalar signal to produce a spectral density graph.
+
+    ### Args:
+    >**data** *(SGMData)* --  SGMData object
+
+    ### Keywords:
+    >**channel** *(str)* -- Scalar signal name in SGMData object / file.
+
+    >**acq_rate** *(int)* -- Data needs to be evenly spaced, integer value of approximate acquisition rate in Hz will
+                            is used to set a bin size.
+
+    ### Returns:
+    >**None**
+    """
+    x = []
+    y = []
+    names = []
+    for f, scans in data.scans.items():
+        for e, entry in scans.items():
+            clock = entry['signals']['clock']
+            if hasattr(clock, 'compute'):
+                clock = clock.compute()
+            intg_clock = integrate_time(clock)
+            chan = entry['signals'][channel]
+            if hasattr(chan, 'compute'):
+                chan = chan.compute()
+            freq, spectrum = calc_fft_spectrum(intg_clock, chan, acq_rate)
+            x.append(freq)
+            y.append(spectrum)
+            names.append(f"{f} - {e}")
+    plot1d(x, y, labels=names)

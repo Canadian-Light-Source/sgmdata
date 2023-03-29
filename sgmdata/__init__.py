@@ -5,6 +5,7 @@ from sgmdata.report import ReportBuilder
 from sgmdata.utilities.util import badscans, preprocess
 from sgmdata.interpolate import interpolate
 from sgmdata.xrffit import fit_peaks
+import sgmdata.sign
 from .version import __version__
 
 

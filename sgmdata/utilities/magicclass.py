@@ -23,13 +23,15 @@ class DisplayDict(OrderedDict):
     def _repr_html_(self):
         table = [
             "<table>",
-            "  <thead>",
-            "    <tr><td> </td><th>Key</th><th>Value</th></tr>",
-            "  </thead>",
             "  <tbody>",
         ]
+
         for key, value in self.items():
-            table.append(f"<tr><th> {key}</th><th>{value}</th></tr>")
+            if hasattr(value, '_repr_html_'):
+                v = f"<details>\n\t<summary>Details...</summary>\n\t\t{value._repr_html_()}</details>"
+                table.append(f"<tr><th> {key}</th><td>{v}</td></tr>")
+            else:
+                table.append(f"<tr><th> {key}</th><td>{value}</td></tr>")
         table.append("</tbody></table>")
         return "\n".join(table)
 
@@ -144,6 +146,21 @@ class OneList(list):
 
     def __ne__(self, value):
         return self.l.__ne__(value)
+
+    def _repr_html_(self):
+        table = [
+            "<table>",
+            "  <tbody>",
+        ]
+
+        for key, value in enumerate(self.l):
+            if hasattr(value, '_repr_html_'):
+                v = f"<details>\n\t<summary>Details...</summary>\n\t\t{value._repr_html_()}</details>"
+                table.append(f"<tr><th> {key}</th><td>{v}</td></tr>")
+            else:
+                table.append(f"<tr><th> {key}</th><td>{value}</td></tr>")
+        table.append("</tbody></table>")
+        return "\n".join(table)
 
     def __repr__(self):
         if len(self.l) == 1:
