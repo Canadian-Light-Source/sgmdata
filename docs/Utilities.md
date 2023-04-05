@@ -47,9 +47,12 @@ h5tree(f)
 
 ### Args:
 >**sample** *(str)*:  The name of the sample in your account that you wish to preprocess.
+or:
+>**data_id** *(int)*: The primary key of the dataset to preprocress.
 
 ### Keywords:
 >All of the below are optional.
+>**proposal** *(str)* -- name of proposal to limit search to.
 
 >**user** *(str)* -- name of user account to limit search to (for use by staff).
 
@@ -63,9 +66,11 @@ h5tree(f)
 is 105000).
 >**bscan_thresh** *(tuple)* -- (continuous, dumped, and saturated)  these are the threshold percentages from
 scan_health that will label a scan as 'bad'.
+>**report** *(str)* -- Analysis report type, e.g. "XAS Report".
+>**report_id** *(int)* -- primary key of report to be updated.
 
 ### Returns:
->(HTML) hyperlink for preprocessed data stored in SGMLive
+>SGMQuery object if query_return is True
 
 ### Example Usage:
 ```python
@@ -86,22 +91,6 @@ preprocess(sample="TiO2", user='regiert', resolution=0.1)
 ### Returns:
 >List of indexes for bad scans in interp.
 
-
-## scan_health
------
-
-### Description:
->Function takes in a interpolated scan (a pandas DataFrame), and returns the overall health.
-
-### Args:
->**df** *(DataFrame)* --  pandas dataframe from SGMScan.binned.
-
->**verbose** *(bool)* -- Explain the returned output in plain text.
-
->**sdd_max** *(int)* -- 105000 (default) - saturation value for total SDD counts/s
-
-### Returns:
->(tuple):  (Discontiunty %,  Beam-dump %,  Saturation %)
 
 ## predict_num_scans
 -----
@@ -138,6 +127,8 @@ the user, that the user would like to be used to predict the number of additiona
 ### Keywords:
 >**mcas** *(list(str))* -- list of detector names for which the ROI summation should take place.
 
+>**proposal** *(str)* -- SGMLive proposal name, will search all if none.
+
 >**user** *(str)* -- SGMLive account name, defaults to current jupyterhub user.
 
 >**out** *(os.path / str)* -- System path to output directory for csv file(s)
@@ -147,6 +138,8 @@ dataframe and included in the each CSV file.
 
 >**ROI** *(tuple)** --  Set the upper and lower bin number for the Region-of-Interest integration to be used in
 reducing the dimensionality of energy MCA data.
+
+>**step** *(bool)* -- If the scans you're interested in are step scans, then set True to bypass the imposed interpolation.
 
 ### Returns:
 >**list(pd.DataFrame)** -- list of dataframes created.

@@ -66,8 +66,8 @@ from an stored interpolated dataframe by using a keyword filter:
 from sgmdata import SGMData
 
 data = SGMData('file.nxs')
-data.interpolate()
-sdd1 = data.get_arr('sdd1')
+data.scans['file_prefix'].entry1.interpolate()
+sdd1 = data.scans['file_prefix'].entry1.get_arr('sdd1')
 sdd1.shape # (1290, 256)
 ```
 
@@ -83,6 +83,10 @@ search.
 >**sample** *(str:required)* -- At minimum you'll need to provide the keyword "sample", corresponding the sample
 name in the database as a default this will grab all the data under that sample
 name.
+
+>**proposal** *(str: optional) -- proposal that the sample was measured under.
+
+>**kind** *(str: optional) -- Dataset type, this is an acronym from SGMLive, e.g. XAS, EEMS, uXRF, and etc.
 
 >**daterange** *(tuple:optional)* -- This can be used to sort through sample data by the day that it was
 acquired. This is designed to take a tuple of the form ("start-date",
@@ -109,53 +113,50 @@ with the data keyword.
 ```python
 from sgmdata import SGMQuery
 
-sgmq = SGMQuery(sample="TiO2 - C", processed=True)
+sgmq = SGMQuery(sample="TiO2 - C")
 data = sgmq.data
 data.averaged['TiO2 - C'].plot()
 ```
 
-## ReportBuilder
+## preprocess()
 -----
 
-### Description
->LaTeX document builder for SGMData mail-in program.  Requires connection to CLS internal confluence site, and
-assembles documents from the experimental logs saved therein.
+### Description:
+>Utility for automating the interpolation and averaging of a sample in the SGMLive website.
 
-### Args
-> **proposal** *(str)* -- Project proprosal number (in the title of the confluence page)
+### Args:
+>**sample** *(str)*:  The name of the sample in your account that you wish to preprocess.
+or:
+>**data_id** *(int)*: The primary key of the dataset to preprocress.
 
-> **principal** *(str)* -- The last name of the PI for the project, included in the title of the confluence page.
+### Keywords:
+>All of the below are optional.
+>**proposal** *(str)* -- name of proposal to limit search to.
 
-> **cycle** *(int)* -- The cycle for which the report data was collected.
+>**user** *(str)* -- name of user account to limit search to (for use by staff).
 
-> **session** *(int)* -- The experiment number from SGMLive
+>**resolution** *(float)* -- to be passed to interpolation function, this is histogram bin width.
 
-> **shifts** *(int)* -- The number of shifts used to collected this data (information can be found in SGMLive
-usage data)
+>**start** *(float)* --  start energy to be passed to interpolation function.
 
-### Functions
-> **create_sample_report(plots=True, key=None, process=True)** -- If initialization of object has
-gone smoothly, you can create the sample report.
+>**stop** *(float)* -- stop energy to be passed to interpolation function.
 
->> kwargs:  plots - create plots; key - specific sample holder, e.g. 'Holder A - 5803b7d0'; process - interpolate
-and average data not already processed in user account.  For additional kwargs, see preprocess [documentation](
-/Utilities.html#preprocess).
+>**sdd_max** *(int)* -- threshold value to determine saturation in SDDs, to determine scan_health (default
+is 105000).
+>**bscan_thresh** *(tuple)* -- (continuous, dumped, and saturated)  these are the threshold percentages from
+scan_health that will label a scan as 'bad'.
+>**report** *(str)* -- Analysis report type, e.g. "XAS Report".
+>**report_id** *(int)* -- primary key of report to be updated.
 
-### Attributes:
->**log** *(str)* --  Data collected from confluence API, can be useful for debugging.
-
->**paths** *(list)* -- Contains the local paths to your data (or processed_data if processed=True).
+### Returns:
+>SGMQuery object if query_return is True
 
 ### Example Usage:
 ```python
-from sgmdata import SGMQuery
+from sgmdata import preprocess
 
-sgmq = SGMQuery(sample="TiO2 - C", processed=True)
-data = sgmq.data
-data.averaged['TiO2 - C'].plot()
+preprocess(sample="TiO2", user='regiert', resolution=0.1)
 ```
-
-
 
 ## interpolate()
 -----

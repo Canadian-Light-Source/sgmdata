@@ -2,7 +2,7 @@ from bokeh.layouts import column, row, gridplot
 from bokeh.palettes import all_palettes
 from bokeh.models import CustomJS, ColumnDataSource, Select, RangeSlider, ColorBar, LinearColorMapper, Rect, Slider, \
     Range1d, DataTable, TableColumn, Button, TextAreaInput, SelectEditor, CellEditor, IntEditor
-from bokeh.plotting import Figure, show
+from bokeh.plotting import figure, show
 from bokeh.embed import json_item
 from bokeh import events
 import bokeh
@@ -109,7 +109,7 @@ def plot(**kwargs):
     # Create main image plot
     x_delta = max(kwargs['xp']) - min(kwargs['xp'])
     y_delta = max(kwargs['yp']) - min(kwargs['yp'])
-    plot = Figure(plot_width=600, plot_height=600, tools="box_select,save,box_zoom, wheel_zoom,hover,pan,reset")
+    plot = figure(plot_width=600, plot_height=600, tools="box_select,save,box_zoom, wheel_zoom,hover,pan,reset")
     color_mapper = LinearColorMapper(palette="Spectral11", low=0, high=np.amax(im1))
     im = plot.image(image='image', y=min(kwargs['yp']), x=min(kwargs['xp']), dh=y_delta, dw=x_delta, source=img_source,
                     palette="Spectral11")
@@ -121,7 +121,7 @@ def plot(**kwargs):
     plot.add_layout(color_bar, 'left')
 
     # Create XRF plot
-    xrf = Figure(plot_width=300, plot_height=250, tools="save,hover", title="XRF Projection")
+    xrf = figure(plot_width=300, plot_height=250, tools="save,hover", title="XRF Projection")
     xrf.line('emission', 'x1', source=xrf_source, line_color='purple', alpha=0.6, legend_label="sdd1")
     xrf.line('emission', 'x2', source=xrf_source, line_color='blue', alpha=0.6, legend_label="sdd2")
     xrf.line('emission', 'x3', source=xrf_source, line_color='black', alpha=0.6, legend_label="sdd3")
@@ -224,7 +224,7 @@ def plot_interp(**kwargs):
     sdd_source = ColumnDataSource(sdd_data)
 
     # Create XRF Map plot
-    plot = Figure(plot_width=600,
+    plot = figure(plot_width=600,
                   plot_height=600,
                   tools="box_select,save,box_zoom,wheel_zoom,hover,pan,reset",
                   x_range=xr,
@@ -261,7 +261,7 @@ def plot_interp(**kwargs):
                 line_color='orange', fill_color='black')
 
     # Create XRF plot
-    xrf = Figure(plot_width=300, plot_height=250, tools="save,hover", title="Total XRF")
+    xrf = figure(plot_width=300, plot_height=250, tools="save,hover", title="Total XRF")
     xrf.line('emission', 'x1', source=xrf_source, line_color='purple', alpha=0.6, legend_label="sdd1")
     xrf.line('emission', 'x2', source=xrf_source, line_color='blue', alpha=0.6, legend_label="sdd2")
     xrf.line('emission', 'x3', source=xrf_source, line_color='black', alpha=0.6, legend_label="sdd3")
@@ -418,7 +418,7 @@ def plot_xyz(shift=False, table=False, **kwargs):
         clipboard_callback = CustomJS(args=dict(clip=clipboard_source), code=get_callback('clipboard'))
 
     # Create XRF Map plot
-    plot = Figure(plot_width=600,
+    plot = figure(plot_width=600,
                   plot_height=600,
                   tools="box_select,save,box_zoom,wheel_zoom,hover,pan,reset",
                   x_range=xr,
@@ -459,7 +459,7 @@ def plot_xyz(shift=False, table=False, **kwargs):
                 line_color='orange', fill_color='black')
 
     # Create XRF plot
-    xrf = Figure(plot_width=300, plot_height=250, tools="save,hover", title="Total XRF")
+    xrf = figure(plot_width=300, plot_height=250, tools="save,hover", title="Total XRF")
     xrf.line('emission', 'x1', source=xrf_source, line_color='purple', alpha=0.6, legend_label="sdd1")
     xrf.line('emission', 'x2', source=xrf_source, line_color='blue', alpha=0.6, legend_label="sdd2")
     xrf.line('emission', 'x3', source=xrf_source, line_color='black', alpha=0.6, legend_label="sdd3")

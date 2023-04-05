@@ -11,10 +11,6 @@ import warnings
 import datetime
 from .sign import get_or_make_key, get_proposals, find_samples, find_data, find_report, add_report, SGMLIVE_URL
 
-try:
-    import psycopg2
-except ImportError:
-    warnings.warn("Using sgm-data without database support.  SGMQuery will fail.")
 
 try:
     shell = get_ipython().__class__.__name__

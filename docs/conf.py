@@ -19,11 +19,11 @@ sys.path.insert(0, os.path.abspath('..'))
 # -- Project information -----------------------------------------------------
 
 project = 'sgm-data'
-copyright = '2022, Canadian Light Source Inc.'
+copyright = '2023, Canadian Light Source Inc.'
 author = 'Zachary Arthur'
 
 # The full version, including alpha/beta/rc tags
-release = '0.4.0b'
+release = '0.5.0b'
 
 
 # -- General configuration ---------------------------------------------------
