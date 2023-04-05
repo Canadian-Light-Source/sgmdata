@@ -1,4 +1,7 @@
-# Helper module for working with data from the [SGM Beamline](https://sgm.lightsource.ca) 
+# Helper module for working with data from the [SGM Beamline](https://sgm.lightsource.ca)
+### Documentation:
+The complete [docs](https://sgm-data.readthedocs.io/en/latest/GettingStarted.html) are hosted on readthedocs.
+
 ### Installation:
 Using pip:
 ```commandline
@@ -6,7 +9,7 @@ pip install sgm-data
 ```
 or from source: 
 ```commandline
-git clone https://github.lightsource.ca/arthurz/sgmdata ./sgmdata
+git clone https://github.com/Canadian-Light-Source/sgmdata.git ./sgmdata
 cd sgmdata
 python setup.py install
 ```
