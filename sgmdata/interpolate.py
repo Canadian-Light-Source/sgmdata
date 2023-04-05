@@ -152,7 +152,7 @@ def interpolate(independent, signals, command=None, **kwargs):
             bins = [np.linspace(start[i], stop[i], bin_num[i], endpoint=True) for i in range(len(bin_num))]
         elif command:
             xrange = (float(command[2]), float(command[3]))
-            dx = abs(xrange[0] - xrange[1]) / (int(command[4]) * 15)
+            dx = round(abs(xrange[0] - xrange[1]) / (int(command[4]) * 8.33333333), 2)  # About 0.1eV for standard XAFS
             resolution = [dx]
             offset = [item / 2 for item in resolution]
             bin_num = [int(abs(stop[i] - start[i]) / resolution[i]) for i, _ in enumerate(axis.keys())]
