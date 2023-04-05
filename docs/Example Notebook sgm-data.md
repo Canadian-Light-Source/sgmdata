@@ -51,7 +51,7 @@ You can find your data in the SGMLive database by using the SGMQuery module. The
 
 ```python
 %%time
-sgmq = sgmdata.SGMQuery(sample="TeCN - C", user='kumarp')
+sgmq = sgmdata.SGMQuery(sample="TeCN - C", user='arthurz')
 ```
 
 

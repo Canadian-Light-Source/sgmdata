@@ -11,7 +11,7 @@ import warnings
 
 from sgmdata.utilities.scan_health import badscans
 from sgmdata.utilities.analysis_reports import reports
-
+from sgmdata.utilities.magicclass import DisplayDict
 
 try:
     shell = get_ipython().__class__.__name__
@@ -249,12 +249,12 @@ def create_csv(sample, mcas=None, **kwargs):
     try:
         admin = os.environ['JHUB_ADMIN']
     except KeyError:
-        raise Exception("SGMQuery can only be run inside sgm-hub.lightsource.ca at the moment.")
+        admin = 0
     admin = int(admin)
     if admin:
         user = kwargs.get('user', os.environ['JUPYTERHUB_USER'])
     else:
-        user = os.environ['JUPYTERHUB_USER']
+        user = os.environ.get('JUPYTERHUB_USER', os.environ['USER'])
 
     ## Ensure sample name is list if singular.
     if isinstance(sample, str):
@@ -267,57 +267,55 @@ def create_csv(sample, mcas=None, **kwargs):
             sgmq = SGMQuery(sample=s, user=user, processed=True)
         except IndexError:
             sgmq = SGMQuery(sample=s, user=user)
-        data = sgmq.data
-        ## get or create processed data.
-        try:
-            averaged = data.averaged[s]
-        except AttributeError as a:
-            if step:
-                for k1, d in data.scans.items():
-                    for k2, e in d.items():
-                        x = [(k,v) for k,v in e['independent'].items()]
-                        if len(x) > 1:
-                            print("CSV not available for scans with more than 1 independent axis")
-                            return
-                        en = dd.from_dask_array(x[0][1], columns=[x[0][0]])
-                        first = True
-                        for k, v in e['signals'].items():
-                            if len(v.shape) == 2:
-                                columns = [k + "-" + str(i) for i in range(v.shape[1])]
-                            elif len(v.shape) == 1:
-                                columns = [k]
-                            else:
-                                continue
-                            if first:
-                                df = dd.merge(en, dd.from_dask_array(v, columns=columns))
-                                first = False
-                            else:
-                                df = dd.merge(df, dd.from_dask_array(v, columns=columns))
-                        idx = pd.Index(x[0][1], name=x[0][0])
-                        data.scans[k1][k2]['binned'] = {"dataframe": df, "index": idx}
-            else:
-                print("Attribute Error: %s" % a)
-                data.interpolate(resolution=0.1)
-            data.mean()
-            averaged = data.averaged[s]
-        ## extract SDDs
-        df = averaged['data']
-        sdd_tot = []
-        for det in mcas:
-            mca = averaged.get_arr(det)
-            temp = sumROI(mca, start=roi[0], stop=roi[1])
-            df.drop(columns=list(df.filter(regex=det+".*")), inplace=True)
-            df[det] = temp
-            sdd_tot.append(temp)
-        ## Should this be averaged?
-        df['sdd_total'] = np.nansum(sdd_tot, axis=0)
-        if isinstance(i0, pd.DataFrame):
-            df = df.join(i0)
-        elif isinstance(i0, pd.Series):
-            df['i0'] = i0
-        df.to_csv(out + '/' + slugify(s) + f'_ROI-{roi[0]}_{roi[1]}.csv')
-        dfs.append(df)
-    return dfs
+        for data in sgmq.data.values():
+            ## get or create processed data.
+            try:
+                averaged = data.averaged[s]
+            except AttributeError as a:
+                if step:
+                    for k1, d in data.scans.items():
+                        for k2, e in d.items():
+                            x = [(k,v) for k,v in e['independent'].items()]
+                            if len(x) > 1:
+                                print("CSV not available for scans with more than 1 independent axis")
+                                return
+                            en = dd.from_dask_array(x[0][1], columns=[x[0][0]]).groupby('en').mean()
+                            df = DisplayDict()
+                            for k, v in e['signals'].items():
+                                if len(v.shape) == 2:
+                                    columns = [k + "-" + str(i) for i in range(v.shape[1])]
+                                elif len(v.shape) == 1:
+                                    columns = [k]
+                                else:
+                                    continue
+                                df[k] = dd.merge(en, dd.from_dask_array(v, columns=columns))
+                            data.scans[k1][k2]['binned'] = df
+                else:
+                    print("Attribute Error: %s" % a)
+                    data.interpolate(resolution=0.1)
+                data.mean()
+                averaged = data.averaged[s]
+            ## extract SDDs
+            df = averaged['data']['i0']
+            df = df.join(averaged['data']['pd'])
+            df = df.join(averaged['data']['tey'])
+            sdd_tot = []
+            for det in mcas:
+                mca = averaged.get_arr(det)
+                temp = sumROI(mca, start=roi[0], stop=roi[1])
+                df.drop(columns=list(df.filter(regex=det+".*")), inplace=True)
+                df[det] = temp
+                sdd_tot.append(temp)
+            ## Should this be averaged?
+            df['sdd_total'] = np.nansum(sdd_tot, axis=0)
+            if isinstance(i0, pd.DataFrame):
+                df = df.join(i0)
+            elif isinstance(i0, pd.Series):
+                df['i0_aux'] = i0
+
+            df.to_csv(out + '/' + slugify(s) + f'_ROI-{roi[0]}_{roi[1]}.csv')
+            dfs.append(df)
+        return dfs
 
 
 def plot1d(xarr,yarr, title="Plot", labels=[]):
