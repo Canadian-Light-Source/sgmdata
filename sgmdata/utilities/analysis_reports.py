@@ -1,7 +1,11 @@
 from sgmdata.xrffit import *
 from sgmdata.utilities.util import badscans
 import numpy as np
-import json
+try:
+    from IPython.display import display
+except ImportError:
+    display = repr
+
 
 def fit_peaks_once(emission, sdd):
     """
@@ -36,7 +40,10 @@ def high_var(avg, emission=[], detector='sdd3'):
     ### Returns:
     (peaks (list), heights (list), widths (list))
     """
-    sig = avg.get_arr(detector)
+    sig = avg.data[detector]
+    roi_cols = sig.filter(regex="sdd[1-4]_[0-2].*").columns
+    sig.drop(columns=roi_cols, inplace=True)
+    sig = sig.to_numpy()
     if not len(emission):
         emission = np.linspace(10, sig.shape[1] * 10, sig.shape[1])
     xrf_var = np.var(sig, axis=0)
@@ -60,15 +67,17 @@ def sel_roi(avg, emission=[], depth=20):
     >**bounds** *(list)* -- list of len 2, included start and stop bin of mcas to be fit.
     """
     detectors = ['sdd1', 'sdd2', 'sdd3', 'sdd4']
-    roi_cols = avg.data.filter(regex="sdd[1-4]_[0-2].*").columns
-    avg.data.drop(columns=roi_cols, inplace=True)
+    for det in detectors:
+        roi_cols = avg.data[det].filter(regex="sdd[1-4]_[0-2].*").columns
+        df = avg.data[det]
+        df.drop(columns=roi_cols, inplace=True)
     if not len(emission):
         sig = avg.get_arr("sdd1")
         emission = np.linspace(10, sig.shape[1] * 10, sig.shape[1])
     start_end = [depth, -1 * depth]
     fit = {"peaks": [], "heights": [], "widths": []}
     for selection in start_end:
-        df = avg.data
+        df = next(iter(avg.data.values()))
         if selection > 0:
             df = df.head(selection).copy()
         if selection < 0:
@@ -76,17 +85,24 @@ def sel_roi(avg, emission=[], depth=20):
         max_en = max(df.index) * 1.025  # 2.5% error in mca energy range
         data = []
         for det in detectors:
-            rgx = "%s.*" % det
-            data.append(df.filter(regex=rgx, axis=1))
-        pks, hgts, wid, _ = fit_peaks_once(emission, data)
-        peaks = [emission[p] for p in pks if 230 < emission[p] < max_en]
-        heights = [h for i, h in enumerate(hgts['peak_heights']) if 230 < emission[pks[i]] < max_en]
-        widths = [w for i, w in enumerate(wid) if 230 < emission[pks[i]] < max_en]
+            data.append(avg.data[det])
+        try:
+            pks, hgts, wid, _ = fit_peaks_once(emission, data)
+            peaks = [emission[p] for p in pks if 230 < emission[p] < max_en]
+            heights = [h for i, h in enumerate(hgts['peak_heights']) if 230 < emission[pks[i]] < max_en]
+            widths = [w for i, w in enumerate(wid) if 230 < emission[pks[i]] < max_en]
+        except:
+            sdd3 = np.nansum(avg.get_arr('sdd3'), axis=0)
+            peaks = [float(emission[np.where(sdd3 == np.amax(sdd3))][0])]
+            heights = [float(np.amax(sdd3))]
+            widths = [50]
         fit["peaks"].append(peaks)
         fit["heights"].append(heights)
         fit["widths"].append(widths)
 
     peaks = list(set(fit['peaks'][-1]).difference(set(fit['peaks'][0])))
+    if not peaks:
+        peaks = fit['peaks'][-1]
     heights = [h for i, h in enumerate(fit['heights'][-1]) if fit['peaks'][-1][i] in peaks]
     widths = [w for i, w in enumerate(fit['widths'][-1]) if fit['peaks'][-1][i] in peaks]
     pk, h, _ = high_var(avg, emission=emission, detector="sdd3")
@@ -106,23 +122,28 @@ def norm_arr(a, max):
     return a
 
 
-def make_eemsreport(data, emission=[], sample = None, i0=1, bs_args={}):
-    interp = []
+def make_eemsreport(data, emission=[], sample=None, i0=1, **kwargs):
     report = []
-    bs_args.update({'report': [k for k in data.scans.keys()]})
-    bscan_report = {}
-    for f, scan in data.scans.items():
-        for entry in list(scan.__dict__.values()):
-            if 'binned' in entry.keys():
-                interp.append(entry['binned']['dataframe'])
-    if interp:
-        _, bscan_report = badscans(interp, **bs_args)
+    bs_args = kwargs.get('bs_args', dict(cont=55, dump=30, sat=60))
+    bscan_report = kwargs.get('bscan_report', None)
+    if not bscan_report:
+        interp = []
+        bs_args.update({'report': [k for k in data.scans.keys()]})
+
+        for f, scan in data.scans.items():
+            for entry in list(scan.__dict__.values()):
+                if 'binned' in entry.keys():
+                    interp.append(entry['binned'])
+        if interp:
+            _, bscan_report = badscans(interp, **bs_args)
     if sample:
         averaged = {sample: data.averaged[sample]}
     else:
         averaged = data.averaged
+    fits = []
     for sample, avg in averaged.items():
         fit, emission = sel_roi(avg, emission=emission)
+        fits.append(fit)
         xrf_plot = [{
             "title": "XRF Plot",
             "kind": "lineplot",
@@ -151,7 +172,7 @@ def make_eemsreport(data, emission=[], sample = None, i0=1, bs_args={}):
             "title": f"XAS Plot for ROI{i}",
             "kind": "lineplot",
             "data": {
-                "x": ["Energy (eV)"] + list(avg.data.index),
+                "x": ["Energy (eV)"] + list(avg.data['i0'].index),
                 "y1": [["pd"] + list(np.nansum(pd, axis=1)),
                        ["tey"] + list(np.nansum(tey, axis=1)),
                        ["sdd1"] + list(np.nansum(sdd1[:, int(p/10 - fit['widths'][i]/10):int(p/10 + fit['widths'][i]/10)], axis=1)/i0),
@@ -179,9 +200,9 @@ def make_eemsreport(data, emission=[], sample = None, i0=1, bs_args={}):
             bscan_report
         ]
 
-    return report
+    return report, fits
 
-def sel_map_roi(entry, emission=[], max_en=2000):
+def sel_map_roi(entry, emission=None, max_en=2000):
     """
     ### Description:
     Finds XRF peaks of high variance throughout the image, and return thier ROIs.
@@ -193,17 +214,18 @@ def sel_map_roi(entry, emission=[], max_en=2000):
     >**bounds** *(list)* -- list of len 2, included start and stop bin of mcas to be fit.
     """
     detectors = ['sdd1', 'sdd2', 'sdd3', 'sdd4']
-    roi_cols = entry['binned']['dataframe'].filter(regex="sdd[1-4]_[0-2].*").columns
-    df = entry['binned']['dataframe']
-    df.drop(columns=roi_cols, inplace=True)
-    if not len(emission):
-        sig = df.filter(regex="sdd1.*").to_numpy()
+    for det in detectors:
+        roi_cols = entry['binned'][det].filter(regex="sdd[1-4]_[0-2].*").columns
+        df = entry['binned'][det]
+        df.drop(columns=roi_cols, inplace=True)
+
+    if not emission:
+        sig = entry.get_arr('sdd1')
         emission = np.linspace(10, sig.shape[1] * 10, sig.shape[1])
     fit = {"peaks": [], "heights": [], "widths": []}
     data = []
     for det in detectors:
-        rgx = "%s.*" % det
-        data.append(df.filter(regex=rgx, axis=1))
+        data.append(entry.get_arr(det))
         pks, hgts, wid, _ = fit_peaks_once(emission, data)
     peaks = [emission[p] for p in pks if 230 < emission[p] < max_en]
     heights = [h for i, h in enumerate(hgts['peak_heights']) if 230 < emission[pks[i]] < max_en]
@@ -234,7 +256,7 @@ def make_xrfmapreport(data, emission=[], sample = None, i0=1):
                 df = entry.interpolate()
                 interp.append(entry)
     for entry in interp:
-        data = entry['binned']['dataframe']
+        data = next(iter(entry['binned'].values))
         fit, emission = sel_map_roi(entry, emission=emission)
         xrf_plot = [{
             "title": "XRF Plot",
@@ -291,3 +313,5 @@ def make_xrfmapreport(data, emission=[], sample = None, i0=1):
         ]
 
     return report
+
+reports = {'XAS Report': make_eemsreport, 'XRF Map': make_xrfmapreport}

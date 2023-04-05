@@ -10,7 +10,7 @@ import os
 import warnings
 
 from sgmdata.utilities.scan_health import badscans
-from sgmdata.utilities.analysis_reports import make_eemsreport
+from sgmdata.utilities.analysis_reports import reports
 
 
 try:
@@ -55,6 +55,7 @@ def printTree(name, node):
         sep += "|-"
     print('{:5.120}'.format(BOLD + sep + END + UNDERLINE + str(mne) + END + typ))
 
+
 def h5tree(h5):
     """
     ### Description:
@@ -76,21 +77,21 @@ def h5tree(h5):
     ```
     """
     h5.visititems(printTree)
-    
-    
 
 
-
-def preprocess(sample, **kwargs):
+def preprocess(sample="", data_id=0, **kwargs) -> object:
     """
     ### Description:
     >Utility for automating the interpolation and averaging of a sample in the SGMLive website.
 
     ### Args:
     >**sample** *(str)*:  The name of the sample in your account that you wish to preprocess.
+    or:
+    >**data_id** *(int)*: The primary key of the dataset to preprocress.
 
     ### Keywords:
     >All of the below are optional.
+    >**proposal** *(str)* -- name of proposal to limit search to.
 
     >**user** *(str)* -- name of user account to limit search to (for use by staff).
 
@@ -104,11 +105,10 @@ def preprocess(sample, **kwargs):
                                 is 105000).
     >**bscan_thresh** *(tuple)* -- (continuous, dumped, and saturated)  these are the threshold percentages from
                                     scan_health that will label a scan as 'bad'.
-    >**query_return** *(bool)* -- return the SGMQuery object instead of the website URL.
+    >**report** *(str)* -- Analysis report type, e.g. "XAS Report".
+    >**report_id** *(int)* -- primary key of report to be updated.
 
     ### Returns:
-    >(HTML) hyperlink for preprocessed data stored in SGMLive
-    OR:
     >SGMQuery object if query_return is True
 
     ### Example Usage:
@@ -119,20 +119,23 @@ def preprocess(sample, **kwargs):
     ```
     """
     from sgmdata.search import SGMQuery
-    from sgmdata.load import SGMData
 
     user = kwargs['user'] = kwargs.get('user', False)
     bs_args = kwargs.get('bscan_thresh', dict(cont=55, dump=30, sat=60))
     sdd_max = kwargs.get('sdd_max', 105000)
-    clear = kwargs.get('clear', True)
-    query_return = kwargs.get('query', False)
-    report = kwargs.get('report', True)
+    clear = kwargs.get('clear', False)
+    pk = kwargs.get("report_id", None)
+    report = kwargs.get('report', 'XAS Report')
     i0 = kwargs.get('i0', 1)
     if isinstance(bs_args, tuple):
         bs_args = dict(cont=bs_args[0], dump=bs_args[1], sat=bs_args[2], sdd_max=sdd_max)
     resolution = kwargs.get('resolution', 0.1)
     kwargs.update({'resolution':resolution})
-    sgmq = SGMQuery(sample=sample, **kwargs)
+    if sample:
+        sgmq = SGMQuery(sample=sample, **kwargs)
+    elif data_id:
+        sgmq = SGMQuery(pk=data_id, **kwargs)
+        sample = next(iter(sgmq.samples.values()))
     if len(sgmq.paths):
         print("Found %d samples matching name: %s, for user: %s" % (len(sgmq.paths), sample, user))
         for k in sgmq.paths.keys():
@@ -142,35 +145,53 @@ def preprocess(sample, **kwargs):
             interp = sgm_data.interpolate(**kwargs)
             if report:
                 bs_args.update({'report': [k for k in sgm_data.scans.keys()]})
-            sgmq.write_proc(k)
-            bscans, bad_report = badscans(interp, **bs_args)
-        if len(bscans) != len(sgm_data.scans):
-            print("Removed %d bad scan(s) from average. Averaging..." % len(bscans), end=" ")
-            if any(bscans):
-                sgm_data.mean(bad_scans=bscans)
-                _, http = sgmq.write_avg(sgm_data.averaged, bad_scans=bscans)
-            else:
-                sgm_data.mean()
-                _, http = sgmq.write_avg(sgm_data.averaged)
+            print("Writing files.")
+            if 'XAS' in report:
+                bscans, bad_report = badscans(interp, **bs_args)
+                score = 1.0 - len(bscans)/len(sgm_data.scans)
+                sgmq.post_report(k, report, [], score, report_id=pk)
+                pk = sgmq.report_ids[k]
+                sgmq.write_processed(k, 'XAS')
+                if len(bscans) == len(sgm_data.scans):
+                    warnings.warn(f"There were no scans that passed the health check for {sample}, dataset: {k}.")
+                    bscans = []
+                print("Removed %d bad scan(s) from average. Averaging..." % len(bscans), end=" ")
+                if any(bscans):
+                    sgm_data.mean(bad_scans=bscans)
+                    sgmq.write_average(k)
+                else:
+                    sgm_data.mean()
+                    sgmq.write_average(k)
+                callback = reports.get(report, False)
+                if callable(callback):
+                    print(f"Making report #{pk}...", end=" ")
+                    js_report, fits = callback(sgm_data, sample=sample, i0=i0, bscan_report=bad_report)
+                    for f in fits:
+                        for i, p in enumerate(f['peaks']):
+                            sgmq.create_csvs(k, ROI=(p - f['widths'][i], p + f['widths'][i]))
+                    url = sgmq.post_report(k, report, js_report, score, report_id=pk)
+                    html = f'<button onclick="window.open(\'{url}\',\'processed\',\'width=1000,height=700\'); ' \
+                           f'return false;">Open Report for {k}</button>'
+                    display(HTML(html))
+                if clear:
+                    clear_output()
+                print(f"Averaged {len(sgm_data.scans) - len(bscans)} scans for {sample}")
 
-            html = "\n".join([
-                                 '<button onclick="window.open(\'%s\',\'processed\',\'width=1000,height=700\'); return false;">Open %s</button>' % (
-                                 l, sgmq.sample) for i, l in enumerate(http)])
-            if clear:
-                clear_output()
-            print(f"Averaged {len(sgm_data.scans) - len(bscans)} scans for {sample}")
-            if query_return:
-                return SGMQuery(sample=sample, processed=True, user=user)
-            if report:
-                eems_report = make_eemsreport(sgm_data, sample=sample, i0=i0, bs_args=bs_args)
-                return eems_report
-            del sgm_data
-            return HTML(html)
-        else:
-            if clear:
-                clear_output()
-            warnings.warn(f"There were no scans that passed the health check for {sample}.")
-
+            elif 'MAP' in report.upper():
+                score = 1.0
+                sgmq.post_report(k, report, [], score, report_id=pk)
+                pk = sgmq.report_ids[k]
+                sgmq.write_processed(k, 'MAP')
+                callback = reports.get(report, False)
+                if callable(callback):
+                    js_report, fits = callback(sgm_data, sample=sample, i0=i0)
+                    url = sgmq.post_report(k, report, js_report, score, report_id=pk)
+                    html = f'<button onclick="window.open(\'{url}\',\'processed\',\'width=1000,height=700\'); ' \
+                           f'return false;">Open Report for {k}</button>'
+                    display(HTML(html))
+                if clear:
+                    clear_output()
+    return sgmq
 
 def sumROI(arr, start, stop):
     return np.nansum(arr[:, start:stop], axis=1)
@@ -185,6 +206,8 @@ def create_csv(sample, mcas=None, **kwargs):
 
     ### Keywords:
     >**mcas** *(list(str))* -- list of detector names for which the ROI summation should take place.
+
+    >**proposal** *(str)* -- SGMLive proposal name, will search all if none.
 
     >**user** *(str)* -- SGMLive account name, defaults to current jupyterhub user.
 

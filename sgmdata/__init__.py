@@ -1,7 +1,6 @@
 from sgmdata import *
 from sgmdata.load import SGMData, SGMScan
 from sgmdata.search import SGMQuery
-from sgmdata.report import ReportBuilder
 from sgmdata.utilities.util import badscans, preprocess
 from sgmdata.interpolate import interpolate
 from sgmdata.xrffit import fit_peaks
@@ -20,9 +19,9 @@ __doc__ = f"""
 ## SGMQuery
 -----
 {SGMQuery.__doc__}
-## ReportBuilder
+## preprocess()
 -----
-{ReportBuilder.__doc__}
+{preprocess.__doc__}
 ## interpolate()
 -----
 {interpolate.__doc__}

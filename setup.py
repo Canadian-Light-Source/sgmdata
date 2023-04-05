@@ -32,7 +32,7 @@ setup(
         "dask[complete]>=2021.03.0",
         "msgpack==1.0.2",
         "pandas>=1.1.5",
-        "h5py>=3.1.0",
+        "h5py>=2.10.0",
         "bokeh>=1.4.0",
         "numpy>=1.18.3",
         "scipy>=1.4.1",

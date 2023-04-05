@@ -201,7 +201,7 @@ class SGMScan(DisplayDict):
             self.__setattr__("binned", df_scas[0])
             return df_scas
 
-        def write(self, filename="") -> None:
+        def write(self, filename="", mode='w') -> None:
             """
             ### Description:
             >Write data to NeXuS formatted data file.
@@ -222,7 +222,7 @@ class SGMScan(DisplayDict):
                 filename = self.sample + ".nxs"
             if 'binned' in self.keys():
                 data = self['binned']
-                with h5py.File(filename, "w") as h5:
+                with h5py.File(filename, mode) as h5:
                     NXentries = [int(str(x).split("entry")[1]) for x in h5['/'].keys() if
                                  'NXentry' in str(h5[x].attrs.get('NX_class'))]
                     if NXentries:
@@ -510,7 +510,7 @@ class SGMData(object):
                 except AttributeError:
                     warnings.warn(f"No dataframe loaded in processed dictionary.")
 
-        def read(self, filename=None) -> list:
+        def read(self, filename=None, associated=None) -> list:
             f"""{SGMScan.DataDict.read.__doc__}"""
             if not filename:
                 try:
@@ -560,10 +560,11 @@ class SGMData(object):
             for i, _ in enumerate(NXdata):
                 df_scas[i].update(df_sdds[i])
             self.data = df_scas[0]
-            self.signals = [k for k in df_scas.keys()]
+            self.signals = [k for k in df_scas[0].keys()]
+            self.associated = associated
             return df_scas
 
-        def write(self, filename=None) -> None:
+        def write(self, filename=None, associated=None, mode='a') -> None:
             """
             ### Description:
             -----
@@ -584,7 +585,7 @@ class SGMData(object):
                 signal = self.signals[0]
             if not filename:
                 filename = self.sample + ".nxs"
-            with h5py.File(filename, "a") as h5:
+            with h5py.File(filename, mode) as h5:
                 NXentries = [int(str(x).split("entry")[1]) for x in h5['/'].keys() if
                              'NXentry' in str(h5[x].attrs.get('NX_class'))]
                 if NXentries:
@@ -600,6 +601,8 @@ class SGMData(object):
                 nxdata.attrs.create(u'NX_class', u'NXdata')
                 nxdata.attrs.create(u'axes', axes)
                 nxdata.attrs.create(u'signal', signal)
+                if associated:
+                    nxdata.attrs.create(u'source', associated)
                 if len(axes) == 1:
                     arr = np.array(df1.index)
                     nxdata.create_dataset(df1.index.name, arr.shape, data=arr, dtype=arr.dtype)
@@ -662,6 +665,7 @@ class SGMData(object):
         if not isinstance(files, list):
             files = [files]
         self.chunks = kwargs.get('chunks', 'auto')
+        progress = kwargs.get('progress', True)
         if not hasattr(self, 'threads'):
             self.threads = 4
         self.user = kwargs.get('user', os.environ.get('JUPYTERHUB_USER'))
@@ -676,7 +680,10 @@ class SGMData(object):
         self.scans = DisplayDict({(os.path.normpath(k)).split('\\')[-1].split('/')[-1].split(".")[0]: {} for k in files_sorted})
         self.interp_params = {}
         with ThreadPool(self.threads) as pool:
-            L = list(tqdm(pool.imap_unordered(self._load_data, files), total=len(files), leave=False))
+            if progress:
+                L = list(tqdm(pool.imap_unordered(self._load_data, files), total=len(files), leave=False, desc="Reading"))
+            else:
+                L = list(pool.imap_unordered(self._load_data, files))
         err = [l['ERROR'] for l in L if 'ERROR' in l.keys()]
         L = [l for l in L if 'ERROR' not in l.keys()]
         if len(err):
@@ -867,7 +874,8 @@ class SGMData(object):
                 command = entry.command
             else:
                 command = None
-            return interpolate(independent, signals, command=command, **kwargs)
+            dfs, _ = interpolate(independent, signals, command=command, **kwargs)
+            return dfs
 
     def mean(self, bad_scans=None):
         if bad_scans is None:
@@ -892,10 +900,11 @@ class SGMData(object):
                     if i not in bad_scans:
                         if key in sample_scans.keys():
                             l = sample_scans[key]['data'] + [scan['binned']]
-                            d = {'data': l, 'signals': signals}
+                            a = sample_scans[key]['associated'] + [(k, entry)]
+                            d = {'data': l, 'signals': signals, 'associated': a}
                             sample_scans.update({key: d})
                         else:
-                            sample_scans.update({key: {'data': [scan['binned']], 'signals': signals}})
+                            sample_scans.update({key: {'data': [scan['binned']], 'signals': signals, 'associated': [(k, entry)]}})
         average = DisplayDict()
         dfs = DisplayDict()
         for k, v in sample_scans.items():
@@ -915,11 +924,23 @@ class SGMData(object):
                 break
             if key in average.keys():
                 l = average[key] + OneList([
-                    SGMData.Processed(command=command.split('_'), data=dfs, signals=v['signals'], sample=key)])
+                    SGMData.Processed(
+                        command=command.split('_'),
+                        data=dfs,
+                        signals=v['signals'],
+                        sample=key,
+                        associated=v['associated'])
+                ])
                 average.update({key: l})
             else:
                 average.update({key: OneList([
-                    SGMData.Processed(command=command.split('_'), data=dfs, signals=v['signals'], sample=key)])})
+                    SGMData.Processed(
+                        command=command.split('_'),
+                        data=dfs,
+                        signals=v['signals'],
+                        sample=key,
+                        associated=v['associated'])
+                ])})
         self.averaged = average
         return average
 

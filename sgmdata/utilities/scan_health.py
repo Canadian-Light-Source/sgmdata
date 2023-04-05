@@ -296,16 +296,16 @@ def scan_health(df, verbose=False, sdd_max=105000, length=None):
     >(tuple):  (Discontiunty %,  Beam-dump %,  Saturation %)
     """
 
-    EN = df.index.to_numpy()
+    EN = df['i0'].index.to_numpy()
 
-    IO_R = df.filter(regex=("i0.*"), axis=1).to_numpy()
-    TEY = df.filter(regex=("tey.*"), axis=1).to_numpy()
-    diode = df.filter(regex=("pd.*"), axis=1).to_numpy()
+    IO_R = df['i0'].to_numpy()
+    TEY = df["tey"].to_numpy()
+    diode = df["pd"].to_numpy()
 
-    SDD1 = df.filter(regex=("sdd1.*"), axis=1).to_numpy()
-    SDD2 = df.filter(regex=("sdd2.*"), axis=1).to_numpy()
-    SDD3 = df.filter(regex=("sdd3.*"), axis=1).to_numpy()
-    SDD4 = df.filter(regex=("sdd4.*"), axis=1).to_numpy()
+    SDD1 = df["sdd1"].to_numpy()
+    SDD2 = df["sdd2"].to_numpy()
+    SDD3 = df["sdd3"].to_numpy()
+    SDD4 = df["sdd4"].to_numpy()
     det = {'i0': IO_R, 'tey': TEY, 'pd': diode, 'sdd1': SDD1, 'sdd2': SDD2, 'sdd3': SDD3, 'sdd4': SDD4}
 
     dump = np.amax([test_beam_dump((k, v), EN)[1] for k, v in det.items()])

@@ -325,7 +325,7 @@ def find_data(user: str, signer: Sign, proposal: str, **kwargs) -> list:
     :param user: (str)
     :param signer: (sign.Signer())
     :param proposal: (str) e.g. 35G10000
-    :param sample_id: (int) e.g. Sample primary key.
+    :param sample: (int) e.g. Data primary key.
     :param kind: (str:optional) e.g. XAS
 
     returns [dict(dataset)]
