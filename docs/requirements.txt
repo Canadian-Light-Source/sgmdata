@@ -10,3 +10,4 @@ beautifulsoup4
 matplotlib
 requests
 lmfit
+myst-parser
