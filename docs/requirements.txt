@@ -1,0 +1,12 @@
+dask>=2.11.0
+pandas>=0.25.3
+h5py>=2.10.0
+h5pyd
+bokeh
+numpy
+scipy
+python-slugify
+beautifulsoup4
+matplotlib
+requests
+lmfit
