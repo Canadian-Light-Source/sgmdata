@@ -1,15 +1,15 @@
 import os
 import sys
 import logging
+from .version import __version__
 
 cfg = {
-    'version': u'0.3.1b',
+    'version': f'{__version__}',
     'db_port_5432_tcp_addr': 'vsrv-sgm-data-01.clsi.ca',
     'db_port_5432_tcp_port': '5080',
     'db_env_db': 'postgres',
     'db_env_postgres_user': 'sgmpostgres',
-    'h5endpoint': "https://vsrv-sgm-hdf5-01.clsi.ca:6050",
-    'h5user': 'admin',
+    'h5endpoint': "http://sgm-hdf5.clsi.ca",
     'debug': logging.INFO,
 }
 

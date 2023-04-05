@@ -15,21 +15,24 @@ class DisplayDict(OrderedDict):
         try:
             return self[name]
         except KeyError:
-            raise AttributeError
+            raise AttributeError(f"No attribute named {name}")
 
     def __setattr__(self, name, value):
         self[name] = value
 
+
     def _repr_html_(self):
         table = [
             "<table>",
-            "  <thead>",
-            "    <tr><td> </td><th>Key</th><th>Value</th></tr>",
-            "  </thead>",
             "  <tbody>",
         ]
+
         for key, value in self.items():
-            table.append(f"<tr><th> {key}</th><th>{value}</th></tr>")
+            if hasattr(value, '_repr_html_'):
+                v = f"<details>\n\t<summary>Details...</summary>\n\t\t{value._repr_html_()}</details>"
+                table.append(f"<tr><th> {key}</th><td>{v}</td></tr>")
+            else:
+                table.append(f"<tr><th> {key}</th><td>{value}</td></tr>")
         table.append("</tbody></table>")
         return "\n".join(table)
 
@@ -44,6 +47,9 @@ class DisplayDict(OrderedDict):
             final_data = final_data + str(key) + ":\t"
             final_data = final_data + str(value) + "\t\t|\t\t"
         return final_data
+
+    def first(self):
+        return next(iter(self.values()))
 
     def update(self, *args, **kwargs):
         for k, v in dict(*args, **kwargs).items():
@@ -79,7 +85,9 @@ class OneList(list):
 
     def __getattr__(self, name):
         if len(self.l) == 1:
-            if hasattr(self.value, name):
+            if name == 'value':
+                return self.value
+            elif hasattr(self.value, name):
                 return self.value[name]
             elif hasattr(self, name):
                 return self[name]
@@ -145,11 +153,28 @@ class OneList(list):
     def __ne__(self, value):
         return self.l.__ne__(value)
 
+    def _repr_html_(self):
+        if len(self.l) == 1:
+            return self.value._repr_html_()
+        else:
+            table = [
+                "<table>",
+                "  <tbody>",
+            ]
+
+            for key, value in enumerate(self.l):
+                if hasattr(value, '_repr_html_'):
+                    v = f"<details>\n\t<summary>Details...</summary>\n\t\t{value._repr_html_()}</details>"
+                    table.append(f"<tr><th> {key}</th><td>{v}</td></tr>")
+                else:
+                    table.append(f"<tr><th> {key}</th><td>{value}</td></tr>")
+            table.append("</tbody></table>")
+            return "\n".join(table)
+
     def __repr__(self):
         if len(self.l) == 1:
-            return str(self.value)
-        else:
-            return self.l.__repr__()
+            return self.l[0]
+        return self.l.__repr__()
 
     def __reversed__(self):
         return self.l.__reversed__()

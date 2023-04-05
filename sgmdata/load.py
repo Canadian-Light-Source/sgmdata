@@ -32,6 +32,7 @@ except NameError:
 sys_has_tab = False
 if 'tabulate' in sys.modules:
     sys_has_tab = True
+    import tabulate
 
 
 class SGMScan(DisplayDict):
@@ -57,15 +58,15 @@ class SGMScan(DisplayDict):
         from sgmdata import SGMData
 
         data = SGMData('file.nxs')
-        data.interpolate()
-        sdd1 = data.get_arr('sdd1')
+        data.scans['file_prefix'].entry1.interpolate()
+        sdd1 = data.scans['file_prefix'].entry1.get_arr('sdd1')
         sdd1.shape # (1290, 256)
     ```
     """
 
     class DataDict(DisplayDict):
 
-        def get_arr(self, detector):
+        def get_arr(self, detector) -> np.ndarray:
             """
             ### Description:
             >Function to return a numpy array from the internal pandas dataframe, for a given detector.
@@ -76,11 +77,11 @@ class SGMScan(DisplayDict):
             """
             if isinstance(detector, str):
                 try:
-                    return self['binned']['dataframe'].filter(regex=f'{detector}.*').to_numpy()
+                    return self['binned'][detector].to_numpy()
                 except (AttributeError, KeyError):
                     warnings.warn(f"No dataframe loaded in scan dictionary. Have you run interpolate yet?")
 
-        def interpolate(self, **kwargs):
+        def interpolate(self, **kwargs) -> dict:
             """
             ### Description:
                 Creates the bins required for each independent axes to be histogrammed into for interpolation,
@@ -98,33 +99,34 @@ class SGMScan(DisplayDict):
                 >**resolution** *(list or number)* -- used instead of bins to define the bin to bin distance.
                 >**sig_digits** *(int)* -- used to overide the default uncertainty of the interpolation axis of 2 (e.g. 0.01)
             """
-            independent = self['independent']
-            signals = self['signals']
-            kwargs['npartitions'] = self.npartitions
+            independent = dict(self['independent'])
+            signals = dict(self['signals'])
             if hasattr(self, 'command'):
                 command = self.command
             else:
                 command = None
-            df, idx = interpolate(independent, signals, command=command, **kwargs)
-            if isinstance(df, dd.DataFrame) or isinstance(df, pd.DataFrame):
-                self.__setattr__('binned', {"dataframe": df, "index": idx})
-            return df
+            dfs, idx = interpolate(independent, signals, command=command, **kwargs)
+            if dfs:
+                first = next(iter(dfs.values()))
+                if isinstance(first, dd.DataFrame) or isinstance(first, pd.DataFrame):
+                    self.__setattr__('binned', dfs)
+            return dfs
 
-        def compute(self, **kwargs):
+        def compute(self, **kwargs) -> None:
             method = kwargs.get('method', True)
             if hasattr(self, 'binned'):
-                if 'df' in self['binned'].keys():
-                    idx = self['binned'].get('idx', None)
+                for k in self['binned'].keys():
+                    idx = self['binned'][k].get('idx', None)
                     if isinstance(idx, pd.MultiIndex):
-                        df = self["binned"]['dataframe'].compute().interpolate(method=method).fillna(0).stack().reindex(
+                        df = self["binned"][k].compute().interpolate(method=method).fillna(0).stack().reindex(
                             idx)
                     elif isinstance(idx, pd.Index):
-                        df = self["binned"]['dataframe'].compute().reindex(idx).interpolate()
-                    self['binned']['dataframe'] = df
+                        df = self["binned"][k].compute().reindex(idx).interpolate()
+                    self['binned'][k] = df
                     return df
             print("Nothing to compute.")
 
-        def fit_mcas(self, detectors=[], emission=[]):
+        def fit_mcas(self, detectors=[], emission=[]) -> pd.DataFrame:
             if not len(detectors):
                 detectors = [k for k, v in self['signals'].items() if 'sdd' in k or 'ge' in k]
             if not len(emission):
@@ -149,7 +151,7 @@ class SGMScan(DisplayDict):
                                "width": wid}
                 return new_df
 
-        def read(self, filename=None):
+        def read(self, filename="") -> list:
             """
             ### Description
             >Function to load in already processed data from file.
@@ -163,20 +165,20 @@ class SGMScan(DisplayDict):
                     h5 = h5py.File(filename, 'r')
                 except Exception as f:
                     warnings.warn(f"Could not open file, h5py raised: {f}")
-                    return
+                    return []
             elif os.path.exists('./data/'):
                 try:
                     h5 = h5py.File(filename.replace('/home/jovyan/', './'), 'r')
                 except Exception as f:
                     warnings.warn(f"Could not open file, h5py raised: {f}")
-                    return
+                    return []
             else:
                 try:
                     h5 = h5pyd.File(filename, "r", config.get("h5endpoint"), username=config.get("h5user"),
                                     password=config.get("h5pass"))
                 except Exception as f:
                     warnings.warn(f"Could not open file, h5pyd raised: {f}")
-                    return
+                    return []
             NXentries = [str(x) for x in h5['/'].keys()
                          if 'NXentry' in str(h5[x].attrs.get('NX_class')) and str(x) in self['name']]
             NXdata = [entry + "/" + str(x) for entry in NXentries for x in h5['/' + entry].keys()
@@ -184,19 +186,22 @@ class SGMScan(DisplayDict):
             axes = [[str(nm) for nm in h5[nxdata].keys() for s in h5[nxdata].attrs.get('axes') if str(s) in str(nm) or
                      str(nm) in str(s)] for nxdata in NXdata]
             indep_shape = [v.shape for i, d in enumerate(NXdata) for k, v in h5[d].items() if k in axes[i][0]]
-            data = [{k: np.squeeze(v) for k, v in h5[d].items() if v.shape[0] == indep_shape[i][0]} for i, d in
+            data = [{k: np.squeeze(v[()]) for k, v in h5[d].items() if v.shape[0] == indep_shape[i][0] and k not in axes[i]} for i, d in
                     enumerate(NXdata)]
-            df_sdds = [pd.DataFrame(
-                {k + f"-{j}": v[:, j] for k, v in data[i].items() if len(v.shape) == 2 for j in range(0, v.shape[1])})
-                for i, _ in enumerate(NXdata)]
-            df_scas = [pd.DataFrame.from_dict(
-                {k: v for k, v, in data[i].items() if len(v.shape) < 2}).join(df_sdds[i]).groupby(axes[i]).mean()
-                       for i, _ in enumerate(NXdata)]
-            if len(df_scas) == 1:
-                self.__setattr__('binned', {"dataframe": df_scas[0], "index": df_scas[0].index})
+            index = [pd.DataFrame.from_dict({ax: h5[d][ax] for ax in axes[i]}) for i, d in enumerate(NXdata)]
+            df_sdds = [DisplayDict({k: index[i].join(pd.DataFrame.from_dict(
+                {k + f"-{j}": v[:, j] for j in range(0, v.shape[1])})).set_index(axes[i]) for k, v in data[i].items()
+                    if len(v.shape) == 2}) for i, _ in enumerate(NXdata)]
+            df_scas = [DisplayDict(
+                {k: index[i].join(pd.DataFrame.from_dict({k: v})).set_index(axes[i]) for k, v, in data[i].items() if len(v.shape) < 2})
+                   for i, _ in enumerate(NXdata)]
+            for i, _ in enumerate(NXdata):
+                df_scas[i].update(df_sdds[i])
+
+            self.__setattr__("binned", df_scas[0])
             return df_scas
 
-        def write(self, filename=None):
+        def write(self, filename="", mode='w') -> None:
             """
             ### Description:
             >Write data to NeXuS formatted data file.
@@ -216,9 +221,8 @@ class SGMScan(DisplayDict):
             if not filename:
                 filename = self.sample + ".nxs"
             if 'binned' in self.keys():
-                if 'dataframe' in self['binned'].keys():
-                    df = self['binned']['dataframe']
-                    h5 = h5py.File(filename, "w")
+                data = self['binned']
+                with h5py.File(filename, mode) as h5:
                     NXentries = [int(str(x).split("entry")[1]) for x in h5['/'].keys() if
                                  'NXentry' in str(h5[x].attrs.get('NX_class'))]
                     if NXentries:
@@ -226,6 +230,7 @@ class SGMScan(DisplayDict):
                         entry = 'entry' + str(NXentries[-1] + 1)
                     else:
                         entry = 'entry1'
+                    df = [d for d in data.values()][0]
                     axes = [nm for nm in df.index.names]
                     nxent = h5.create_group(entry)
                     nxent.attrs.create(u'NX_class', u'NXentry')
@@ -242,36 +247,41 @@ class SGMScan(DisplayDict):
                             nxdata.create_dataset(ax, arr.shape, data=arr, dtype=arr.dtype)
 
                     for sig in self.signals:
-                        arr = df.filter(regex="%s.*" % sig.split('_')[0]).to_numpy()
+                        arr = data[sig].to_numpy()
                         if len(df.index.names) > 1:
                             shape = [len(df.index.levels[0]), len(df.index.levels[1])]
                             shape += [s for s in arr.shape[1:]]
                             arr = np.reshape(arr, tuple(shape))
                         nxdata.create_dataset(sig, arr.shape, data=arr)
-                    h5.close()
             else:
                 raise AttributeError("no interpolated data found to write")
 
-        def plot(self, **kwargs):
+        def plot(self, **kwargs) -> str:
             """
             ### Description
             >Determines the appropriate plot based on independent axis number and name.
+            ### Keywords:
+            >**json** *(bool)* -- Return json for plot for embedding into a website
+            >**scale** *(float)* -- Scale the size of the plot using a float between 0 and 1.0.
+            >**emission** *(np.ndarray)* -- Included separate, calibrated emission axis.
+            >**filename** *(str)* -- Change default prefix for CSV files created via plot.
             """
             dim = len(self.independent)
             if dim == 1 and 'en' in self.independent.keys():
                 keys = eemscan.required
                 if 'binned' in self.keys():
-                    if 'dataframe' in self['binned'].keys():
-                        print("Plotting Interpolated Data")
-                        df = self['binned']['dataframe']
+                    print("Plotting Interpolated Data")
+                    for k, df in self['binned'].items():
                         roi_cols = df.filter(regex="sdd[1-4]_[0-2].*").columns
                         df.drop(columns=roi_cols, inplace=True)
-                        data = {k: df.filter(regex=("%s.*" % k), axis=1).to_numpy() for k in keys}
-                        data = {k: v for k, v in data.items() if v.size}
-                        data.update({df.index.name: np.array(df.index), 'emission': np.linspace(0, 2560, 256)})
-                        if 'image' in keys:
-                            data.update({'image': data['sdd1'], 'filename': str(self.sample)})
-                        return eemscan.plot(**data)
+                    data = {k: self['binned'][k].filter(regex=("%s.*" % k), axis=1).to_numpy() for k in keys if
+                            k in self['binned'].keys()}
+                    df1 = [v for v in self['binned'].values()][0]
+                    data.update({df1.index.name: np.array(df1.index), 'emission': np.linspace(0, 2560, 256)})
+                    if 'image' in keys:
+                        data.update({'image': data['sdd1']})
+                    kwargs.update(data)
+                    return eemscan.plot(**kwargs)
                 else:
                     print("Plotting Raw Data")
                     ds = int(self.independent['en'].shape[0] / 1000) + 1
@@ -306,12 +316,11 @@ class SGMScan(DisplayDict):
                     return xrfmap.plot(**kwargs)
                 elif 'binned' in self.keys():
                     print("Plotting Interpolated Data")
-                    df = self['binned']['dataframe']
-                    roi_cols = df.filter(regex="sdd[1-4]_[0-2].*").columns
-                    df.drop(columns=roi_cols, inplace=True)
-                    df.fillna(0, inplace=True )
-                    data = {k: df.filter(regex=("%s.*" % k), axis=1).to_numpy() for k in keys}
+                    dfs = self['binned']['signals']
+                    roi_cols = [dfs[k].filter(regex="sdd[1-4]_[0-2].*").columns for k in keys]
+                    data = {k: dfs[k].drop(columns=roi_cols[i]).to_numpy() for i, k in enumerate(keys)}
                     data = {k: v for k, v in data.items() if v.size}
+                    df = dfs[keys[0]]
                     data.update({n: df.index.levels[i] for i, n in enumerate(list(df.index.names))})
                     data.update({'emission': np.linspace(0, 2560, 256)})
                     kwargs.update(data)
@@ -353,13 +362,13 @@ class SGMScan(DisplayDict):
                 str(self.command),
                 "</td>",
                 "<td>",
-                str(list(self.independent.keys())),
+                f"<details>\n\t<summary>Axes...</summary>\n\t\t{self['independent']._repr_html_()}</details>",
                 "</td>",
                 "<td>",
-                str(list(self.signals.keys())),
+                f"<details>\n\t<summary>Signals...</summary>\n\t\t{self['signals']._repr_html_()}</details>",
                 "</td>",
                 "<td>",
-                str(list(self.other.keys())),
+                f"<details>\n\t<summary>Other...</summary>\n\t\t{self['other']._repr_html_()}</details>",
                 "</td>",
             ]
             return " ".join(entry)
@@ -442,6 +451,11 @@ class SGMScan(DisplayDict):
     def __getitem__(self, item):
         return self.__dict__[item]
 
+replacement_keys = {"pd1_r": "pd", "tey_r": "tey", "io_r": "i0"}
+def check_key(key):
+    if key in replacement_keys.keys():
+        return replacement_keys[key]
+    return key
 
 class SGMData(object):
     """
@@ -487,15 +501,16 @@ class SGMData(object):
 
     class Processed(DisplayDict):
 
-        def get_arr(self, detector):
+
+        def get_arr(self, detector: str) -> np.ndarray:
             f"""{SGMScan.DataDict.get_arr.__doc__}"""
             if isinstance(detector, str):
                 try:
-                    return self.data.filter(regex=f'{detector}.*').to_numpy()
+                    return self.data[detector].to_numpy()
                 except AttributeError:
                     warnings.warn(f"No dataframe loaded in processed dictionary.")
 
-        def read(self, filename=None):
+        def read(self, filename=None, associated=None) -> list:
             f"""{SGMScan.DataDict.read.__doc__}"""
             if not filename:
                 try:
@@ -531,24 +546,25 @@ class SGMData(object):
             axes = [[str(nm) for nm in h5[nxdata].keys() for s in h5[nxdata].attrs.get('axes') if str(s) in str(nm) or
                      str(nm) in str(s)] for nxdata in NXdata]
             indep_shape = [v.shape for i, d in enumerate(NXdata) for k, v in h5[d].items() if k in axes[i][0] and hasattr(v, 'shape')]
+            index = [pd.DataFrame.from_dict({ax.replace('_processed', ''): h5[d][ax] for ax in axes[i]}) for i, d in enumerate(NXdata)]
 
             data = [{k.replace('_processed', ''): np.squeeze(v) for k, v in h5[d].items() if
-                     v.shape[0] == indep_shape[i][0]} for i, d in
+                     v.shape[0] == indep_shape[i][0] and k not in axes[i]} for i, d in
                     enumerate(NXdata)]
-            df_sdds = [pd.DataFrame(
-                {k.replace('_processed', '') + f"-{j}": v[:, j] for k, v in data[i].items() if len(v.shape) == 2 for j
-                 in range(0, v.shape[1])})
-                for i, _ in enumerate(NXdata)]
-            processed_axes = [[ax.replace('_processed', '') for ax in x] for x in axes]
-            df_scas = [pd.DataFrame.from_dict(
-                {k.replace('_processed', ''): v for k, v, in data[i].items() if len(v.shape) < 2}).join(
-                df_sdds[i]).groupby(processed_axes[i]).mean()
-                       for i, _ in enumerate(NXdata)]
-            if len(df_scas) == 1:
-                self.data = df_scas[0]
+            df_sdds = [DisplayDict({k.replace('_processed', ''): index[i].join(pd.DataFrame.from_dict(
+                {k.replace('_processed', '') + f"-{j}": v[:, j] for j in range(0, v.shape[1])})).set_index(axes[i]) for k, v in data[i].items()
+                    if len(v.shape) == 2}) for i, _ in enumerate(NXdata)]
+            df_scas = [DisplayDict(
+                {k.replace('_processed', ''): index[i].join(pd.DataFrame.from_dict({k.replace('_processed', ''): v})).set_index(axes[i]) for k, v, in data[i].items() if len(v.shape) < 2})
+                   for i, _ in enumerate(NXdata)]
+            for i, _ in enumerate(NXdata):
+                df_scas[i].update(df_sdds[i])
+            self.data = df_scas[0]
+            self.signals = [k for k in df_scas[0].keys()]
+            self.associated = associated
             return df_scas
 
-        def write(self, filename=None):
+        def write(self, filename=None, associated=None, mode='a') -> None:
             """
             ### Description:
             -----
@@ -569,38 +585,40 @@ class SGMData(object):
                 signal = self.signals[0]
             if not filename:
                 filename = self.sample + ".nxs"
-            h5 = h5py.File(filename, "a")
-            NXentries = [int(str(x).split("entry")[1]) for x in h5['/'].keys() if
-                         'NXentry' in str(h5[x].attrs.get('NX_class'))]
-            if NXentries:
-                NXentries.sort()
-                entry = 'entry' + str(NXentries[-1] + 1)
-            else:
-                entry = 'entry1'
-            axes = [nm for nm in self.data.index.names]
-            nxent = h5.create_group(entry)
-            nxent.attrs.create(u'NX_class', u'NXentry')
-            nxdata = nxent.create_group('data')
-            nxdata.attrs.create(u'NX_class', u'NXdata')
-            nxdata.attrs.create(u'axes', axes)
-            nxdata.attrs.create(u'signal', signal)
-            if len(axes) == 1:
-                arr = np.array(self.data.index)
-                nxdata.create_dataset(self.data.index.name, arr.shape, data=arr, dtype=arr.dtype)
-            elif len(axes) > 1:
-                for i, ax in enumerate(axes):
-                    arr = np.array(self.data.index.levels[i])
-                    nxdata.create_dataset(ax, arr.shape, data=arr, dtype=arr.dtype)
-            for sig in self.signals:
-                arr = self.data.filter(regex="%s." % sig.split('_')[0]).to_numpy()
-                if len(self.data.index.names) > 1:
-                    shape = [len(self.data.index.levels[0]), len(self.data.index.levels[1])]
-                    shape += [s for s in arr.shape[1:]]
-                    arr = np.reshape(arr, tuple(shape))
-                nxdata.create_dataset(sig, arr.shape, data=arr, dtype=arr.dtype)
-            h5.close()
+            with h5py.File(filename, mode) as h5:
+                NXentries = [int(str(x).split("entry")[1]) for x in h5['/'].keys() if
+                             'NXentry' in str(h5[x].attrs.get('NX_class'))]
+                if NXentries:
+                    NXentries.sort()
+                    entry = 'entry' + str(NXentries[-1] + 1)
+                else:
+                    entry = 'entry1'
+                df1 = [v for v in self.data.values()][0]
+                axes = [nm for nm in df1.index.names]
+                nxent = h5.create_group(entry)
+                nxent.attrs.create(u'NX_class', u'NXentry')
+                nxdata = nxent.create_group('data')
+                nxdata.attrs.create(u'NX_class', u'NXdata')
+                nxdata.attrs.create(u'axes', axes)
+                nxdata.attrs.create(u'signal', signal)
+                if associated:
+                    nxdata.attrs.create(u'source', associated)
+                if len(axes) == 1:
+                    arr = np.array(df1.index)
+                    nxdata.create_dataset(df1.index.name, arr.shape, data=arr, dtype=arr.dtype)
+                elif len(axes) > 1:
+                    for i, ax in enumerate(axes):
+                        arr = np.array(df1.index.levels[i])
+                        nxdata.create_dataset(ax, arr.shape, data=arr, dtype=arr.dtype)
+                for sig in self.signals:
+                    arr = self.data[sig].to_numpy()
+                    if len(df1.index.names) > 1:
+                        shape = [len(df1.index.levels[0]), len(df1.index.levels[1])]
+                        shape += [s for s in arr.shape[1:]]
+                        arr = np.reshape(arr, tuple(shape))
+                    nxdata.create_dataset(sig, arr.shape, data=arr, dtype=arr.dtype)
 
-        def plot(self, **kwargs):
+        def plot(self, **kwargs) -> str:
             f"""{SGMScan.DataDict.plot.__doc__}"""
             if 'type' in self.__dict__.keys():
                 scantype = self['type']
@@ -620,22 +638,24 @@ class SGMData(object):
                         return
             if scantype == 'EEMS':
                 keys = eemscan.required
-                df = self.data
-                roi_cols = df.filter(regex="sdd[1-4]_[0-2].*").columns
-                df.drop(columns=roi_cols, inplace=True)
-                data = {k: df.filter(regex=("%s.*" % k), axis=1).to_numpy() for k in keys}
-                data.update({df.index.name: np.array(df.index), 'emission': np.linspace(0, 2560, 256)})
+                for k, df in self.data.items():
+                    roi_cols = df.filter(regex="sdd[1-4]_[0-2].*").columns
+                    df.drop(columns=roi_cols, inplace=True)
+                data = {k: self.data[k].filter(regex=("%s.*" % k), axis=1).to_numpy() for k in keys if k in self.data.keys()}
+                df1 = [v for v in self.data.values()][0]
+                data.update({df1.index.name: np.array(df1.index), 'emission': np.linspace(0, 2560, 256)})
                 data.update({'image': data['sdd1']})
                 kwargs.update(data)
                 return eemscan.plot(**kwargs)
             elif scantype == 'XRF':
                 keys = xrfmap.required
-                df = self.data
-                roi_cols = df.filter(regex="sdd[1-4]_[0-2].*").columns
-                df.drop(columns=roi_cols, inplace=True)
-                data = {k: df.filter(regex=("%s.*" % k), axis=1).to_numpy() for k in keys}
+                for k, df in self.data.items():
+                    roi_cols = df.filter(regex="sdd[1-4]_[0-2].*").columns
+                    df.drop(columns=roi_cols, inplace=True)
+                data = {k: self.data[k].filter(regex=("%s.*" % k), axis=1).to_numpy() for k in keys if k in self.data.keys()}
                 data = {k: v for k, v in data.items() if v.size}
-                data.update({n: df.index.levels[i] for i, n in enumerate(list(df.index.names))})
+                df1 = [v for v in self.data.values()][0]
+                data.update({n: df1.index.levels[i] for i, n in enumerate(list(df1.index.names))})
                 data.update({'emission': np.linspace(0, 2560, 256)})
                 kwargs.update(data)
                 xrfmap.plot_interp(**kwargs)
@@ -644,29 +664,26 @@ class SGMData(object):
         self.__dict__.update(kwargs)
         if not isinstance(files, list):
             files = [files]
-        if not hasattr(self, 'npartitions'):
-            self.npartitions = 3
+        self.chunks = kwargs.get('chunks', 'auto')
+        progress = kwargs.get('progress', True)
         if not hasattr(self, 'threads'):
             self.threads = 4
         self.user = kwargs.get('user', os.environ.get('JUPYTERHUB_USER'))
         self.shift = kwargs.get('shift', 0.5)
         files = [os.path.abspath(file) for file in files]
-        # Not sure if this is important/works, but trying to make sure that dask workers have the right path for non-admin users.
-        if not any([os.path.exists(f) for f in files]) and os.path.exists(f'/home/jovyan/data/{files[0]}'):
-            files = [file.replace(f'/home/jovyan/data/{self.user}/', '/home/jovyan/data/') for file in files]
-        if not any([os.path.exists(f) for f in files]) and os.path.exists(f'./data/'):
-            files = [file.replace(f'/home/jovyan/', './') for file in files]
         try:
             files_sorted = sorted(files, key=(lambda x: datetime.datetime.strptime(time.ctime(os.path.getctime(x)),
                                                                                    '%a %b %d %H:%M:%S %Y')))
-        except ValueError:
+        except FileNotFoundError:
             # Following line modified so that self.scans will have the same contents regardless of OS.
             files_sorted = sorted([(os.path.normpath(k)).split('\\')[-1].split('/')[-1].split(".")[0] for k in files])
-        self.scans = {(os.path.normpath(k)).split('\\')[-1].split('/')[-1].split(".")[0]: {} for k in files_sorted}
-
+        self.scans = DisplayDict({(os.path.normpath(k)).split('\\')[-1].split('/')[-1].split(".")[0]: {} for k in files_sorted})
         self.interp_params = {}
         with ThreadPool(self.threads) as pool:
-            L = list(tqdm(pool.imap_unordered(self._load_data, files), total=len(files), leave=False))
+            if progress:
+                L = list(tqdm(pool.imap_unordered(self._load_data, files), total=len(files), leave=False, desc="Reading"))
+            else:
+                L = list(pool.imap_unordered(self._load_data, files))
         err = [l['ERROR'] for l in L if 'ERROR' in l.keys()]
         L = [l for l in L if 'ERROR' not in l.keys()]
         if len(err):
@@ -702,6 +719,7 @@ class SGMData(object):
             either independent, signal or other.
         """
         entries = {}
+        chunks = self.chunks
         # Try to open the file locally or from a url provided.
         file_root = (os.path.normpath(file)).split('\\')[-1].split('/')[-1].split(".")[0]
         if os.path.exists(file):
@@ -712,8 +730,8 @@ class SGMData(object):
                 return {"ERROR": file_root}
         else:
             try:
-                h5 = h5pyd.File(file, "r", config.get("h5endpoint"), username=config.get("h5user"),
-                                password=config.get("h5pass"))
+                h5 = h5pyd.File(file.replace("/beamlinedata/SGM/", "/").replace(".nxs", ""), "r", config.get("h5endpoint"))
+                chunks = 3
             except Exception as f:
                 warnings.warn(f"Could not open file, h5pyd raised: {f}")
                 return {"ERROR": file_root}
@@ -757,25 +775,24 @@ class SGMData(object):
         data = [self._find_data(h5[entry], independent[i], other=True) for i, entry in enumerate(NXentries)]
         # filter for data that is the same length as the independent axis
         try:
-            signals = [{k: da.from_array(v, chunks=tuple(
-                [np.int(np.divide(dim, self.npartitions)) for dim in v.shape])).astype('f4') for k, v in d.items() if
-                        np.abs(v.shape[0] - list(indep[i].values())[0].shape[0]) < 30} for i, d in enumerate(data)]
+            signals = [DisplayDict({check_key(k): da.from_array(v, chunks=chunks).astype('f') for k, v in d.items() if
+                        np.abs(v.shape[0] - list(indep[i].values())[0].shape[0]) < 30}) for i, d in enumerate(data)]
         except IndexError:
             return {"ERROR": file_root}
+
         # group all remaining arrays
         try:
             other_axis = [
-                {k: da.from_array(v, chunks=tuple([np.int(np.divide(dim, 2)) for dim in v.shape])) for k, v in d.items()
+                DisplayDict({check_key(k): da.from_array(v, chunks=chunks) for k, v in d.items()
                  if
-                 np.abs(v.shape[0] - list(indep[i].values())[0].shape[0]) > 2} for i, d in enumerate(data)]
+                 np.abs(v.shape[0] - list(indep[i].values())[0].shape[0]) > 2}) for i, d in enumerate(data)]
         except:
             return {"ERROR": file_root}
         # Reload independent axis data as dataarray
         try:
-            indep = [{k: da.from_array(v,
-                                       chunks=tuple(
-                                           [np.int(np.divide(dim, self.npartitions)) for dim in v.shape])).astype(
-                'f4') for k, v in d.items()} for d in indep]
+            indep = [DisplayDict({check_key(k): da.from_array(v,
+                                       chunks=chunks).astype(
+                'f4') for k, v in d.items()}) for d in indep]
         except:
             return {"ERROR": file_root}
 
@@ -804,7 +821,7 @@ class SGMData(object):
                 "independent": indep[i],
                 "signals": signals[i],
                 "other": other_axis[i],
-                "npartitions": self.npartitions
+                "chunks": self.chunks
             })
             if 'sample' in self.__dict__.keys():
                 if 'sample' in scan.keys():
@@ -853,12 +870,12 @@ class SGMData(object):
         else:
             independent = entry['independent']
             signals = entry['signals']
-            kwargs['npartitions'] = self.npartitions
             if hasattr(entry, 'command'):
                 command = entry.command
             else:
                 command = None
-            return interpolate(independent, signals, command=command, **kwargs)
+            dfs, _ = interpolate(independent, signals, command=command, **kwargs)
+            return dfs
 
     def mean(self, bad_scans=None):
         if bad_scans is None:
@@ -882,32 +899,48 @@ class SGMData(object):
                     key = ":".join(key)
                     if i not in bad_scans:
                         if key in sample_scans.keys():
-                            l = sample_scans[key]['data'] + [scan['binned']['dataframe']]
-                            d = {'data': l, 'signals': signals}
+                            l = sample_scans[key]['data'] + [scan['binned']]
+                            a = sample_scans[key]['associated'] + [(k, entry)]
+                            d = {'data': l, 'signals': signals, 'associated': a}
                             sample_scans.update({key: d})
                         else:
-                            sample_scans.update({key: {'data': [scan['binned']['dataframe']], 'signals': signals}})
+                            sample_scans.update({key: {'data': [scan['binned']], 'signals': signals, 'associated': [(k, entry)]}})
         average = DisplayDict()
+        dfs = DisplayDict()
         for k, v in sample_scans.items():
-            key = k.split(":")[0]
+            key = k.split(":")[0].strip()
             command = k.split(":")[-1]
             if len(v['data']) > 1:
-                df_concat = pd.concat(v['data'])
-                df = df_concat.groupby(df_concat.index).mean()
+                for signal in v['data'][0].keys():
+                    df_concat = pd.concat([sig[signal] for sig in v['data']])
+                    dfs[signal] = df_concat.groupby(df_concat.index).mean()
             elif len(v['data']) == 1:
-                if hasattr(v['data'][0], 'compute'):
-                    df = v['data'][0].compute()
-                else:
-                    df = v['data'][0]
+                for signal in v['data'][0].keys():
+                    if hasattr(v['data'][0], 'compute'):
+                        dfs[signal] = v['data'][0][signal].compute()
+                    else:
+                        dfs[signal] = v['data'][0][signal]
             else:
                 break
             if key in average.keys():
                 l = average[key] + OneList([
-                    SGMData.Processed(command=command.split('_'), data=df, signals=v['signals'], sample=key)])
+                    SGMData.Processed(
+                        command=command.split('_'),
+                        data=dfs,
+                        signals=v['signals'],
+                        sample=key,
+                        associated=v['associated'])
+                ])
                 average.update({key: l})
             else:
                 average.update({key: OneList([
-                    SGMData.Processed(command=command.split('_'), data=df, signals=v['signals'], sample=key)])})
+                    SGMData.Processed(
+                        command=command.split('_'),
+                        data=dfs,
+                        signals=v['signals'],
+                        sample=key,
+                        associated=v['associated'])
+                ])})
         self.averaged = average
         return average
 
