@@ -24,12 +24,15 @@ def get_moving_average(data, window_size=4):
                                    "m_average" is the same as the size of input "data"
     """
 
-    # Calculate the moving average
-    window = np.ones(int(window_size)) / float(window_size)
-    m_average = np.convolve(data, window, 'same')
+    if not window_size % 2 == 1:
+        window_size = window_size + 1
 
-    # Return the moving average of input data
-    return m_average
+    N = len(data)
+    cumsum_vec = np.cumsum(np.insert(np.pad(data, (window_size - 1, window_size - 1), 'constant'), 0, 0))
+    d = np.hstack((np.arange(window_size // 2 + 1, window_size), np.ones(N - window_size) * window_size,
+                   np.arange(window_size, window_size // 2, -1)))
+    return (cumsum_vec[window_size + window_size // 2:-window_size // 2 + 1] - cumsum_vec[
+                                                                               window_size // 2:-window_size - window_size // 2]) / d
 
 
 def get_moving_slope(dep, indep, window_size=4):
@@ -37,7 +40,7 @@ def get_moving_slope(dep, indep, window_size=4):
     return slope
 
 
-def test_abrupt_change(detector, sigma=10.0, tolerance=1000.0):
+def test_abrupt_change(detector, sigma=10.0, tolerance=100.0):
     """
     ### Description:
     A function to detect the percentage of abrupt change in a single detector data
@@ -64,7 +67,7 @@ def test_abrupt_change(detector, sigma=10.0, tolerance=1000.0):
         counts = np.sum(counts, axis=1)
 
     # Get the moving average of the data
-    m_average = get_moving_average(counts, window_size=50)
+    m_average = get_moving_average(counts, window_size=25)
 
     # Calculate the standard deviation of the moving average
     stdev = np.std(m_average)
@@ -308,8 +311,8 @@ def scan_health(df, verbose=False, sdd_max=105000, length=None):
     SDD4 = df["sdd4"].to_numpy()
     det = {'i0': IO_R, 'tey': TEY, 'pd': diode, 'sdd1': SDD1, 'sdd2': SDD2, 'sdd3': SDD3, 'sdd4': SDD4}
 
-    dump = np.amax([test_beam_dump((k, v), EN)[1] for k, v in det.items()])
-    abrupt = np.amax([test_abrupt_change((k, v))[1] for k, v in det.items()])
+    dump = np.mean([test_beam_dump((k, v), EN)[1] for k, v in det.items()])
+    abrupt = np.mean([test_abrupt_change((k, v))[1] for k, v in det.items()])
     rate = np.mean([test_detector_count_rates((k, v), sdds_range=(0, sdd_max))[1] for k, v in det.items() if
                     k != 'i0' and k != 'pd'])
     if length:
@@ -347,9 +350,10 @@ def badscans(interp, **kwargs):
     dump = kwargs.get('dump', 30)
     sat = kwargs.get('sat', 60)
     sdd_max = kwargs.get('sdd_max', 50000)
-    length = np.bincount([len(i) for i in interp if i is not None]).argmax()
+    verbose = kwargs.get('verbose', False)
+    length = np.bincount([len(i['i0']) for i in interp if i is not None]).argmax()
     bad_scans = []
-    health = [scan_health(i, sdd_max=sdd_max, length=length) for i in interp]
+    health = [scan_health(i, sdd_max=sdd_max, length=length, verbose=verbose) for i in interp]
     pbar = tqdm(health)
     for i, t in enumerate(pbar):
         pbar.set_description("Finding bad scans...")

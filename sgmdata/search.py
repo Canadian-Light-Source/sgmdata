@@ -319,9 +319,9 @@ class SGMQuery(object):
                 if 'i0' not in k:
                     if len(v.columns) == 1:
                         df[k] = v
-                    elif k in mcas and len(v.columns) == 2:
+                    elif k in mcas and len(v.columns) == 256:
                         mca = averaged.get_arr(k)
-                        temp = sumROI(mca, start=roi[0], stop=roi[1])
+                        temp = sumROI(mca, start=int(roi[0]), stop=int(roi[1]))
                         df[k] = temp
                         sdd_tot.append(temp)
             ## Should this be averaged?
