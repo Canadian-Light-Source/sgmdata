@@ -328,23 +328,6 @@ def find_report(user: str, signer: Sign, proposal: str, **kwargs) -> list:
     signature = signer.sign(user)
     return find(signature, proposal, 'report', **kwargs)
 
-
-def get_or_add_sample(user: str, signer: Sign, sample: str, session_key: str, data_dict=None) -> list:
-    l = current_samples(user, signer)
-    if data_dict:
-        container_id = data_dict.get("container_id", None)
-        if container_id:
-            automount(user, signer, session_key, data_dict={'id': container_id})
-    items = [s for s in l if sample in s['name']]
-    if items:
-        return items[0]
-    else:
-        if not data_dict:
-            data_dict = {"name": sample}
-        data = msgpack.packb(data_dict)
-        signature = signer.sign(user)
-        return post(f'{SGMLIVE_URL}/api/v2/sgm/{signature}/samples/{ENDSTATION}/{session_key}/',
-                    data=data)
     
 def get_or_add_sample(user: str, signer: Sign, sample: str, session_key: str, data_dict=None, proposal=None):
     items = []
@@ -358,6 +341,9 @@ def get_or_add_sample(user: str, signer: Sign, sample: str, session_key: str, da
         items = find_samples(user, signer, proposal, name=sample)
 
     if items:
+        items_exact = [i for i in items if sample == i]
+        if items_exact:
+            return items_exact[0]
         return items[0]
     else:
         if not data_dict:

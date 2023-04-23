@@ -247,7 +247,10 @@ class SGMScan(DisplayDict):
                             nxdata.create_dataset(ax, arr.shape, data=arr, dtype=arr.dtype)
 
                     for sig in self.signals:
-                        arr = data[sig].to_numpy()
+                        if sig in data.keys():
+                            arr = data[sig].to_numpy()
+                        else:
+                            continue
                         if len(df.index.names) > 1:
                             shape = [len(df.index.levels[0]), len(df.index.levels[1])]
                             shape += [s for s in arr.shape[1:]]
@@ -611,7 +614,10 @@ class SGMData(object):
                         arr = np.array(df1.index.levels[i])
                         nxdata.create_dataset(ax, arr.shape, data=arr, dtype=arr.dtype)
                 for sig in self.signals:
-                    arr = self.data[sig].to_numpy()
+                    if sig in self.data.keys():
+                        arr = self.data[sig].to_numpy()
+                    else:
+                        continue
                     if len(df1.index.names) > 1:
                         shape = [len(df1.index.levels[0]), len(df1.index.levels[1])]
                         shape += [s for s in arr.shape[1:]]

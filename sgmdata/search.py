@@ -321,7 +321,7 @@ class SGMQuery(object):
                         df[k] = v
                     elif k in mcas and len(v.columns) == 256:
                         mca = averaged.get_arr(k)
-                        temp = sumROI(mca, start=int(roi[0]), stop=int(roi[1]))
+                        temp = sumROI(mca, start=int(roi[0]/10), stop=int(roi[1]/10))
                         df[k] = temp
                         sdd_tot.append(temp)
             ## Should this be averaged?
@@ -330,7 +330,7 @@ class SGMQuery(object):
                 df = df.join(i0)
             elif isinstance(i0, pd.Series):
                 df['i0_aux'] = i0
-            df.to_csv(out + '/' + name + f'_ROI-{roi[0]}_{roi[1]}.csv')
+            df.to_csv(out + '/' + name + f'_ROI-{int(roi[0])}_{int(roi[1])}.csv')
             dfs.append(df)
         return dfs
 
