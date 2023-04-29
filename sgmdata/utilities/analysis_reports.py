@@ -137,7 +137,10 @@ def make_eemsreport(data, emission=[], sample=None, i0=1, **kwargs):
         if interp:
             _, bscan_report = badscans(interp, **bs_args)
     if sample:
-        averaged = {sample: data.averaged[sample]}
+        try:
+            averaged = {sample: data.averaged[sample]}
+        except:
+            averaged = data.averaged
     else:
         averaged = data.averaged
     fits = []
