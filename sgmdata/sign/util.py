@@ -279,7 +279,7 @@ def get_container(user: str, signer: Sign, session_key: str):
     return get(f'{SGMLIVE_URL}/api/v2/sgm/{signature}/automount/{ENDSTATION}/{session_key}/')
 
 def find(signature: str, proposal: str, type: str, **kwargs) -> list:
-    querystr = "?" + "&".join([f"{k}={v}" for k, v in kwargs.items() if v])
+    querystr = "?" + "&".join([f"{k}={v}" for k, v in kwargs.items() if v or isinstance(v, bool)])
     if querystr:
         l = get(f'{SGMLIVE_URL}/api/v2/{signature}/proposal-{type}/{proposal}/{querystr}')
     else:
@@ -333,12 +333,15 @@ def get_or_add_sample(user: str, signer: Sign, sample: str, session_key: str, da
     items = []
     if data_dict:
         container_id = data_dict.get("container_id", None)
-        if container_id:
-            automount(user, signer, session_key, data_dict={'id': container_id})
         l = current_samples(user, signer)
         items = [s for s in l if sample in s['name']]
+        if not items and proposal:
+            items = find_samples(user, signer, proposal, sample_name=sample, collect=False)
+            if items and container_id:
+                items = [el for el in items if el['container_id'] == container_id]
+
     elif proposal:
-        items = find_samples(user, signer, proposal, name=sample)
+        items = find_samples(user, signer, proposal, sample_name=sample, collect=False)
 
     if items:
         items_exact = [i for i in items if sample == i]
