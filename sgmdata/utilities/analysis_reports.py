@@ -40,7 +40,12 @@ def high_var(avg, emission=[], detector='sdd3'):
     ### Returns:
     (peaks (list), heights (list), widths (list))
     """
-    sig = avg.data[detector]
+    if hasattr(avg, 'data'):
+        sig = avg.data[detector]
+    elif hasattr(avg, 'binned'):
+        sig = avg['binned'][detector]
+    else:
+        return [], [], []
     roi_cols = sig.filter(regex="sdd[1-4]_[0-2].*").columns
     sig.drop(columns=roi_cols, inplace=True)
     sig = sig.to_numpy()
@@ -228,7 +233,7 @@ def sel_map_roi(entry, emission=None, max_en=2000):
     fit = {"peaks": [], "heights": [], "widths": []}
     data = []
     for det in detectors:
-        data.append(entry.get_arr(det))
+        data.append(entry['binned'][det])
         pks, hgts, wid, _ = fit_peaks_once(emission, data)
     peaks = [emission[p] for p in pks if 230 < emission[p] < max_en]
     heights = [h for i, h in enumerate(hgts['peak_heights']) if 230 < emission[pks[i]] < max_en]
@@ -259,7 +264,7 @@ def make_xrfmapreport(data, emission=[], sample = None, i0=1):
                 df = entry.interpolate()
                 interp.append(entry)
     for entry in interp:
-        data = next(iter(entry['binned'].values))
+        data = next(iter(entry['binned'].values()))
         fit, emission = sel_map_roi(entry, emission=emission)
         xrf_plot = [{
             "title": "XRF Plot",
@@ -315,6 +320,6 @@ def make_xrfmapreport(data, emission=[], sample = None, i0=1):
             },
         ]
 
-    return report
+    return report, fit
 
 reports = {'XAS Report': make_eemsreport, 'XRF Map': make_xrfmapreport}

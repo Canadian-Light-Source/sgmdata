@@ -351,6 +351,8 @@ def plot_xyz(shift=False, table=False, **kwargs):
     else:
         raise (Exception, "Didn't recieve tey signal.")
 
+    slew_axis = command[1]
+
     # XRF Map source data
     n1 = ["sdd1-" + str(int(i / 5)) for i in range(0, 256, 5)]
     n2 = ["sdd2-" + str(int(i / 5)) for i in range(0, 256, 5)]
@@ -359,15 +361,20 @@ def plot_xyz(shift=False, table=False, **kwargs):
 
     z = sdd3[:, 15]
     color_mapper = LinearColorMapper(palette="Viridis256", low=min(z), high=max(z))
-    xdelta = abs(float(command[2]) - float(command[3]))
-    ydelta = abs(float(command[6]) - float(command[7]))
-    height = ydelta / float(command[8])
-    width = xdelta / (sdd3.shape[0] / float(command[8]))
+    if 'x' in slew_axis:
+        xdelta = abs(float(command[2]) - float(command[3]))
+        ydelta = abs(float(command[6]) - float(command[7]))
+        height = ydelta / float(command[8])
+        width = xdelta / (sdd3.shape[0] / float(command[8]))
+    elif 'y' in slew_axis:
+        xdelta = abs(float(command[6]) - float(command[7]))
+        ydelta = abs(float(command[2]) - float(command[3]))
+        height = ydelta / (sdd3.shape[0] / float(command[8]))
+        width = xdelta / float(command[8])
 
     # Shift the X data to line up the rows at center.
     # Pre-process the slew values. The data needs to be shifted due to how they were collected
     if shift:
-        slew_axis = command[1]
         if 'y' in slew_axis or 'z' in slew_axis:
             y = shifted(y)
         else:

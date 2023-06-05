@@ -311,10 +311,20 @@ def scan_health(df, verbose=False, sdd_max=105000, length=None):
     SDD4 = df["sdd4"].to_numpy()
     det = {'i0': IO_R, 'tey': TEY, 'pd': diode, 'sdd1': SDD1, 'sdd2': SDD2, 'sdd3': SDD3, 'sdd4': SDD4}
 
-    dump = np.mean([test_beam_dump((k, v), EN)[1] for k, v in det.items()])
-    abrupt = np.mean([test_abrupt_change((k, v))[1] for k, v in det.items()])
-    rate = np.mean([test_detector_count_rates((k, v), sdds_range=(0, sdd_max))[1] for k, v in det.items() if
-                    k != 'i0' and k != 'pd'])
+    try:
+        dump = np.mean([test_beam_dump((k, v), EN)[1] for k, v in det.items()])
+    except ValueError:
+        dump = 100
+    try:
+        abrupt = np.mean([test_abrupt_change((k, v))[1] for k, v in det.items()])
+    except ValueError:
+        abrupt = 100
+    try:
+        rate = np.mean([test_detector_count_rates((k, v), sdds_range=(0, sdd_max))[1] for k, v in det.items() if
+                        k != 'i0' and k != 'pd'])
+    except ValueError:
+        rate = 100
+
     if length:
         if abs(len(EN) - length) > 5:
             abrupt = 100
@@ -364,7 +374,10 @@ def badscans(interp, **kwargs):
         header = ["Scan", "Beam Dump", "Discontinuity Rate", "Saturation Rate", "Discarded"]
         data = [header]
         for i, h in enumerate(health):
-            data.append([kwargs['report'][i], f"{h[0]}%", f"{h[1]}%", f"{h[2]}%", f"{i in bad_scans}"])
+            try:
+                data.append([kwargs['report'][i], f"{h[0]}%", f"{h[1]}%", f"{h[2]}%", f"{i in bad_scans}"])
+            except IndexError:
+                continue
         report = {
             "title": "Scan Health Summary",
             "style": "row",

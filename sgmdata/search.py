@@ -126,10 +126,11 @@ class SGMQuery(object):
         self.num_scans = DisplayDict()
         self.kind = DisplayDict()
         self.data_hash = ""
-        if self.sample:
-            self.get_datasets(data)
-        elif self.pk:
+        if self.pk:
             self.get_data(data)
+        else:
+            self.get_datasets(data)
+
 
     def get_data(self, data):
         for p in tqdm(self.proposal_list, desc="Searching Proposals"):
@@ -190,6 +191,10 @@ class SGMQuery(object):
             for s in samples:
                 name = s['name'].strip()
                 fdata = find_data(self.user, self.signer, p, sample=s['id'], kind=self.type, data=self.pk)
+                if self.daterange:
+                    fdata = [f for f in fdata
+                             if datetime.datetime.strptime(f['start'], "%Y-%m-%dT%H:%M:%SZ") > self.daterange[0]
+                             and datetime.datetime.strptime(f['end'], "%Y-%m-%dT%H:%M:%SZ") < self.daterange[1]]
                 for d in fdata:
                     key = f"{d['id']}"
                     self.paths[key] = [f"{self.prepend}{d['directory']}raw/{f}.nxs" for f in d['files']]

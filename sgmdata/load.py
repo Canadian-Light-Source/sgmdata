@@ -301,7 +301,7 @@ class SGMScan(DisplayDict):
                 keys = xrfmap.required
                 if 'fit' in self.keys():
                     df = self['fit']['dataframe']
-                    df.fillna(0, inplace=True )
+                    df.fillna(0, inplace=True)
                     emission = self['fit']['emission']
                     peaks = self['fit']['peaks']
                     width = self['fit']['width']
@@ -319,13 +319,17 @@ class SGMScan(DisplayDict):
                     return xrfmap.plot(**kwargs)
                 elif 'binned' in self.keys():
                     print("Plotting Interpolated Data")
-                    dfs = self['binned']['signals']
-                    roi_cols = [dfs[k].filter(regex="sdd[1-4]_[0-2].*").columns for k in keys]
-                    data = {k: dfs[k].drop(columns=roi_cols[i]).to_numpy() for i, k in enumerate(keys)}
-                    data = {k: v for k, v in data.items() if v.size}
-                    df = dfs[keys[0]]
-                    data.update({n: df.index.levels[i] for i, n in enumerate(list(df.index.names))})
-                    data.update({'emission': np.linspace(0, 2560, 256)})
+                    for k, df in self['binned'].items():
+                        roi_cols = df.filter(regex="sdd[1-4]_[0-2].*").columns
+                        df.drop(columns=roi_cols, inplace=True)
+                    data = {k: self['binned'][k].filter(regex=("%s.*" % k), axis=1).to_numpy() for k in keys if
+                            k in self['binned'].keys()}
+                    df1 = [v for v in self['binned'].values()][0]
+                    data.update({df1.index.names[0]: np.array(df1.index.levels[0]),
+                                 df1.index.names[1]: np.array(df1.index.levels[1]),
+                                 'emission': np.linspace(0, 2560, 256)})
+                    if 'image' in keys:
+                        data.update({'image': data['sdd1']})
                     kwargs.update(data)
                     return xrfmap.plot_interp(**kwargs)
                 else:
