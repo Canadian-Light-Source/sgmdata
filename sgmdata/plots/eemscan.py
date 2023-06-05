@@ -363,7 +363,7 @@ def plot_json(**kwargs):
     return json_item(lout, target="61b4f88e-a524-45b8-9e01-5a1967ccfb8b")
 
 
-def plot_scan(scan, pk):
+def make_eems_json(scan, pk):
     keys = required
     ds = int(scan['independent']['en'].shape[0] / 1000) + 1
     data = {k: scan['signals'][s][::ds].compute() for s in scan['signals'].keys() for k in keys if k in s}
@@ -377,7 +377,7 @@ def plot_scan(scan, pk):
         elif np.array(scan.signals['sdd3']).any():
             data.update({'image': scan['signals']['sdd3'][::ds].compute(), 'filename': str(scan['sample'])})
     data.update({"scale":0.75, "json":True})
-    json_pl = plot(**data)
+    json_pl = plot_json(**data)
     json_pl['doc']['title'] = f"DAT-0{pk[:2]}-{pk[2:]}"
     return json.dumps(json_pl)
 
