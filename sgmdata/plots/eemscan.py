@@ -363,19 +363,21 @@ def plot_json(**kwargs):
     return json_item(lout, target="61b4f88e-a524-45b8-9e01-5a1967ccfb8b")
 
 
-def make_json(scan):
-    self = scan
+def plot_scan(scan, pk):
     keys = required
-    ds = int(self.independent['en'].shape[0] / 1000) + 1
-    data = {k: self.signals[s][::ds].compute() for s in self.signals.keys() for k in keys if k in s}
+    ds = int(scan['independent']['en'].shape[0] / 1000) + 1
+    data = {k: scan['signals'][s][::ds].compute() for s in scan['signals'].keys() for k in keys if k in s}
     data.update(
-        {k: self.independent[s][::ds].compute() for s in self.independent.keys() for k in keys if
+        {k: scan['independent'][s][::ds].compute() for s in scan['independent'].keys() for k in keys if
          k in s})
-    data.update({k: self.other[s].compute() for s in self.other.keys() for k in keys if s in k})
+    data.update({k: scan['other'][s].compute() for s in scan['other'].keys() for k in keys if s in k})
     if 'image' in keys:
-        data.update({'image': self.signals['sdd1'][::ds].compute(), 'filename': str(self.sample)})
-    data.update({"scale": 0.75, "json": True})
-    json_pl = plot_json(**data)
-    json_pl['doc']['title'] = "DAT-037-148"
-    return json_pl
+        if np.array(scan['signals']['sdd1']).any():
+            data.update({'image': scan['signals']['sdd1'][::ds].compute(), 'filename': str(scan['sample'])})
+        elif np.array(scan.signals['sdd3']).any():
+            data.update({'image': scan['signals']['sdd3'][::ds].compute(), 'filename': str(scan['sample'])})
+    data.update({"scale":0.75, "json":True})
+    json_pl = plot(**data)
+    json_pl['doc']['title'] = f"DAT-0{pk[:2]}-{pk[2:]}"
+    return json.dumps(json_pl)
 
