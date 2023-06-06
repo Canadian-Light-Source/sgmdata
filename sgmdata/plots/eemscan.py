@@ -134,8 +134,8 @@ def plot(**kwargs):
                                 height=height*1//15, width=width*3//16)
     flslider = Slider(start=10, end=2560, value=1280, step=10, title="Line Peak",  height=height*1//20, width=width*3//16)
     wdslider = Slider(start=20, end=500, value=100, step=10, title="Line Width", height=height*1//20, width=width*3//16)
-    slider = RangeSlider(title="Color Scale:", start=0, end=4 * np.amax(kwargs['sdd1']),
-                         value=(0, np.amax(kwargs['sdd1'])), step=20, height=height*1//20, width=width*3//8)
+    slider = RangeSlider(title="Color Scale:", start=0, end=4 * np.amax(kwargs['sdd1']) + 1,
+                         value=(0, np.amax(kwargs['sdd1']) + 1), step=20, height=height*1//20, width=width*3//8)
     select_palette = Select(title="Colormap Select:", options=['Viridis', 'Spectral', 'Inferno'], value='Spectral',
                              height=height*1//25, width=width*3//8)
 
@@ -304,8 +304,8 @@ def plot_json(**kwargs):
                                 height=height*1//15, width=width*3//16)
     flslider = Slider(start=10, end=2560, value=1280, step=10, title="Peak",  height=height*1//20, width=width*3//16)
     wdslider = Slider(start=20, end=500, value=100, step=10, title="Width", height=height*1//20, width=width*3//16)
-    slider = RangeSlider(title="Scale:", start=0, end=4 * np.amax(kwargs['sdd1']),
-                         value=(0, np.amax(kwargs['sdd1'])), step=20, height=height*1//20, width=width*3//16, name="Scale:")
+    slider = RangeSlider(title="Scale:", start=0, end=4 * np.amax(kwargs['sdd1']+1),
+                         value=(0, np.amax(kwargs['sdd1']))+1, step=20, height=height*1//20, width=width*3//16, name="Scale:")
     select_palette = Select( options=['Viridis', 'Spectral', 'Inferno'], value='Spectral',
                              height=height*1//25, width=width*3//16)
 
@@ -374,10 +374,10 @@ def make_eems_json(scan, pk):
     if 'image' in keys:
         if np.array(scan['signals']['sdd1']).any():
             data.update({'image': scan['signals']['sdd1'][::ds].compute(), 'filename': str(scan['sample'])})
-        elif np.array(scan.signals['sdd3']).any():
+        else:
             data.update({'image': scan['signals']['sdd3'][::ds].compute(), 'filename': str(scan['sample'])})
     data.update({"scale":0.75, "json":True})
-    json_pl = plot_json(**data)
+    json_pl = plot(**data)
     json_pl['doc']['title'] = f"DAT-0{pk[:2]}-{pk[2:]}"
-    return json.dumps(json_pl)
+    return json_pl
 
