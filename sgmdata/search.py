@@ -355,7 +355,7 @@ class SGMQuery(object):
             "details": report,
             "title": title,
             "files": files,
-            "directory": f"prj{proposal}/preprocessed/{session}/",
+            "directory": f"prj{proposal}/preprocessed/{session}/{title}-report-{report_id}",
             "data_id": [pk],
         }
         if report_id:

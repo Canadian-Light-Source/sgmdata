@@ -345,8 +345,11 @@ def get_or_add_sample(user: str, signer: Sign, sample: str, session_key: str, da
 
     if items:
         items_exact = [i for i in items if sample == i]
-        if items_exact:
+        items_in = [i for i in items if sample in i]
+        if len(items_exact):
             return items_exact[0]
+        elif len(items_in):
+            return items_in[0]
         return items[0]
     else:
         if not data_dict:
