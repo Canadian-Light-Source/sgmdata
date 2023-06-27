@@ -8,7 +8,7 @@ import urllib3
 urllib3.disable_warnings(urllib3.exceptions.SecurityWarning)
 
 KEY_STORE = os.path.expanduser(config.get('user_keys', "~/.ssh/sgmlive_keys"))
-SGMLIVE_URL = config.get('sgmlive_url', "http://localhost:8000")
+SGMLIVE_URL = config.get('sgmlive_url', "https://sgmbeta.lightsource.ca")
 ENDSTATION = config.get('endstation', 'SGM-AMBXAS')
 CERT_KEY = config.get('sgmlive_cert')
 
