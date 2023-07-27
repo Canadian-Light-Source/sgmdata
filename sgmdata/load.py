@@ -151,7 +151,7 @@ class SGMScan(DisplayDict):
                                "width": wid}
                 return new_df
 
-        def read(self, filename="") -> list:
+        def read(self, filename="") -> DisplayDict:
             """
             ### Description
             >Function to load in already processed data from file.
@@ -159,42 +159,47 @@ class SGMScan(DisplayDict):
             >**filename** *(str)* -- path to file on disk.
             """
             if not filename:
-                return []
+                return DisplayDict()
             if os.path.exists(filename):
                 try:
                     h5 = h5py.File(filename, 'r')
                 except Exception as f:
                     warnings.warn(f"Could not open file, h5py raised: {f}")
-                    return []
+                    return DisplayDict()
             elif os.path.exists('./data/'):
                 try:
                     h5 = h5py.File(filename.replace('/home/jovyan/', './'), 'r')
                 except Exception as f:
                     warnings.warn(f"Could not open file, h5py raised: {f}")
-                    return []
+                    return DisplayDict()
             else:
                 try:
                     h5 = h5pyd.File(filename, "r", config.get("h5endpoint"), username=config.get("h5user"),
                                     password=config.get("h5pass"))
                 except Exception as f:
                     warnings.warn(f"Could not open file, h5pyd raised: {f}")
-                    return []
+                    return DisplayDict()
             NXentries = [str(x) for x in h5['/'].keys()
                          if 'NXentry' in str(h5[x].attrs.get('NX_class')) and str(x) in self['name']]
+            if len(NXentries) == 0:
+                NXentries = [str(x) for x in h5['/'].keys() if 'NXentry' in str(h5[x].attrs.get('NX_class'))]
             NXdata = [entry + "/" + str(x) for entry in NXentries for x in h5['/' + entry].keys()
                       if 'NXdata' in str(h5[entry + "/" + x].attrs.get('NX_class'))]
             axes = [[str(nm) for nm in h5[nxdata].keys() for s in h5[nxdata].attrs.get('axes') if str(s) in str(nm) or
                      str(nm) in str(s)] for nxdata in NXdata]
             indep_shape = [v.shape for i, d in enumerate(NXdata) for k, v in h5[d].items() if k in axes[i][0]]
-            data = [{k: np.squeeze(v[()]) for k, v in h5[d].items() if v.shape[0] == indep_shape[i][0] and k not in axes[i]} for i, d in
-                    enumerate(NXdata)]
+            data = [
+                {k: np.squeeze(v[()]) for k, v in h5[d].items() if v.shape[0] == indep_shape[i][0] and k not in axes[i]}
+                for i, d in
+                enumerate(NXdata)]
             index = [pd.DataFrame.from_dict({ax: h5[d][ax] for ax in axes[i]}) for i, d in enumerate(NXdata)]
             df_sdds = [DisplayDict({k: index[i].join(pd.DataFrame.from_dict(
                 {k + f"-{j}": v[:, j] for j in range(0, v.shape[1])})).set_index(axes[i]) for k, v in data[i].items()
-                    if len(v.shape) == 2}) for i, _ in enumerate(NXdata)]
+                                    if len(v.shape) == 2}) for i, _ in enumerate(NXdata)]
             df_scas = [DisplayDict(
-                {k: index[i].join(pd.DataFrame.from_dict({k: v})).set_index(axes[i]) for k, v, in data[i].items() if len(v.shape) < 2})
-                   for i, _ in enumerate(NXdata)]
+                {k: index[i].join(pd.DataFrame.from_dict({k: v})).set_index(axes[i]) for k, v, in data[i].items() if
+                 len(v.shape) < 2})
+                for i, _ in enumerate(NXdata)]
             for i, _ in enumerate(NXdata):
                 df_scas[i].update(df_sdds[i])
 
@@ -228,6 +233,8 @@ class SGMScan(DisplayDict):
                     if NXentries:
                         NXentries.sort()
                         entry = 'entry' + str(NXentries[-1] + 1)
+                    elif hasattr(self, 'name'):
+                        entry = self['name']
                     else:
                         entry = 'entry1'
                     df = [d for d in data.values()][0]
@@ -517,7 +524,7 @@ class SGMData(object):
                 except AttributeError:
                     warnings.warn(f"No dataframe loaded in processed dictionary.")
 
-        def read(self, filename=None, associated=None) -> list:
+        def read(self, filename=None, associated=None) -> DisplayDict:
             f"""{SGMScan.DataDict.read.__doc__}"""
             if not filename:
                 try:
@@ -526,26 +533,26 @@ class SGMData(object):
                     try:
                         filename = self.sample + ".nxs"
                     except AttributeError:
-                        return []
+                        return DisplayDict()
             if os.path.exists(filename):
                 try:
                     h5 = h5py.File(filename, 'r')
                 except Exception as f:
                     warnings.warn(f"Could not open file, h5py raised: {f}")
-                    return
+                    return DisplayDict()
             elif os.path.exists('./data/'):
                 try:
                     h5 = h5py.File(filename.replace('/home/jovyan/', './'), 'r')
                 except Exception as f:
                     warnings.warn(f"Could not open file, h5py raised: {f}")
-                    return
+                    return DisplayDict()
             else:
                 try:
                     h5 = h5pyd.File(filename, "r", config.get("h5endpoint"), username=config.get("h5user"),
                                     password=config.get("h5pass"))
                 except Exception as f:
                     warnings.warn(f"Could not open file, h5pyd raised: {f}")
-                    return
+                    return DisplayDict()
             NXentries = [str(x) for x in h5['/'].keys()
                          if 'NXentry' in str(h5[x].attrs.get('NX_class'))]
             NXdata = [entry + "/" + str(x) for entry in NXentries for x in h5['/' + entry].keys()
@@ -640,12 +647,12 @@ class SGMData(object):
                         scantype = 'XRF'
                 except AttributeError:
                     try:
-                        if len(self.data.index.names) == 1:
+                        if len(self.data['i0'].index.names) == 1:
                             scantype = 'EEMS'
-                        elif len(self.data.index.names) == 2:
+                        elif len(self.data['i0'].index.names) == 2:
                             scantype = 'XRF'
                     except AttributeError:
-                        return
+                        return ""
             if scantype == 'EEMS':
                 keys = eemscan.required
                 for k, df in self.data.items():
@@ -668,7 +675,7 @@ class SGMData(object):
                 data.update({n: df1.index.levels[i] for i, n in enumerate(list(df1.index.names))})
                 data.update({'emission': np.linspace(0, 2560, 256)})
                 kwargs.update(data)
-                xrfmap.plot_interp(**kwargs)
+                return xrfmap.plot_interp(**kwargs)
 
     def __init__(self, files, **kwargs):
         self.__dict__.update(kwargs)

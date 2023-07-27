@@ -20,7 +20,6 @@ class DisplayDict(OrderedDict):
     def __setattr__(self, name, value):
         self[name] = value
 
-
     def _repr_html_(self):
         table = [
             "<table>",
@@ -36,8 +35,18 @@ class DisplayDict(OrderedDict):
         table.append("</tbody></table>")
         return "\n".join(table)
 
-
     def _repr_console_(self):
+        """
+        ### Description
+        Takes own data and organizes it into a console-friendly table.
+        """
+        final_data = ''
+        for key, value in self.items():
+            final_data = final_data + str(key) + ":\t"
+            final_data = final_data + str(value) + "\t\t|\t\t"
+        return final_data
+
+    def __repr__(self):
         """
         ### Description
         Takes own data and organizes it into a console-friendly table.
@@ -72,6 +81,7 @@ class OneList(list):
     assert l == data #raises Error
     ```
     """
+
     def __init__(self, iterable, **kwargs):
         self.l = list(iterable)
         for i in range(0, len(self.l)):
@@ -155,7 +165,7 @@ class OneList(list):
 
     def _repr_html_(self):
         if len(self.l) == 1:
-            return self.value._repr_html_()
+            return self.l[0]._repr_html_()
         else:
             table = [
                 "<table>",
@@ -173,7 +183,7 @@ class OneList(list):
 
     def __repr__(self):
         if len(self.l) == 1:
-            return self.l[0]
+            return self.l[0].__repr__()
         return self.l.__repr__()
 
     def __reversed__(self):

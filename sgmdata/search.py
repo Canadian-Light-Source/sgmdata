@@ -159,7 +159,7 @@ class SGMQuery(object):
                         kind = None
                     for r in find_report(self.user, self.signer, p, data=d['id'], kind=kind):
                         if 'binned' in r['files'].keys():
-                            self.interp_paths[key] = [f"{self.prepend}/{r['url']}/binned/{f}.nxs" for f in
+                            self.interp_paths[key] = [f"{self.prepend}/{f}" for f in
                                                       r['files']['binned']]
                             r.update(
                                 {'paths': self.interp_paths[key]}
@@ -169,14 +169,14 @@ class SGMQuery(object):
                                     for entry in list(sgmscan.__dict__.values()):
                                         entry.read(filename=r['paths'][i])
                         if 'average' in r['files'].keys():
-                            self.avg_paths[key] = [f"{self.prepend}/{r['url']}/{r['name']}-report-{r['id']}/{f}"
+                            self.avg_paths[key] = [f"{f}"
                                                    for f in r['files']['average']]
                             r.update(
                                 {'avg': self.avg_paths[key]}
                             )
-                            if data:
-                                processed = SGMData.Processed(sample=s['name'])
-                                processed.read(filename=r['avg'])
+                            if data and len(r['avg']):
+                                processed = SGMData.Processed(sample=d['name'])
+                                processed.read(filename=r['avg'][0])
                                 d['data'].averaged = {processed['sample']: OneList([processed])}
 
                         reports.append(r)
@@ -219,7 +219,7 @@ class SGMQuery(object):
                             kind = None
                         for r in find_report(self.user, self.signer, p, data=d['id'], kind=kind):
                             if 'binned' in r['files'].keys():
-                                self.interp_paths[key] = [f"{self.prepend}/{r['url']}/binned/{f}.nxs" for f in r['files']['binned']]
+                                self.interp_paths[key] = [f"{self.prepend}/{f}" for f in r['files']['binned']]
                                 r.update(
                                     {'paths': self.interp_paths[key]}
                                 )
@@ -228,14 +228,14 @@ class SGMQuery(object):
                                         for entry in list(sgmscan.__dict__.values()):
                                             entry.read(filename=r['paths'][i])
                             if 'average' in r['files'].keys():
-                                self.avg_paths[key] = [f"{self.prepend}/{r['url']}/{r['name']}-report-{r['id']}/{f}"
+                                self.avg_paths[key] = [f"{f}"
                                                        for f in r['files']['average']]
                                 r.update(
                                     {'avg': self.avg_paths[key]}
                                 )
                                 if data:
                                     processed = SGMData.Processed(sample=s['name'])
-                                    processed.read(filename=r['avg'])
+                                    processed.read(filename=r['avg'][0])
                                     d['data'].averaged = {processed['sample']: OneList([processed])}
 
                             reports.append(r)
