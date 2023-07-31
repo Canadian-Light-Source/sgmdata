@@ -177,7 +177,7 @@ class SGMQuery(object):
                             if data and len(r['avg']):
                                 processed = SGMData.Processed(sample=d['name'])
                                 processed.read(filename=r['avg'][0])
-                                d['data'].averaged = {processed['sample']: OneList([processed])}
+                                d['data'].averaged = DisplayDict({processed['sample']: OneList([processed])})
 
                         reports.append(r)
                     self.reports[key] = reports
@@ -236,7 +236,7 @@ class SGMQuery(object):
                                 if data:
                                     processed = SGMData.Processed(sample=s['name'])
                                     processed.read(filename=r['avg'][0])
-                                    d['data'].averaged = {processed['sample']: OneList([processed])}
+                                    d['data'].averaged = DisplayDict({processed['sample']: OneList([processed])})
 
                             reports.append(r)
                         self.reports[key] = reports

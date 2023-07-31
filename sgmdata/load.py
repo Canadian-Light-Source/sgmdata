@@ -898,7 +898,7 @@ class SGMData(object):
         if bad_scans is None:
             bad_scans = []
         sample_scans = {}
-        i = 1
+        i = 0
         for k, file in self.scans.items():
             for entry, scan in file.__dict__.items():
                 i = i + 1

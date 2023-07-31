@@ -11,7 +11,7 @@ setup(
     description="Module for loading, interpolating and plotting data taken at the SGM Beamline at the Canadian Light Source.",
     long_description=readme(),
     long_description_content_type="text/markdown",
-    url="https://github.lightsource.ca/arthurz/sgmdata",
+    url="https://github.com/Canadian-Light-Source/sgmdata",
     author="Zachary Arthur",
     author_email="zachary.arthur@lightsource.ca",
     license="MIT",
