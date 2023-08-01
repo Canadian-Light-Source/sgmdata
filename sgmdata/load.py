@@ -464,6 +464,9 @@ class SGMScan(DisplayDict):
 
     def __getitem__(self, item):
         return self.__dict__[item]
+        
+    def first(self):
+        return next(iter(self.__dict__.values()))
 
 replacement_keys = {"pd1_r": "pd", "tey_r": "tey", "io_r": "i0"}
 def check_key(key):
