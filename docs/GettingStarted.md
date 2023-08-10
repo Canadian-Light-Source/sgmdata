@@ -10,6 +10,29 @@ git clone https://github.lightsource.ca/arthurz/sgmdata ./sgmdata
 cd sgmdata
 python setup.py install
 ```
+### Site Usage:
+```python
+import sgmdata
+sgmq = sgmdata.SGMQuery(sample='MgFe', proposal='35C12468', processed=True) #processed flag enables/disables collection of processed data from reports if it exists
+sgmq
+```
+Out: 
+![png](query-result.png)
+
+```python
+#Choosing a dataset
+data = sgmq.data['10345']
+data
+```
+Out:
+![png](data-result.png)
+```python
+#plotting first entry in first scan
+data.scans.first().first().plot()
+```
+Out:
+![png](eems-plot.png)
+
 ### Local Usage:
 First import the package, and select data to load in.
 ```python
