@@ -15,5 +15,5 @@ scan_lib.update({'EEMs': "run_eems 1 544", 'C': "gscan 270 320 col 320", 'N': "g
                  'Ge': "gscan 1200 1280 col 1260", 'Se': "gscan 1420 1500 col 1500", 'Br': "gscan 1500 1650 col 1565", 'Cr': "gscan 560 595 col 575",
                  'Ru': "gscan 450 505 col 464", 'La': "gscan 820 870 col 834", 'Ga': "gscan 1100 1180 col 1130", 'V': "gscan 500 530 col 523",
                  'In-M4,5': "gscan 435 470 col 455", 'W': "gscan 1790 1990 col 1970", 'Ho-M4,5': "gscan 1335 1415 col 1392", 
-                 'Y-L2,3': "gscan 2050 2200 col 2085"
+                 'Y-L2,3': "gscan 2050 2200 col 2085", 'Pd-M2,3': "gscan 510 590 col 530"
                  })
