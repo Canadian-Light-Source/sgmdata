@@ -904,7 +904,6 @@ class SGMData(object):
         i = 0
         for k, file in self.scans.items():
             for entry, scan in file.__dict__.items():
-                i = i + 1
                 signals = [k for k, v in scan['signals'].items()]
                 if 'binned' in scan.keys():
                     key = []
@@ -925,6 +924,7 @@ class SGMData(object):
                             sample_scans.update({key: d})
                         else:
                             sample_scans.update({key: {'data': [scan['binned']], 'signals': signals, 'associated': [(k, entry)]}})
+                    i = i + 1
         average = DisplayDict()
         dfs = DisplayDict()
         for k, v in sample_scans.items():
