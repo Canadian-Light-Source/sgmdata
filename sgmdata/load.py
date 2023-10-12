@@ -509,6 +509,8 @@ class SGMData(object):
         >**mean()** -- averages all interpolated data together (organized by sample, scan type & range), returns list, saves data
                   under a dictionary in SGMData().averaged
 
+        >**processed()** -- convenience method to get a list of all interpolated SGMScan data.
+
 
     ### Attributes
         >**scans** *(SGMScan)* By default the query will create an SGMData object containing your data, this can be turned off with the data keyword.
@@ -897,34 +899,44 @@ class SGMData(object):
             dfs, _ = interpolate(independent, signals, command=command, **kwargs)
             return dfs
 
-    def mean(self, bad_scans=None):
+    def processed(self, bad_scans=None, verbose=False):
         if bad_scans is None:
             bad_scans = []
         sample_scans = {}
-        i = 0
-        for k, file in self.scans.items():
-            for entry, scan in file.__dict__.items():
-                signals = [k for k, v in scan['signals'].items()]
-                if 'binned' in scan.keys():
-                    key = []
-                    if 'sample' in scan.keys():
-                        key.append(scan['sample'])
-                    else:
-                        key.append('Unknown')
-                    if 'command' in scan.keys():
-                        key.append("_".join(scan['command']))
-                    else:
-                        key.append("None")
-                    key = ":".join(key)
-                    if i not in bad_scans:
-                        if key in sample_scans.keys():
-                            l = sample_scans[key]['data'] + [scan['binned']]
-                            a = sample_scans[key]['associated'] + [(k, entry)]
-                            d = {'data': l, 'signals': signals, 'associated': a}
-                            sample_scans.update({key: d})
+        interpolated = OneList([])
+        if self.interpolated:
+            i = 0
+            for k, file in self.scans.items():
+                for entry, scan in file.__dict__.items():
+                    signals = [k for k, v in scan['signals'].items()]
+                    if 'binned' in scan.keys():
+                        key = []
+                        if 'sample' in scan.keys():
+                            key.append(scan['sample'])
                         else:
-                            sample_scans.update({key: {'data': [scan['binned']], 'signals': signals, 'associated': [(k, entry)]}})
-                    i = i + 1
+                            key.append('Unknown')
+                        if 'command' in scan.keys():
+                            key.append("_".join(scan['command']))
+                        else:
+                            key.append("None")
+                        key = ":".join(key)
+                        if i not in bad_scans:
+                            if key in sample_scans.keys():
+                                l = sample_scans[key]['data'] + [scan['binned']]
+                                a = sample_scans[key]['associated'] + [(k, entry)]
+                                d = {'data': l, 'signals': signals, 'associated': a}
+                                sample_scans.update({key: d})
+                            else:
+                                l = [scan['binned']]
+                                sample_scans.update({key: {'data': l, 'signals': signals, 'associated': [(k, entry)]}})
+                        interpolated.append(OneList((k, entry, scan['binned'])))
+                        i = i + 1
+        if not verbose:
+            return interpolated
+        return sample_scans
+
+    def mean(self, bad_scans=None):
+        sample_scans = self.processed(bad_scans, verbose=True)
         average = DisplayDict()
         dfs = DisplayDict()
         for k, v in sample_scans.items():

@@ -61,6 +61,8 @@ class SGMQuery(object):
     >**processed** *(bool:optional)* -- Can be used to return the paths for the processed data (already interpolated) instead
                                         of the raw. You would generally set data = False for this option.
 
+    >**data_id** *(int:optional)* -- Primary key of the specific dataset requested.
+
     ### Attributes:
     >**data** *(object)* --  By default the query will create an SGMData object containing your data, this can be turned off
                                  with the data keyword.
@@ -90,7 +92,9 @@ class SGMQuery(object):
         if not isinstance(self.proposal_list, list):
             self.proposal_list = [self.proposal_list]
         self.sample = kwargs.get('sample', '')
-        self.pk = kwargs.get('pk', '')
+        self.pk = kwargs.get('data_id', '')
+        if not self.pk:
+            self.pk = kwargs.get('pk', '')
         self.type = kwargs.get('kind', '')
         data = kwargs.get('data', True)
         self.processed = kwargs.get('processed', False)
@@ -168,6 +172,7 @@ class SGMQuery(object):
                                 for i, sgmscan in enumerate(d['data'].scans.values()):
                                     for entry in list(sgmscan.__dict__.values()):
                                         entry.read(filename=r['paths'][i])
+                                d['data'].interpolated = True
                         if 'average' in r['files'].keys():
                             self.avg_paths[key] = [f"{f}"
                                                    for f in r['files']['average']]
@@ -227,6 +232,7 @@ class SGMQuery(object):
                                     for i, sgmscan in enumerate(d['data'].scans.values()):
                                         for entry in list(sgmscan.__dict__.values()):
                                             entry.read(filename=r['paths'][i])
+                                    d['data'].interpolated = True
                             if 'average' in r['files'].keys():
                                 self.avg_paths[key] = [f"{f}"
                                                        for f in r['files']['average']]
