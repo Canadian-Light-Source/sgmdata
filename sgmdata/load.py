@@ -853,7 +853,7 @@ class SGMData(object):
                 entries.update({entry: scan})
         return {file_root: entries}
 
-    def interpolate(self, **kwargs):
+    def interpolate(self, **kwargs) -> list:
         """
         ### Description:
         Batch interpolation of underlying scans.  Creates the bins required for each independent axes to be histogrammed
@@ -881,7 +881,7 @@ class SGMData(object):
         self.interpolated = True
         return results
 
-    def _interpolate(self, entry, **kwargs):
+    def _interpolate(self, entry, **kwargs) -> dict:
         compute = kwargs.get('compute', True)
         if compute:
             try:
@@ -899,7 +899,17 @@ class SGMData(object):
             dfs, _ = interpolate(independent, signals, command=command, **kwargs)
             return dfs
 
-    def processed(self, bad_scans=None, verbose=False):
+    def processed(self, dask=False, bad_scans=None, verbose=False) -> OneList:
+        """
+        ### Description:
+        Convenience function to grab a list of the interpolated data present in all SGMdata.scans.entry
+
+        ### Keyword Args:
+            >**dask** *(bool)* -- Grab interpolated sets as dask dataframes, instead of pandas.  Useful for memory intensive operations.
+            >**bad_scans** *(list)* -- Index filter for which scans to not include in the list.
+            >**verbose** *(bool)* -- Can override normal list output to give a more complete dictionary including scan key, start times, etc..
+                                    This is set as True for the creation of SGMData.averaged objects, and otherwise isn't that useful.
+        """
         if bad_scans is None:
             bad_scans = []
         sample_scans = {}
@@ -921,13 +931,16 @@ class SGMData(object):
                             key.append("None")
                         key = ":".join(key)
                         if i not in bad_scans:
+                            df = scan['binned']
+                            if dask:
+                                df = dd.from_pandas(df, npartitions=self.chunks)
                             if key in sample_scans.keys():
-                                l = sample_scans[key]['data'] + [scan['binned']]
+                                l = sample_scans[key]['data'] + [df]
                                 a = sample_scans[key]['associated'] + [(k, entry)]
                                 d = {'data': l, 'signals': signals, 'associated': a}
                                 sample_scans.update({key: d})
                             else:
-                                l = [scan['binned']]
+                                l = [df]
                                 sample_scans.update({key: {'data': l, 'signals': signals, 'associated': [(k, entry)]}})
                         interpolated.append(OneList((k, entry, scan['binned'])))
                         i = i + 1
