@@ -106,7 +106,6 @@ def interpolate(independent, signals, command=None, **kwargs):
     method = kwargs.get('method', 'nearest')
     accuracy = kwargs.get('sig_digits', 2)
     axis = independent
-    client = get_client()
     dim = len(axis.keys())
     if 'start' not in kwargs.keys():
         if command:

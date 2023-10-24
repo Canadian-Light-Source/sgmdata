@@ -6,6 +6,7 @@ from . import config
 import h5pyd
 import dask.array as da
 import dask.dataframe as dd
+from dask.distributed import get_client
 import pandas as pd
 import numpy as np
 from multiprocessing.pool import ThreadPool
@@ -192,12 +193,12 @@ class SGMScan(DisplayDict):
                 {k: np.squeeze(v[()]) for k, v in h5[d].items() if v.shape[0] == indep_shape[i][0] and k not in axes[i]}
                 for i, d in
                 enumerate(NXdata)]
-            index = [pd.DataFrame.from_dict({ax: h5[d][ax] for ax in axes[i]}) for i, d in enumerate(NXdata)]
-            df_sdds = [DisplayDict({k: index[i].join(pd.DataFrame.from_dict(
+            index = [dd.DataFrame.from_dict({ax: h5[d][ax] for ax in axes[i]}) for i, d in enumerate(NXdata)]
+            df_sdds = [DisplayDict({k: index[i].join(dd.DataFrame.from_dict(
                 {k + f"-{j}": v[:, j] for j in range(0, v.shape[1])})).set_index(axes[i]) for k, v in data[i].items()
                                     if len(v.shape) == 2}) for i, _ in enumerate(NXdata)]
             df_scas = [DisplayDict(
-                {k: index[i].join(pd.DataFrame.from_dict({k: v})).set_index(axes[i]) for k, v, in data[i].items() if
+                {k: index[i].join(dd.DataFrame.from_dict({k: v})).set_index(axes[i]) for k, v, in data[i].items() if
                  len(v.shape) < 2})
                 for i, _ in enumerate(NXdata)]
             for i, _ in enumerate(NXdata):
@@ -487,8 +488,8 @@ class SGMData(object):
         >**file_paths** *(str or list)* List of file names to be loaded in by the data module.
 
     ### Keywords:
-        >**npartitions** *(type: integer)* -- choose how many divisions (threads)
-                                       to split the file data arrays into.
+        >**chunks** *(type: integer)* -- choose what size of divisions (threads)
+                                       to split the dask data arrays into.
 
         >**scheduler** *(type: str)* -- use specific dask cluster for operations, e.g. 'dscheduler:8786'
 
@@ -565,16 +566,16 @@ class SGMData(object):
             axes = [[str(nm) for nm in h5[nxdata].keys() for s in h5[nxdata].attrs.get('axes') if str(s) in str(nm) or
                      str(nm) in str(s)] for nxdata in NXdata]
             indep_shape = [v.shape for i, d in enumerate(NXdata) for k, v in h5[d].items() if k in axes[i][0] and hasattr(v, 'shape')]
-            index = [pd.DataFrame.from_dict({ax.replace('_processed', ''): h5[d][ax] for ax in axes[i]}) for i, d in enumerate(NXdata)]
+            index = [dd.DataFrame.from_dict({ax.replace('_processed', ''): h5[d][ax] for ax in axes[i]}) for i, d in enumerate(NXdata)]
 
             data = [{k.replace('_processed', ''): np.squeeze(v) for k, v in h5[d].items() if
                      v.shape[0] == indep_shape[i][0] and k not in axes[i]} for i, d in
                     enumerate(NXdata)]
-            df_sdds = [DisplayDict({k.replace('_processed', ''): index[i].join(pd.DataFrame.from_dict(
+            df_sdds = [DisplayDict({k.replace('_processed', ''): index[i].join(dd.DataFrame.from_dict(
                 {k.replace('_processed', '') + f"-{j}": v[:, j] for j in range(0, v.shape[1])})).set_index(axes[i]) for k, v in data[i].items()
                     if len(v.shape) == 2}) for i, _ in enumerate(NXdata)]
             df_scas = [DisplayDict(
-                {k.replace('_processed', ''): index[i].join(pd.DataFrame.from_dict({k.replace('_processed', ''): v})).set_index(axes[i]) for k, v, in data[i].items() if len(v.shape) < 2})
+                {k.replace('_processed', ''): index[i].join(dd.DataFrame.from_dict({k.replace('_processed', ''): v})).set_index(axes[i]) for k, v, in data[i].items() if len(v.shape) < 2})
                    for i, _ in enumerate(NXdata)]
             for i, _ in enumerate(NXdata):
                 df_scas[i].update(df_sdds[i])
@@ -931,18 +932,23 @@ class SGMData(object):
                             key.append("None")
                         key = ":".join(key)
                         if i not in bad_scans:
-                            df = scan['binned']
+                            dfs = scan['binned']
                             if dask:
-                                df = dd.from_pandas(df, npartitions=self.chunks)
+                                try:
+                                    client = get_client()
+                                    npartition = len(client.ncores())
+                                except:
+                                    npartition = 10
+                                dfs = DisplayDict({det:dd.from_pandas(df, npartitions=npartition) for det,df in dfs.items()})
                             if key in sample_scans.keys():
-                                l = sample_scans[key]['data'] + [df]
+                                l = sample_scans[key]['data'] + [dfs]
                                 a = sample_scans[key]['associated'] + [(k, entry)]
                                 d = {'data': l, 'signals': signals, 'associated': a}
                                 sample_scans.update({key: d})
                             else:
-                                l = [df]
+                                l = [dfs]
                                 sample_scans.update({key: {'data': l, 'signals': signals, 'associated': [(k, entry)]}})
-                        interpolated.append(OneList((k, entry, scan['binned'])))
+                        interpolated.append(OneList((k, entry, dfs)))
                         i = i + 1
         if not verbose:
             return interpolated

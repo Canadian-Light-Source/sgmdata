@@ -27,10 +27,7 @@ setup(
         "plots/callbacks/xrfmap/*.js",
     ]},
     install_requires=[
-        "blosc==1.10.2",
-        "lz4==3.1.3",
         "dask[complete]>=2021.03.0",
-        "msgpack==1.0.2",
         "pandas>=1.1.5",
         "h5py>=2.10.0",
         "bokeh>=1.4.0",
@@ -41,7 +38,8 @@ setup(
         "beautifulsoup4",
         "matplotlib",
         "requests",
-        "lmfit"
+        "lmfit",
+        "xarray"
     ]
 
 

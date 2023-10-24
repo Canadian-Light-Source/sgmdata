@@ -5,6 +5,7 @@ from slugify import slugify
 from .load import SGMData
 from .utilities.util import sumROI
 from .utilities.magicclass import OneList, DisplayDict
+import dask
 import numpy as np
 import pandas as pd
 import warnings
@@ -27,6 +28,84 @@ except ImportError:
     display = repr
     HTML = print
     clear_output = list
+
+
+@dask.delayed()
+def _getdata(user, p, s, pk, type='', daterange=None, prepend='', data=False, processed=False):
+    signer = get_or_make_key(user)
+    paths, sessions, proposals, energies, stretches, datadict, \
+    samples, groups, names, num_scans, kinddict, reports, interp_paths, avg_paths = \
+        {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}
+    name = s['name'].strip()
+    fdata = find_data(user, signer, p, sample=s['id'], kind=type, data=pk)
+    if daterange:
+        fdata = [f for f in fdata
+                 if datetime.datetime.strptime(f['start'], "%Y-%m-%dT%H:%M:%SZ") > daterange[0]
+                 and datetime.datetime.strptime(f['end'][:19], "%Y-%m-%dT%H:%M:%S") < daterange[1]]
+
+    for d in fdata:
+        key = f"{d['id']}"
+        paths[key] = [f"{prepend}{d['directory']}raw/{f}.nxs" for f in d['files']]
+        sessions[key] = d['session']
+        proposals[key] = p
+        energies[key] = d['energy']
+        stretches[key] = (d['start'], d['end'])
+        samples[key] = name if name else d['sample']
+        groups[key] = d['group']
+        names[key] = d['name']
+        num_scans[key] = d['num_scans']
+        kinddict[key] = d['kind']
+        d.update(
+            {'paths': paths[key]})
+        if data:
+            d.update({'data': SGMData(d['paths'], progress=False)})
+        if processed:
+            reportlist = []
+            if type:
+                kind = type + " Report"
+            else:
+                kind = None
+            for r in find_report(user, signer, p, data=d['id'], kind=kind):
+                if 'binned' in r['files'].keys():
+                    interp_paths[key] = [f"{prepend}/{f}" for f in r['files']['binned']]
+                    r.update(
+                        {'paths': interp_paths[key]}
+                    )
+                    if data:
+                        for i, sgmscan in enumerate(d['data'].scans.values()):
+                            for entry in list(sgmscan.__dict__.values()):
+                                entry.read(filename=r['paths'][i])
+                        d['data'].interpolated = True
+                if 'average' in r['files'].keys():
+                    avg_paths[key] = [f"{f}"
+                                      for f in r['files']['average']]
+                    r.update(
+                        {'avg': avg_paths[key]}
+                    )
+                    if data:
+                         d['data'].averaged = [samples[key], r['avg'][0]]
+
+                reportlist.append(r)
+            reports[key] = reportlist
+            d.update({"reports": reports})
+        if data:
+            datadict[key] = d['data']
+
+    return dict(paths=paths,
+                sessions=sessions,
+                energies=energies,
+                stretches=stretches,
+                proposals=proposals,
+                data=datadict,
+                samples=samples,
+                groups=groups,
+                names=names,
+                num_scans=num_scans,
+                kind=kinddict,
+                reports=reports,
+                interp_paths=interp_paths,
+                avg_paths=avg_paths)
+
 
 
 # Get file path list from SGMLive database
@@ -130,7 +209,7 @@ class SGMQuery(object):
         self.num_scans = DisplayDict()
         self.kind = DisplayDict()
         self.data_hash = ""
-        if self.pk:
+        if isinstance(self.pk, int):
             self.get_data(data)
         else:
             self.get_datasets(data)
@@ -182,7 +261,7 @@ class SGMQuery(object):
                             if data and len(r['avg']):
                                 processed = SGMData.Processed(sample=d['name'])
                                 processed.read(filename=r['avg'][0])
-                                d['data'].averaged = DisplayDict({processed['sample']: OneList([processed])})
+                                d['data'].averaged = DisplayDict({processed['sample']: processed})
 
                         reports.append(r)
                     self.reports[key] = reports
@@ -190,65 +269,50 @@ class SGMQuery(object):
                 if data:
                     self.data[key] = d['data']
 
-    def get_datasets(self, data):
-        for p in tqdm(self.proposal_list, desc="Searching Proposals"):
-            samples = find_samples(self.user, self.signer, p, name=self.sample)
-            for s in samples:
-                name = s['name'].strip()
-                fdata = find_data(self.user, self.signer, p, sample=s['id'], kind=self.type, data=self.pk)
-                if self.daterange:
-                    fdata = [f for f in fdata
-                             if datetime.datetime.strptime(f['start'], "%Y-%m-%dT%H:%M:%SZ") > self.daterange[0]
-                             and datetime.datetime.strptime(f['end'], "%Y-%m-%dT%H:%M:%SZ") < self.daterange[1]]
-                for d in fdata:
-                    key = f"{d['id']}"
-                    self.paths[key] = [f"{self.prepend}{d['directory']}raw/{f}.nxs" for f in d['files']]
-                    self.sessions[key] = d['session']
-                    self.proposals[key] = p
-                    self.energies[key] = d['energy']
-                    self.stretches[key] = (d['start'], d['end'])
-                    self.samples[key] = name
-                    self.groups[key] = d['group']
-                    self.names[key] = d['name']
-                    self.num_scans[key] = d['num_scans']
-                    self.kind[key] = d['kind']
-                    d.update(
-                        {'paths': self.paths[key]})
-                    if data:
-                        d.update({'data': SGMData(d['paths'], progress=False)})
-                    if self.processed:
-                        reports = []
-                        if self.type:
-                            kind = self.type + " Report"
-                        else:
-                            kind = None
-                        for r in find_report(self.user, self.signer, p, data=d['id'], kind=kind):
-                            if 'binned' in r['files'].keys():
-                                self.interp_paths[key] = [f"{self.prepend}/{f}" for f in r['files']['binned']]
-                                r.update(
-                                    {'paths': self.interp_paths[key]}
-                                )
-                                if data:
-                                    for i, sgmscan in enumerate(d['data'].scans.values()):
-                                        for entry in list(sgmscan.__dict__.values()):
-                                            entry.read(filename=r['paths'][i])
-                                    d['data'].interpolated = True
-                            if 'average' in r['files'].keys():
-                                self.avg_paths[key] = [f"{f}"
-                                                       for f in r['files']['average']]
-                                r.update(
-                                    {'avg': self.avg_paths[key]}
-                                )
-                                if data:
-                                    processed = SGMData.Processed(sample=s['name'])
-                                    processed.read(filename=r['avg'][0])
-                                    d['data'].averaged = DisplayDict({processed['sample']: OneList([processed])})
 
-                            reports.append(r)
-                        self.reports[key] = reports
-                        d.update({"reports": reports})
-                    if data:
-                        self.data[key] = d['data']
+    def get_datasets(self, data):
+        fetched = []
+        for p in tqdm(self.proposal_list, desc="Searching Proposals"):
+            if isinstance(self.pk, list):
+                for pk in tqdm(self.pk, desc=f"{p} Datasets"):
+                    fetched.append(_getdata(
+                        self.user,
+                        p,
+                        {'id': None, 'name': ''},
+                        pk,
+                        self.type,
+                        daterange=self.daterange,
+                        data=data,
+                        prepend=self.prepend,
+                        processed=self.processed
+                    ))
+            else:
+                samples = find_samples(self.user, self.signer, p, name=self.sample)
+                for s in tqdm(samples, desc=f"{p} Samples"):
+                    fetched.append(_getdata(
+                        self.user,
+                        p,
+                        s,
+                        self.pk,
+                        self.type,
+                        daterange=self.daterange,
+                        data=data,
+                        prepend=self.prepend,
+                        processed=self.processed
+                    ))
+        results = dask.compute(fetched)
+        attrs = ["paths", "sessions", "proposals", "energies", "stretches", "data",
+                 "samples", "groups", "names", "num_scans", "kind", "reports", "interp_paths", "avg_paths"]
+        for r in results[0]:
+            for a in attrs:
+                if a == "data" and len(r[a]):
+                    k,v = next(iter(r[a].items()))
+                    if hasattr(v, 'averaged'):
+                        processed = SGMData.Processed(sample=v.averaged[0])
+                        processed.read(filename=v.averaged[1])
+                        r[a][k].averaged = DisplayDict({v.averaged[0]: OneList([processed])})
+                d = DisplayDict(r[a])
+                self.__dict__[a].update(d)
 
     def write_processed(self, pk: str, type: str):
         paths = self.paths[pk]
