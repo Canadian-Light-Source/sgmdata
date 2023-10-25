@@ -199,7 +199,7 @@ class SGMQuery(object):
                 if self.daterange:
                     fdata = [f for f in fdata
                              if datetime.datetime.strptime(f['start'], "%Y-%m-%dT%H:%M:%SZ") > self.daterange[0]
-                             and datetime.datetime.strptime(f['end'], "%Y-%m-%dT%H:%M:%SZ") < self.daterange[1]]
+                             and datetime.datetime.strptime(f['end'][:19], "%Y-%m-%dT%H:%M:%S") < self.daterange[1]]
                 for d in fdata:
                     key = f"{d['id']}"
                     self.paths[key] = [f"{self.prepend}{d['directory']}raw/{f}.nxs" for f in d['files']]
