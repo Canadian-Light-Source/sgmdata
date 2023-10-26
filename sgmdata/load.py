@@ -15,6 +15,7 @@ from sgmdata.plots import eemscan, xrfmap
 from sgmdata.xrffit import fit_peaks
 from sgmdata.interpolate import interpolate, shift_cmesh
 from .utilities.magicclass import OneList, DisplayDict
+import xarray as xr
 
 import warnings
 
@@ -159,8 +160,6 @@ class SGMScan(DisplayDict):
             ### Keywords
             >**filename** *(str)* -- path to file on disk.
             """
-            if not filename:
-                return DisplayDict()
             if os.path.exists(filename):
                 try:
                     h5 = h5py.File(filename, 'r')
@@ -181,7 +180,7 @@ class SGMScan(DisplayDict):
                     warnings.warn(f"Could not open file, h5pyd raised: {f}")
                     return DisplayDict()
             NXentries = [str(x) for x in h5['/'].keys()
-                         if 'NXentry' in str(h5[x].attrs.get('NX_class')) and str(x) in self['name']]
+                         if 'NXentry' in str(h5[x].attrs.get('NX_class'))]
             if len(NXentries) == 0:
                 NXentries = [str(x) for x in h5['/'].keys() if 'NXentry' in str(h5[x].attrs.get('NX_class'))]
             NXdata = [entry + "/" + str(x) for entry in NXentries for x in h5['/' + entry].keys()
@@ -189,20 +188,43 @@ class SGMScan(DisplayDict):
             axes = [[str(nm) for nm in h5[nxdata].keys() for s in h5[nxdata].attrs.get('axes') if str(s) in str(nm) or
                      str(nm) in str(s)] for nxdata in NXdata]
             indep_shape = [v.shape for i, d in enumerate(NXdata) for k, v in h5[d].items() if k in axes[i][0]]
-            data = [
-                {k: np.squeeze(v[()]) for k, v in h5[d].items() if v.shape[0] == indep_shape[i][0] and k not in axes[i]}
-                for i, d in
-                enumerate(NXdata)]
-            index = [dd.DataFrame.from_dict({ax: h5[d][ax] for ax in axes[i]}) for i, d in enumerate(NXdata)]
-            df_sdds = [DisplayDict({k: index[i].join(dd.DataFrame.from_dict(
-                {k + f"-{j}": v[:, j] for j in range(0, v.shape[1])})).set_index(axes[i]) for k, v in data[i].items()
-                                    if len(v.shape) == 2}) for i, _ in enumerate(NXdata)]
-            df_scas = [DisplayDict(
-                {k: index[i].join(dd.DataFrame.from_dict({k: v})).set_index(axes[i]) for k, v, in data[i].items() if
-                 len(v.shape) < 2})
-                for i, _ in enumerate(NXdata)]
+
+            index = [{ax: h5[d][ax] for ax in axes[i]} for i, d in enumerate(NXdata)]
+            emission = np.linspace(10, 2560, 256, endpoint=True)
+            sdd_index = [{**index[i], 'emission': emission} for i, d in enumerate(NXdata)]
+            df_sdds = [DisplayDict({k: xr.DataArray(v,
+                                                    dims=[ax for ax in axes[i]] + ['emission'],
+                                                    coords=sdd_index[i],
+                                                    name=k
+                                                    )
+                                   .to_dataframe()
+                                   .reset_index()
+                                   .pivot(index=[ax for ax in axes[i]], columns='emission', values=k)
+                                    for k, v in h5[d].items() if 'sdd' in k}) for i, d in enumerate(NXdata)]
+            df_xeol = [DisplayDict({k: xr.DataArray(v,
+                                                    dims=[ax for ax in axes[i]] + ['emission'],
+                                                    coords={**index[i],
+                                                            'wavelength': np.linspace(0, v.shape[-1], v.shape[-1],
+                                                                                      endpoint=True)},
+                                                    name=k
+                                                    )
+                                   .to_dataframe()
+                                   .reset_index()
+                                   .pivot(index=[ax for ax in axes[i]], columns='wavelength', values=k)
+                                    for k, v in h5[d].items() if 'xeol' in k}) for i, d in enumerate(NXdata)]
+
+            df_scas = [DisplayDict({k: xr.DataArray(np.squeeze(v),
+                                                    dims=[ax for ax in axes[i]],
+                                                    coords=index[i],
+                                                    name=k
+                                                    )
+                                   .to_dataframe()
+                                    for k, v in h5[d].items() if len(np.squeeze(v).shape) == 1}) for i, d in
+                       enumerate(NXdata)]
+
             for i, _ in enumerate(NXdata):
                 df_scas[i].update(df_sdds[i])
+                df_scas[i].update(df_xeol[i])
 
             self.__setattr__("binned", df_scas[0])
             return df_scas

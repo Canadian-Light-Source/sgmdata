@@ -14,8 +14,8 @@ You can view the data dictionary representation in a Jupyter cell by just invoki
 >**file_paths** *(str or list)* List of file names to be loaded in by the data module.
 
 ### Keywords:
->**npartitions** *(type: integer)* -- choose how many divisions (threads)
-to split the file data arrays into.
+>**chunks** *(type: integer)* -- choose what size of divisions (threads)
+to split the dask data arrays into.
 
 >**scheduler** *(type: str)* -- use specific dask cluster for operations, e.g. 'dscheduler:8786'
 
@@ -35,6 +35,8 @@ see interpolate() documentation.
 
 >**mean()** -- averages all interpolated data together (organized by sample, scan type & range), returns list, saves data
 under a dictionary in SGMData().averaged
+
+>**processed()** -- convenience method to get a list of all interpolated SGMScan data.
 
 
 ### Attributes
@@ -75,8 +77,7 @@ sdd1.shape # (1290, 256)
 -----
 
 ### Description:
->You can find your data in the SGMLive database by using the SGMQuery module (when using the [SGM JupyterHub](
-https://sgm-hub.lightsource.ca) ). The following documentation details the keywords that you can use to customize your
+>You can find your data in the SGMLive database by using the SGMQuery module (when using the CLS HPC, or OPIs). The following documentation details the keywords that you can use to customize your
 search.
 
 ### Keywords:
@@ -102,6 +103,8 @@ performed. Not available to non-staff.
 
 >**processed** *(bool:optional)* -- Can be used to return the paths for the processed data (already interpolated) instead
 of the raw. You would generally set data = False for this option.
+
+>**data_id** *(int:optional)* -- Primary key of the specific dataset requested.
 
 ### Attributes:
 >**data** *(object)* --  By default the query will create an SGMData object containing your data, this can be turned off
