@@ -75,8 +75,7 @@ sdd1.shape # (1290, 256)
 -----
 
 ### Description:
->You can find your data in the SGMLive database by using the SGMQuery module (when using the [SGM JupyterHub](
-https://sgm-hub.lightsource.ca) ). The following documentation details the keywords that you can use to customize your
+>You can find your data in the SGMLive database by using the SGMQuery module (when using the CLS HPC & OPIs ). The following documentation details the keywords that you can use to customize your
 search.
 
 ### Keywords:
@@ -103,6 +102,8 @@ performed. Not available to non-staff.
 >**processed** *(bool:optional)* -- Can be used to return the paths for the processed data (already interpolated) instead
 of the raw. You would generally set data = False for this option.
 
+>**data_id** *(int:optional)* -- Primary key of the specific dataset requested.
+
 ### Attributes:
 >**data** *(object)* --  By default the query will create an SGMData object containing your data, this can be turned off
 with the data keyword.
@@ -113,8 +114,8 @@ with the data keyword.
 ```python
 from sgmdata import SGMQuery
 
-sgmq = SGMQuery(sample="TiO2 - C")
-data = sgmq.data
+sgmq = SGMQuery(user="username", proposal="38GXXXXX", sample="TiO2 - C")
+data = sgmq.data['11111']
 data.averaged['TiO2 - C'].plot()
 ```
 
