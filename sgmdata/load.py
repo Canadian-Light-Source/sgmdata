@@ -153,7 +153,7 @@ class SGMScan(DisplayDict):
                                "width": wid}
                 return new_df
 
-        def read(self, filename="") -> DisplayDict:
+        def read(self, filename="") -> list[DisplayDict]:
             """
             ### Description
             >Function to load in already processed data from file.
@@ -399,7 +399,7 @@ class SGMScan(DisplayDict):
                 str(self.command),
                 "</td>",
                 "<td>",
-                f"<details>\n\t<summary>Axes...</summary>\n\t\t{self['independent']._repr_html_()}</details>",
+                f"<details>\n\t<summary>Independent...</summary>\n\t\t{self['independent']._repr_html_()}</details>",
                 "</td>",
                 "<td>",
                 f"<details>\n\t<summary>Signals...</summary>\n\t\t{self['signals']._repr_html_()}</details>",
@@ -818,26 +818,30 @@ class SGMData(object):
         indep = [self._find_data(h5[entry], independent[i]) for i, entry in enumerate(NXentries)]
         # search for data that is not an array mentioned in the command
         data = [self._find_data(h5[entry], independent[i], other=True) for i, entry in enumerate(NXentries)]
-        # filter for data that is the same length as the independent axis
+        # filter for data that is the same length as the independent axis (signals) vs not (other).
         try:
-            signals = [DisplayDict({check_key(k): da.from_array(v, chunks=chunks).astype('f') for k, v in d.items() if
-                        np.abs(v.shape[0] - list(indep[i].values())[0].shape[0]) < 30}) for i, d in enumerate(data)]
+            signals = []
+            other_axis = []
+            for i, d in enumerate(data):
+                d = DisplayDict({})
+                o = DisplayDict({})
+                for k, v in d.items():
+                    if np.abs(v.shape[0] - list(indep[i].values())[0].shape[0]) < 30:
+                        if len(v.shape) == 1:
+                            d.update({check_key(k): xr.DataArray(v, dims=independent[i], name=k).astype('f')})
+                        elif len(v.shape) == 2:
+                            d.update({check_key(k): xr.DataArray(v, dims=list(independent[i]) + ['emission'], name=k).astype('f')
+                                    })
+                    elif np.abs(v.shape[0] - list(indep[i].values())[0].shape[0]) > 30:
+                        o.update({check_key(k): xr.DataArray(v, dims=[f"{i}" for i in range(0, len(v.shape))])})
+                signals.append(d)
+                other_axis.append(o)
         except IndexError:
             return {"ERROR": file_root}
 
-        # group all remaining arrays
-        try:
-            other_axis = [
-                DisplayDict({check_key(k): da.from_array(v, chunks=chunks) for k, v in d.items()
-                 if
-                 np.abs(v.shape[0] - list(indep[i].values())[0].shape[0]) > 2}) for i, d in enumerate(data)]
-        except:
-            return {"ERROR": file_root}
         # Reload independent axis data as dataarray
         try:
-            indep = [DisplayDict({check_key(k): da.from_array(v,
-                                       chunks=chunks).astype(
-                'f4') for k, v in d.items()}) for d in indep]
+            indep = [DisplayDict({check_key(k): xr.DataArray(v, dims=d).astype('f4') for k, v in d.items()}) for d in indep]
         except:
             return {"ERROR": file_root}
 

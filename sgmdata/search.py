@@ -72,9 +72,11 @@ def _getdata(user, p, s, pk, type='', daterange=None, prepend='', data=False, pr
                         {'paths': interp_paths[key]}
                     )
                     if data:
-                        for i, sgmscan in enumerate(d['data'].scans.values()):
+                        for k, sgmscan in d['data'].scans.items():
                             for entry in list(sgmscan.__dict__.values()):
-                                entry.read(filename=r['paths'][i])
+                                filename = [p for p in r['paths'] if k in p]
+                                if len(filename):
+                                    entry.read(filename=filename[0])
                         d['data'].interpolated = True
                 if 'average' in r['files'].keys():
                     avg_paths[key] = [f"{f}"
