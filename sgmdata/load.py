@@ -733,7 +733,7 @@ class SGMData(object):
                     elif "O" in str(node.dtype).upper() and not node.shape:
                         d_name = name.split('/')[-1]
                         try:
-                            val = np.array(float(node[()]))
+                            val = np.array([float(node[()])])
                             data.update({d_name: val})
                         except ValueError:
                             pass
