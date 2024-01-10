@@ -811,13 +811,13 @@ class SGMData(object):
             return {"ERROR": file_root}
 
         # group all remaining arrays
-        try:
-            other_axis = [
-                DisplayDict({check_key(k): da.from_array(v, chunks=chunks) for k, v in d.items()
-                 if
-                 np.abs(v.shape[0] - list(indep[i].values())[0].shape[0]) > 2}) for i, d in enumerate(data)]
-        except:
-            return {"ERROR": file_root}
+        # try:
+        other_axis = [
+            DisplayDict({check_key(k): da.from_array(v, chunks=chunks) for k, v in d.items()
+             if
+             np.abs(v.shape[0] - list(indep[i].values())[0].shape[0]) > 2}) for i, d in enumerate(data)]
+        # except:
+        #     return {"ERROR": file_root}
         # Reload independent axis data as dataarray
         try:
             indep = [DisplayDict({check_key(k): da.from_array(v,
