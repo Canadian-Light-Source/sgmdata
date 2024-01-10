@@ -730,11 +730,8 @@ class SGMData(object):
                             data.update({d_name: node})
                         elif other and not any(l):
                             if "O" in str(node.dtype).upper():
-                                try:
-                                    val = np.array(float(node[()]))
-                                    data.update({d_name: val})
-                                except:
-                                    pass
+                                val = np.array(float(node[()]))
+                                data.update({d_name: val})
                             else:
                                 data.update({d_name: node})
 
