@@ -253,7 +253,7 @@ def sel_map_roi(entry, emission=None, max_en=2000):
     fit = {"peaks": peaks + pks, "heights": heights + h, "widths": widths + w}
     return fit, emission
 
-def make_xrfmapreport(data, emission=[], sample = None, i0=1):
+def make_xrfmapreport(data, emission=None, sample = None, i0=1):
     interp = []
     report = []
     for f, scan in data.scans.items():

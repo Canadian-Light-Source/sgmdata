@@ -263,6 +263,9 @@ class SGMScan(DisplayDict):
                             shape += [s for s in arr.shape[1:]]
                             arr = np.reshape(arr, tuple(shape))
                         nxdata.create_dataset(sig, arr.shape, data=arr)
+
+                    for oth, val in self.other.items():
+                        nxdata.create_dataset(oth, val.shape, data=val)
             else:
                 raise AttributeError("no interpolated data found to write")
 
@@ -727,6 +730,15 @@ class SGMData(object):
                             data.update({d_name: node})
                         elif other and not any(l):
                             data.update({d_name: node})
+                    elif "S" in str(node.dtype).upper():
+                        d_name = name.split('/')[-1]
+                        l = [True for axis in indep if d_name.find(axis) == 0]
+                        if other and not any(l):
+                            try:
+                                val = float(node[()])
+                                data.update({d_name: val})
+                            except:
+                                pass
 
         node.visititems(search)
         return data

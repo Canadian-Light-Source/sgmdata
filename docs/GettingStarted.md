@@ -6,7 +6,7 @@ pip install sgm-data
 ```
 or from source: 
 ```commandline
-git clone https://github.lightsource.ca/arthurz/sgmdata ./sgmdata
+git clone https://github.com/Canadian-Light-Source/sgmdata.git ./sgmdata
 cd sgmdata
 python setup.py install
 ```
