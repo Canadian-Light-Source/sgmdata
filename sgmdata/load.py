@@ -804,11 +804,9 @@ class SGMData(object):
         # search for data that is not an array mentioned in the command
         data = [self._find_data(h5[entry], independent[i], other=True) for i, entry in enumerate(NXentries)]
         # filter for data that is the same length as the independent axis
-        try:
-            signals = [DisplayDict({check_key(k): da.from_array(v, chunks=chunks).astype('f') for k, v in d.items() if
-                        np.abs(v.shape[0] - list(indep[i].values())[0].shape[0]) < 30}) for i, d in enumerate(data)]
-        except IndexError:
-            return {"ERROR": file_root}
+        signals = [DisplayDict({check_key(k): da.from_array(v, chunks=chunks).astype('f') for k, v in d.items() if
+                    np.abs(v.shape[0] - list(indep[i].values())[0].shape[0]) < 30}) for i, d in enumerate(data)]
+
 
         # group all remaining arrays
         # try:
