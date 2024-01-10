@@ -804,18 +804,20 @@ class SGMData(object):
         # search for data that is not an array mentioned in the command
         data = [self._find_data(h5[entry], independent[i], other=True) for i, entry in enumerate(NXentries)]
         # filter for data that is the same length as the independent axis
-        signals = [DisplayDict({check_key(k): da.from_array(v, chunks=chunks).astype('f') for k, v in d.items() if
-                    np.abs(v.shape[0] - list(indep[i].values())[0].shape[0]) < 30}) for i, d in enumerate(data)]
-
+        try:
+            signals = [DisplayDict({check_key(k): da.from_array(v, chunks=chunks).astype('f') for k, v in d.items() if
+                        np.abs(v.shape[0] - list(indep[i].values())[0].shape[0]) < 30}) for i, d in enumerate(data)]
+        except:
+            return {"ERROR": file_root}
 
         # group all remaining arrays
-        # try:
-        other_axis = [
-            DisplayDict({check_key(k): da.from_array(v, chunks=chunks) for k, v in d.items()
-             if
-             np.abs(v.shape[0] - list(indep[i].values())[0].shape[0]) > 2}) for i, d in enumerate(data)]
-        # except:
-        #     return {"ERROR": file_root}
+        try:
+            other_axis = [
+                DisplayDict({check_key(k): da.from_array(v, chunks=chunks) for k, v in d.items()
+                 if
+                 np.abs(v.shape[0] - list(indep[i].values())[0].shape[0]) > 2}) for i, d in enumerate(data)]
+        except:
+            return {"ERROR": file_root}
         # Reload independent axis data as dataarray
         try:
             indep = [DisplayDict({check_key(k): da.from_array(v,
