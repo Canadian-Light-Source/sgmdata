@@ -729,8 +729,8 @@ class SGMData(object):
                         if any(l) and not other:
                             data.update({d_name: node})
                         elif other and not any(l):
-                            if "O" in str(node.dtype).upper():
-                                val = np.array(float(node[()]))
+                            if "O" in str(node.dtype).upper() and not node.shape:
+                                val = float(node[()])
                                 data.update({d_name: val})
                             else:
                                 data.update({d_name: node})
