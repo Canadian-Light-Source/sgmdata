@@ -732,9 +732,11 @@ class SGMData(object):
                             data.update({d_name: node})
                     elif "O" in str(node.dtype).upper() and not node.shape:
                         d_name = name.split('/')[-1]
-                        val = float(node[()])
-                        data.update({d_name: val})
-
+                        try:
+                            val = float(node[()])
+                            data.update({d_name: val})
+                        except ValueError:
+                            pass
 
         node.visititems(search)
         return data
