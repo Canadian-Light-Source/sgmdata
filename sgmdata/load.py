@@ -730,15 +730,13 @@ class SGMData(object):
                             data.update({d_name: node})
                         elif other and not any(l):
                             data.update({d_name: node})
-                    elif "O" in str(node.dtype).upper():
+                    elif "O" in str(node.dtype).upper() and other:
                         d_name = name.split('/')[-1]
-                        l = [True for axis in indep if d_name.find(axis) == 0]
-                        if other and not any(l):
-                            try:
-                                val = float(node[()])
-                                data.update({d_name: val})
-                            except:
-                                pass
+                        try:
+                            val = np.array(float(node[()]))
+                            data.update({d_name: val})
+                        except:
+                            pass
 
         node.visititems(search)
         return data
