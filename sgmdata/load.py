@@ -267,7 +267,8 @@ class SGMScan(DisplayDict):
                     for oth, val in self.other.items():
                         if hasattr(val, 'compute'):
                             val = val.compute()
-                        nxdata.create_dataset(oth, val.shape, data=val)
+                        if len(val.shape) == 1:
+                            nxdata.create_dataset(oth, val.shape, data=val)
             else:
                 raise AttributeError("no interpolated data found to write")
 
