@@ -33,6 +33,7 @@ setup(
         "msgpack==1.0.2",
         "pandas>=1.1.5",
         "h5py>=2.10.0",
+        "h5pyd",
         "bokeh>=1.4.0",
         "numpy>=1.18.3",
         "scipy>=1.4.1",
@@ -41,7 +42,8 @@ setup(
         "beautifulsoup4",
         "matplotlib",
         "requests",
-        "lmfit"
+        "lmfit",
+        "cryptography"
     ]
 
 
