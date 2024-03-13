@@ -263,6 +263,7 @@ def make_xrfmapreport(data, emission=None, sample = None, i0=1):
             else:
                 df = entry.interpolate()
                 interp.append(entry)
+
     for entry in interp:
         data = next(iter(entry['binned'].values()))
         fit, emission = sel_map_roi(entry, emission=emission)
