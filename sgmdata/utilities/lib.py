@@ -8,7 +8,7 @@ elements = ['EEMs', 'C', 'N', 'O', 'F', 'Ne', 'Na', 'Mg', 'Al', 'Si', 'P', 'K', 
 scan_lib = {k: "" for k in elements}
 scan_lib.update({'EEMs': "run_eems 1 544", 'C': "gscan 270 320 col 320", 'N': "gscan 380 440 col 430",
                  'O': "gscan 520 570 col 544", 'F': "gscan 680 715 col 695", 'Ne': "gscan 840 900 col 868", 'Na': "gscan 1060 1110 col 1075",
-                 'Mg': "gscan 1300 1350 col 1312", 'Al': "gscan 1550 1610 col 1568", 'Si': "gscan 1835 1875 col 1847",
+                 'Mg': "gscan 1280 1350 col 1312", 'Al': "gscan 1550 1610 col 1568", 'Si': "gscan 1835 1875 col 1847",
                  'P': "gscan 2140 2200 col 2165", 'K': "gscan 295 305 col 300", 'Ca': "gscan 340 360 col 353", 'Ti': "gscan 450 480 col 461",
                  'Mn': "gscan 625 670 col 638", 'Fe': "gscan 690 750 col 711", 'Co': "gscan 765 810 col 780.5",
                  'Ni': "gscan 840 890 col 852.5", 'Cu': "gscan 920 970 col 934", 'Zn': "gscan 1000 1080 col 1060",
