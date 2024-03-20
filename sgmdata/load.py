@@ -188,23 +188,40 @@ class SGMScan(DisplayDict):
             axes = [[str(nm) for nm in h5[nxdata].keys() for s in h5[nxdata].attrs.get('axes') if str(s) == str(nm) or
                      str(nm) in str(s)] for nxdata in NXdata]
             indep_shape = [v.shape for i, d in enumerate(NXdata) for k, v in h5[d].items() if k in axes[i][0]]
-            data = [
-                {k: np.squeeze(v[()]) for k, v in h5[d].items() if v.shape[0] == indep_shape[i][0] and k not in axes[i]}
-                for i, d in
-                enumerate(NXdata)]
-            index = [pd.DataFrame.from_dict({ax: h5[d][ax] for ax in axes[i]}) for i, d in enumerate(NXdata)]
-            df_sdds = [DisplayDict({k: index[i].join(pd.DataFrame.from_dict(
-                {k + f"-{j}": v[:, j] for j in range(0, v.shape[1])})).set_index(axes[i]) for k, v in data[i].items()
-                                    if len(v.shape) == 2}) for i, _ in enumerate(NXdata)]
-            df_scas = [DisplayDict(
-                {k: index[i].join(pd.DataFrame.from_dict({k: v})).set_index(axes[i]) for k, v, in data[i].items() if
-                 len(v.shape) < 2})
-                for i, _ in enumerate(NXdata)]
-            for i, _ in enumerate(NXdata):
-                df_scas[i].update(df_sdds[i])
+            df_scas = []
+            for i, d in enumerate(NXdata):
+                data = {k: np.squeeze(v[()]) for k, v in h5[d].items() if
+                        v.shape[0] == indep_shape[i][0] and k not in axes[i]}
+                if len(axes[i]) == 1:
+                    index = pd.DataFrame.from_dict({ax: h5[d][ax] for ax in axes[i]})
+                    df_sdd = DisplayDict({k: index.join(pd.DataFrame.from_dict(
+                        {k + f"-{j}": v[:, j] for j in range(0, v.shape[1])})).set_index(axes[i]) for k, v in
+                                                data.items()
+                                                if len(v.shape) == 2})
+                    df_sca = DisplayDict(
+                        {k: index.join(pd.DataFrame.from_dict({k: v})).set_index(axes[i]) for k, v, in
+                         data.items() if
+                         len(v.shape) < 2})
+                    df_sca.update(df_sdd)
+                    df_scas.append(df_sca)
+                elif len(axes[i]) > 1:
+                    idx = pd.MultiIndex.from_product(
+                        [h5[d][ax] for ax in axes[i]],
+                        names=axes[i])
+                    df_sdd = DisplayDict({k:
+                        pd.DataFrame.from_dict({k + f"-{j}": np.reshape(v, (len(idx), v.shape[-1]))[:, j]
+                                                for j in range(0, v.shape[-1])}).set_index(idx)
+                                                for k, v in data.items() if len(v.shape) == len(axes[i]) + 1}
+                                               )
+                    df_sca = DisplayDict({k:
+                        pd.DataFrame.from_dict({k: np.reshape(v, (len(idx)))}).set_index(idx)
+                                                for k, v, in data.items() if len(v.shape) < len(axes[i]) + 1})
+                    df_sca.update(df_sdd)
+                    df_scas.append(df_sca)
+
 
             self.__setattr__("binned", df_scas[0])
-            return df_scas
+            return df_scas[0]
 
         def write(self, filename="", mode='w') -> None:
             """
@@ -571,19 +588,36 @@ class SGMData(object):
             axes = [[str(nm) for nm in h5[nxdata].keys() for s in h5[nxdata].attrs.get('axes') if str(s) == str(nm) or
                      str(nm) in str(s)] for nxdata in NXdata]
             indep_shape = [v.shape for i, d in enumerate(NXdata) for k, v in h5[d].items() if k in axes[i][0] and hasattr(v, 'shape')]
-            index = [pd.DataFrame.from_dict({ax.replace('_processed', ''): h5[d][ax] for ax in axes[i]}) for i, d in enumerate(NXdata)]
-
-            data = [{k.replace('_processed', ''): np.squeeze(v) for k, v in h5[d].items() if
-                     v.shape[0] == indep_shape[i][0] and k not in axes[i]} for i, d in
-                    enumerate(NXdata)]
-            df_sdds = [DisplayDict({k.replace('_processed', ''): index[i].join(pd.DataFrame.from_dict(
-                {k.replace('_processed', '') + f"-{j}": v[:, j] for j in range(0, v.shape[1])})).set_index(axes[i]) for k, v in data[i].items()
-                    if len(v.shape) == 2}) for i, _ in enumerate(NXdata)]
-            df_scas = [DisplayDict(
-                {k.replace('_processed', ''): index[i].join(pd.DataFrame.from_dict({k.replace('_processed', ''): v})).set_index(axes[i]) for k, v, in data[i].items() if len(v.shape) < 2})
-                   for i, _ in enumerate(NXdata)]
-            for i, _ in enumerate(NXdata):
-                df_scas[i].update(df_sdds[i])
+            df_scas = []
+            for i, d in enumerate(NXdata):
+                data = {k: np.squeeze(v[()]) for k, v in h5[d].items() if
+                        v.shape[0] == indep_shape[i][0] and k not in axes[i]}
+                if len(axes[i]) == 1:
+                    index = pd.DataFrame.from_dict({ax: h5[d][ax] for ax in axes[i]})
+                    df_sdd = DisplayDict({k: index.join(pd.DataFrame.from_dict(
+                        {k + f"-{j}": v[:, j] for j in range(0, v.shape[1])})).set_index(axes[i]) for k, v in
+                                                data.items()
+                                                if len(v.shape) == 2})
+                    df_sca = DisplayDict(
+                        {k: index.join(pd.DataFrame.from_dict({k: v})).set_index(axes[i]) for k, v, in
+                         data.items() if
+                         len(v.shape) < 2})
+                    df_sca.update(df_sdd)
+                    df_scas.append(df_sca)
+                elif len(axes[i]) > 1:
+                    idx = pd.MultiIndex.from_product(
+                        [h5[d][ax] for ax in axes[i]],
+                        names=axes[i])
+                    df_sdd = DisplayDict({k:
+                        pd.DataFrame.from_dict({k + f"-{j}": np.reshape(v, (len(idx), v.shape[-1]))[:, j]
+                                                for j in range(0, v.shape[-1])}).set_index(idx)
+                                                for k, v in data.items() if len(v.shape) == len(axes[i]) + 1}
+                                               )
+                    df_sca = DisplayDict({k:
+                        pd.DataFrame.from_dict({k: np.reshape(v, (len(idx)))}).set_index(idx)
+                                                for k, v, in data.items() if len(v.shape) < len(axes[i]) + 1})
+                    df_sca.update(df_sdd)
+                    df_scas.append(df_sca)
             self.data = df_scas[0]
             self.signals = [k for k in df_scas[0].keys()]
             self.associated = associated
