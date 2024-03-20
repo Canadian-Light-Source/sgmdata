@@ -289,12 +289,12 @@ def make_xrfmapreport(data, emission=None, sample = None, i0=1):
             },
             "style": "col-12"
         }]
-        tey = np.flipud(norm_arr(np.nan_to_num(entry.get_arr("tey")), i0))
-        #pd = np.flipud(norm_arr(np.nan_to_num(entry.get_arr("pd")), i0))
-        sdd1 = np.flipud(norm_arr(entry.get_arr("sdd1"), i0))
-        sdd2 = np.flipud(norm_arr(entry.get_arr("sdd2"), i0))
-        sdd3 = np.flipud(norm_arr(entry.get_arr("sdd3"), i0))
-        sdd4 = np.flipud(norm_arr(entry.get_arr("sdd4"), i0))
+        tey = norm_arr(np.nan_to_num(entry.get_arr("tey")), i0).T
+        #pd = norm_arr(np.nan_to_num(entry.get_arr("pd")), i0).T
+        sdd1 = norm_arr(entry.get_arr("sdd1"), i0).T
+        sdd2 = norm_arr(entry.get_arr("sdd2"), i0).T
+        sdd3 = norm_arr(entry.get_arr("sdd3"), i0).T
+        sdd4 = norm_arr(entry.get_arr("sdd4"), i0).T
         xrfm_plots = [{
             "title": f"XRF Map for ROI{i}",
             "kind": "heatmap",
