@@ -91,7 +91,9 @@ class SGMQuery(object):
         if not isinstance(self.proposal_list, list):
             self.proposal_list = [self.proposal_list]
         self.sample = kwargs.get('sample', '')
-        self.pk = kwargs.get('pk', '')
+        self.pk = kwargs.get('data_id', '')
+        if not self.pk:
+            self.pk = kwargs.get('pk', '')
         self.type = kwargs.get('kind', '')
         data = kwargs.get('data', True)
         self.processed = kwargs.get('processed', False)
@@ -169,6 +171,7 @@ class SGMQuery(object):
                                 for i, sgmscan in enumerate(d['data'].scans.values()):
                                     for entry in list(sgmscan.__dict__.values()):
                                         entry.read(filename=r['paths'][i])
+                                d['data'].interpolated = True
                         if 'average' in r['files'].keys():
                             self.avg_paths[key] = [f"{f}"
                                                    for f in r['files']['average']]
@@ -228,6 +231,7 @@ class SGMQuery(object):
                                     for i, sgmscan in enumerate(d['data'].scans.values()):
                                         for entry in list(sgmscan.__dict__.values()):
                                             entry.read(filename=r['paths'][i])
+                                    d['data'].interpolated = True
                             if 'average' in r['files'].keys():
                                 self.avg_paths[key] = [f"{f}"
                                                        for f in r['files']['average']]
