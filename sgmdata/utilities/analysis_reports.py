@@ -255,16 +255,21 @@ def sel_map_roi(entry, emission=None, max_en=2000):
 
 def make_xrfmapreport(data, emission=None, sample = None, i0=1):
     interp = []
+    energies = []
     report = []
+    fit = {}
+    if not emission:
+        emission = list(np.linspace(10,2560,256))
     for f, scan in data.scans.items():
-        for entry in list(scan.__dict__.values()):
-            if 'binned' in entry.keys():
-                interp.append(entry)
-            else:
-                df = entry.interpolate()
-                interp.append(entry)
-
-    for entry in interp:
+        entry = list(scan.__dict__.values())[0]
+        if 'binned' in entry.keys():
+            interp.append(entry)
+        else:
+            entry.interpolate()
+            interp.append(entry)
+        if 'en' in entry.other.keys():
+            energies.append(entry.other['en'].compute()[0])
+    for i, entry in enumerate(interp):
         data = next(iter(entry['binned'].values()))
         fit, emission = sel_map_roi(entry, emission=emission)
         xrf_plot = [{
@@ -285,7 +290,7 @@ def make_xrfmapreport(data, emission=None, sample = None, i0=1):
             "style": "col-12"
         }]
         tey = norm_arr(np.nan_to_num(entry.get_arr("tey")), i0)
-        pd = norm_arr(np.nan_to_num(entry.get_arr("pd")), i0)
+        #pd = norm_arr(np.nan_to_num(entry.get_arr("pd")), i0)
         sdd1 = norm_arr(entry.get_arr("sdd1"), i0)
         sdd2 = norm_arr(entry.get_arr("sdd2"), i0)
         sdd3 = norm_arr(entry.get_arr("sdd3"), i0)
@@ -309,17 +314,30 @@ def make_xrfmapreport(data, emission=None, sample = None, i0=1):
             "style": "col-12"
         } for i, p in enumerate(fit['peaks'])]
 
-        report += [{
-                "title": "Fluorescence Region of Interest Selection",
-                "style": "row",
-                "content": xrf_plot
-            },
-            {
-                "title": "X-ray Fluorescence Maps",
-                "style": "row",
-                "content": xrfm_plots
-            },
-        ]
+        if len(energies) == len(interp):
+            report += [{
+                    "title": f"Fluorescence Region of Interest Selection @ {energies[i]}",
+                    "style": "row",
+                    "content": xrf_plot
+                },
+                {
+                    "title": f"X-ray Fluorescence Maps @ {energies[i]}",
+                    "style": "row",
+                    "content": xrfm_plots
+                },
+            ]
+        else:
+            report += [{
+                    "title": f"Fluorescence Region of Interest Selection",
+                    "style": "row",
+                    "content": xrf_plot
+                },
+                {
+                    "title": f"X-ray Fluorescence Maps",
+                    "style": "row",
+                    "content": xrfm_plots
+                },
+            ]
 
     return report, fit
 

@@ -515,6 +515,8 @@ class SGMData(object):
         >**mean()** -- averages all interpolated data together (organized by sample, scan type & range), returns list, saves data
                   under a dictionary in SGMData().averaged
 
+        >**processed()** -- convenience method to get a list of all interpolated SGMScan data.
+
 
     ### Attributes
         >**scans** *(SGMScan)* By default the query will create an SGMData object containing your data, this can be turned off with the data keyword.
@@ -864,7 +866,7 @@ class SGMData(object):
                 entries.update({entry: scan})
         return {file_root: entries}
 
-    def interpolate(self, **kwargs):
+    def interpolate(self, **kwargs) -> list:
         """
         ### Description:
         Batch interpolation of underlying scans.  Creates the bins required for each independent axes to be histogrammed
@@ -892,7 +894,7 @@ class SGMData(object):
         self.interpolated = True
         return results
 
-    def _interpolate(self, entry, **kwargs):
+    def _interpolate(self, entry, **kwargs) -> dict:
         compute = kwargs.get('compute', True)
         if compute:
             try:
@@ -910,34 +912,57 @@ class SGMData(object):
             dfs, _ = interpolate(independent, signals, command=command, **kwargs)
             return dfs
 
-    def mean(self, bad_scans=None):
+    def processed(self, dask=False, bad_scans=None, verbose=False) -> OneList:
+        """
+        ### Description:
+        Convenience function to grab a list of the interpolated data present in all SGMdata.scans.entry
+
+        ### Keyword Args:
+            >**dask** *(bool)* -- Grab interpolated sets as dask dataframes, instead of pandas.  Useful for memory intensive operations.
+            >**bad_scans** *(list)* -- Index filter for which scans to not include in the list.
+            >**verbose** *(bool)* -- Can override normal list output to give a more complete dictionary including scan key, start times, etc..
+                                    This is set as True for the creation of SGMData.averaged objects, and otherwise isn't that useful.
+        """
         if bad_scans is None:
             bad_scans = []
         sample_scans = {}
-        i = 0
-        for k, file in self.scans.items():
-            for entry, scan in file.__dict__.items():
-                signals = [k for k, v in scan['signals'].items()]
-                if 'binned' in scan.keys():
-                    key = []
-                    if 'sample' in scan.keys():
-                        key.append(scan['sample'])
-                    else:
-                        key.append('Unknown')
-                    if 'command' in scan.keys():
-                        key.append("_".join(scan['command']))
-                    else:
-                        key.append("None")
-                    key = ":".join(key)
-                    if i not in bad_scans:
-                        if key in sample_scans.keys():
-                            l = sample_scans[key]['data'] + [scan['binned']]
-                            a = sample_scans[key]['associated'] + [(k, entry)]
-                            d = {'data': l, 'signals': signals, 'associated': a}
-                            sample_scans.update({key: d})
+        interpolated = OneList([])
+        if self.interpolated:
+            i = 0
+            for k, file in self.scans.items():
+                for entry, scan in file.__dict__.items():
+                    signals = [k for k, v in scan['signals'].items()]
+                    if 'binned' in scan.keys():
+                        key = []
+                        if 'sample' in scan.keys():
+                            key.append(scan['sample'])
                         else:
-                            sample_scans.update({key: {'data': [scan['binned']], 'signals': signals, 'associated': [(k, entry)]}})
-                    i = i + 1
+                            key.append('Unknown')
+                        if 'command' in scan.keys():
+                            key.append("_".join(scan['command']))
+                        else:
+                            key.append("None")
+                        key = ":".join(key)
+                        if i not in bad_scans:
+                            df = scan['binned']
+                            if dask:
+                                df = dd.from_pandas(df, npartitions=self.chunks)
+                            if key in sample_scans.keys():
+                                l = sample_scans[key]['data'] + [df]
+                                a = sample_scans[key]['associated'] + [(k, entry)]
+                                d = {'data': l, 'signals': signals, 'associated': a}
+                                sample_scans.update({key: d})
+                            else:
+                                l = [df]
+                                sample_scans.update({key: {'data': l, 'signals': signals, 'associated': [(k, entry)]}})
+                        interpolated.append(OneList((k, entry, scan['binned'])))
+                        i = i + 1
+        if not verbose:
+            return interpolated
+        return sample_scans
+
+    def mean(self, bad_scans=None):
+        sample_scans = self.processed(bad_scans, verbose=True)
         average = DisplayDict()
         dfs = DisplayDict()
         for k, v in sample_scans.items():
