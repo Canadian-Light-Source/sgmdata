@@ -66,7 +66,7 @@ class SGMScan(DisplayDict):
 
     class DataDict(DisplayDict):
 
-        def get_arr(self, detector) -> np.ndarray:
+        def get_arr(self, detector, flat=False) -> np.ndarray:
             """
             ### Description:
             >Function to return a numpy array from the internal pandas dataframe, for a given detector.
@@ -77,7 +77,18 @@ class SGMScan(DisplayDict):
             """
             if isinstance(detector, str):
                 try:
-                    return self['binned'][detector].to_numpy()
+                    df = self['binned'][detector]
+                    data = df.to_numpy()
+                    if len(df.index.names) > 1:
+                        if len(data.shape) == 2:
+                            data = np.flipud(np.reshape(data, tuple([len(i) for i in df.index.levels] + [data.shape[-1]])).T)
+                            if flat:
+                                data = np.reshape(data, (len(df), data.shape[-1]))
+                        elif len(data.shape) == 1:
+                            data = np.flipud(np.reshape(data, tuple([len(i) for i in df.index.levels])))
+                            if flat:
+                                data = np.reshape(data, (len(df), ))
+                    return np.squeeze(data)
                 except (AttributeError, KeyError):
                     warnings.warn(f"No dataframe loaded in scan dictionary. Have you run interpolate yet?")
 
@@ -352,8 +363,10 @@ class SGMScan(DisplayDict):
                     for k, df in self['binned'].items():
                         roi_cols = df.filter(regex="sdd[1-4]_[0-2].*").columns
                         df.drop(columns=roi_cols, inplace=True)
-                    data = {k: self['binned'][k].filter(regex=("%s.*" % k), axis=1).to_numpy() for k in keys if
-                            k in self['binned'].keys()}
+                    if hasattr(kwargs, 'flat'):
+                        data = {k: self.get_arr(k, flat=kwargs['flat']) for k in keys if k in self['binned'].keys()}
+                    else:
+                        data = {k: self.get_arr(k) for k in keys if k in self['binned'].keys()}
                     df1 = [v for v in self['binned'].values()][0]
                     data.update({df1.index.names[0]: np.array(df1.index.levels[0]),
                                  df1.index.names[1]: np.array(df1.index.levels[1]),
@@ -548,9 +561,18 @@ class SGMData(object):
             f"""{SGMScan.DataDict.get_arr.__doc__}"""
             if isinstance(detector, str):
                 try:
-                    return self.data[detector].to_numpy()
-                except AttributeError:
-                    warnings.warn(f"No dataframe loaded in processed dictionary.")
+                    df = self['binned'][detector]
+                    data = df.to_numpy()
+                    if len(df.index.names) > 1:
+                        if len(data.shape) == 2:
+                            data = np.flipud(np.reshape(data, tuple([len(i) for i in df.index.levels] + [data.shape[-1]])))
+                            data = np.reshape(data, (len(df), data.shape[-1]))
+                        elif len(data.shape) == 1:
+                            data = np.flipud(np.reshape(data, tuple([len(i) for i in df.index.levels])))
+                            data = np.reshape(data, (len(df), ))
+                    return np.squeeze(data)
+                except (AttributeError, KeyError):
+                    warnings.warn(f"No dataframe loaded in scan dictionary. Have you run interpolate yet?")
 
         def read(self, filename=None, associated=None) -> DisplayDict:
             f"""{SGMScan.DataDict.read.__doc__}"""

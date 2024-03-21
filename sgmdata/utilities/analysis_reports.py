@@ -229,7 +229,7 @@ def sel_map_roi(entry, emission=None, max_en=2000):
 
     if not emission:
         sig = entry.get_arr('sdd1')
-        emission = np.linspace(10, sig.shape[1] * 10, sig.shape[1])
+        emission = np.linspace(10, sig.shape[-1] * 10, sig.shape[-1])
     fit = {"peaks": [], "heights": [], "widths": []}
     data = []
     for det in detectors:
@@ -265,7 +265,7 @@ def make_xrfmapreport(data, emission=None, sample = None, i0=1):
         if 'binned' in entry.keys():
             interp.append(entry)
         else:
-            entry.interpolate()
+            entry.interpolate(method='linear')
             interp.append(entry)
         if 'en' in entry.other.keys():
             energies.append(entry.other['en'].compute()[0])
@@ -277,10 +277,10 @@ def make_xrfmapreport(data, emission=None, sample = None, i0=1):
             "kind": "lineplot",
             "data": {
                 "x": ["Emission Energy (eV)"] + list(emission),
-                "y1": [["sdd1"] + list(np.nansum(entry.get_arr("sdd1"), axis=0)),
-                       ["sdd2"] + list(np.nansum(entry.get_arr("sdd2"), axis=0)),
-                       ["sdd3"] + list(np.nansum(entry.get_arr("sdd3"), axis=0)),
-                       ["sdd4"] + list(np.nansum(entry.get_arr("sdd4"), axis=0))
+                "y1": [["sdd1"] + list(np.nansum(entry.get_arr("sdd1", flat=True), axis=0)),
+                       ["sdd2"] + list(np.nansum(entry.get_arr("sdd2", flat=True), axis=0)),
+                       ["sdd3"] + list(np.nansum(entry.get_arr("sdd3", flat=True), axis=0)),
+                       ["sdd4"] + list(np.nansum(entry.get_arr("sdd4", flat=True), axis=0))
                        ],
                 "x-label": "Emission Energy (eV)",
                 "y1-label": "Fluorescence",
@@ -289,12 +289,12 @@ def make_xrfmapreport(data, emission=None, sample = None, i0=1):
             },
             "style": "col-12"
         }]
-        tey = norm_arr(np.nan_to_num(entry.get_arr("tey")), i0).T
-        #pd = norm_arr(np.nan_to_num(entry.get_arr("pd")), i0).T
-        sdd1 = norm_arr(entry.get_arr("sdd1"), i0).T
-        sdd2 = norm_arr(entry.get_arr("sdd2"), i0).T
-        sdd3 = norm_arr(entry.get_arr("sdd3"), i0).T
-        sdd4 = norm_arr(entry.get_arr("sdd4"), i0).T
+        tey = norm_arr(np.nan_to_num(entry.get_arr("tey", flat=True)), i0)
+        #pd = norm_arr(np.nan_to_num(entry.get_arr("pd")), i0)
+        sdd1 = norm_arr(entry.get_arr("sdd1", flat=True), i0)
+        sdd2 = norm_arr(entry.get_arr("sdd2", flat=True), i0)
+        sdd3 = norm_arr(entry.get_arr("sdd3", flat=True), i0)
+        sdd4 = norm_arr(entry.get_arr("sdd4", flat=True), i0)
         xrfm_plots = [{
             "title": f"XRF Map for ROI{i}",
             "kind": "heatmap",

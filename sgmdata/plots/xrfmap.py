@@ -185,14 +185,21 @@ def plot_interp(**kwargs):
         raise (Exception, "Improper data passed to plot function. Need x & y axes")
     if 'sdd1' in kwargs.keys():
         # Reshape sdd arrays to image.
-        sdd1 = np.reshape(kwargs['sdd1'], (len(x), len(y), kwargs['sdd1'].shape[-1]))
-        sdd2 = np.reshape(kwargs['sdd2'], (len(x), len(y), kwargs['sdd2'].shape[-1]))
-        sdd3 = np.reshape(kwargs['sdd3'], (len(x), len(y), kwargs['sdd3'].shape[-1]))
-        sdd4 = np.reshape(kwargs['sdd4'], (len(x), len(y), kwargs['sdd4'].shape[-1]))
+        if len(kwargs['sdd1'].shape) == 2:
+            sdd1 = np.reshape(kwargs['sdd1'], (len(x), len(y), kwargs['sdd1'].shape[-1])).T
+            sdd2 = np.reshape(kwargs['sdd2'], (len(x), len(y), kwargs['sdd2'].shape[-1])).T
+            sdd3 = np.reshape(kwargs['sdd3'], (len(x), len(y), kwargs['sdd3'].shape[-1])).T
+            sdd4 = np.reshape(kwargs['sdd4'], (len(x), len(y), kwargs['sdd4'].shape[-1])).T
+        else:
+            sdd1 = kwargs['sdd1']
+            sdd2 = kwargs['sdd2']
+            sdd3 = kwargs['sdd3']
+            sdd4 = kwargs['sdd4']
     else:
         raise (Exception, "Improper data passed to plot function. Need sdd signal")
     if 'tey' in kwargs.keys():
-        tey = np.reshape(kwargs['tey'], (len(x), len(y))).T
+        if len(kwargs['tey'].shape) == 1:
+            tey = np.reshape(kwargs['tey'], (len(x), len(y))).T
     else:
         raise (Exception, "Didn't recieve tey signal.")
 
