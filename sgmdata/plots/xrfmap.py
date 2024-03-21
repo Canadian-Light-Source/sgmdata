@@ -200,6 +200,8 @@ def plot_interp(**kwargs):
     if 'tey' in kwargs.keys():
         if len(kwargs['tey'].shape) == 1:
             tey = np.reshape(kwargs['tey'], (len(x), len(y))).T
+        else:
+            tey = kwargs['tey']
     else:
         raise (Exception, "Didn't recieve tey signal.")
 
