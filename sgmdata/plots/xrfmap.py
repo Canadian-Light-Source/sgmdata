@@ -256,10 +256,10 @@ def plot_interp(**kwargs):
     # XRF Plot Data
     xrf_source = ColumnDataSource(dict(
         emission=kwargs.get('emission', np.linspace(0, kwargs['sdd1'].shape[-1] * 10, kwargs['sdd1'].shape[-1])),
-        x1=np.sum(sdd1, axis=tuple(range(sdd1.ndim - 1))),
-        x2=np.sum(sdd2, axis=tuple(range(sdd2.ndim - 1))),
-        x3=np.sum(sdd3, axis=tuple(range(sdd3.ndim - 1))),
-        x4=np.sum(sdd4, axis=tuple(range(sdd4.ndim - 1))),
+        x1=np.sum(sdd1, axis=(0,1)),
+        x2=np.sum(sdd2, axis=(0,1)),
+        x3=np.sum(sdd3, axis=(0,1)),
+        x4=np.sum(sdd4, axis=(0,1)),
     ))
 
     # Glyph to highlight XRF peak.
