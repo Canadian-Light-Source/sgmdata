@@ -181,8 +181,8 @@ def make_eemsreport(data, emission=[], sample=None, i0=1, **kwargs):
             "kind": "lineplot",
             "data": {
                 "x": ["Energy (eV)"] + list(avg.data['i0'].index),
-                "y1": [["pd"] + list(np.nansum(pd, axis=1)),
-                       ["tey"] + list(np.nansum(tey, axis=1)),
+                "y1": [["pd"] + list(pd),
+                       ["tey"] + list(tey),
                        ["sdd1"] + list(np.nansum(sdd1[:, int(p/10 - fit['widths'][i]/10):int(p/10 + fit['widths'][i]/10)], axis=1)/i0),
                        ["sdd2"] + list(np.nansum(sdd2[:, int(p/10 - fit['widths'][i]/10):int(p/10 + fit['widths'][i]/10)], axis=1)/i0),
                        ["sdd3"] + list(np.nansum(sdd3[:, int(p/10 - fit['widths'][i]/10):int(p/10 + fit['widths'][i]/10)], axis=1)/i0),
