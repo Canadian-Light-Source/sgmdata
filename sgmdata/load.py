@@ -565,7 +565,7 @@ class SGMData(object):
             f"""{SGMScan.DataDict.get_arr.__doc__}"""
             if isinstance(detector, str):
                 try:
-                    df = self['binned'][detector]
+                    df = self.data[detector]
                     data = df.to_numpy()
                     if len(df.index.names) > 1:
                         if len(data.shape) == 2:
@@ -585,7 +585,7 @@ class SGMData(object):
                                 data = np.reshape(data, (len(df), ))
                     return np.squeeze(data)
                 except (AttributeError, KeyError):
-                    warnings.warn(f"No dataframe loaded in scan dictionary. Have you run interpolate yet?")
+                    warnings.warn(f"No dataframe loaded in scan dictionary. Have you averaged your data yet?")
 
 
         def read(self, filename=None, associated=None) -> DisplayDict:
