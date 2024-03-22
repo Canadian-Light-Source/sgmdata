@@ -369,7 +369,7 @@ class SGMQuery(object):
         if not resp:
             raise ValueError("No report created.")
         self.report_ids[pk] = resp['id']
-        return f"{SGMLIVE_URL}/reports/{resp['id']}"
+        return f"{SGMLIVE_URL}/reports/{resp['id']}/"
 
     def _repr_html_(self):
         kind = [v for k, v in self.kind_dict.items() if self.type in k]
