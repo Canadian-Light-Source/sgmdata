@@ -561,7 +561,7 @@ class SGMData(object):
     class Processed(DisplayDict):
 
 
-        def get_arr(self, detector: str) -> np.ndarray:
+        def get_arr(self, detector: str, flat=False) -> np.ndarray:
             f"""{SGMScan.DataDict.get_arr.__doc__}"""
             if isinstance(detector, str):
                 try:
@@ -569,14 +569,24 @@ class SGMData(object):
                     data = df.to_numpy()
                     if len(df.index.names) > 1:
                         if len(data.shape) == 2:
-                            data = np.flipud(np.reshape(data, tuple([len(i) for i in df.index.levels] + [data.shape[-1]])))
-                            data = np.reshape(data, (len(df), data.shape[-1]))
+                            data = np.flipud(
+                                np.transpose(
+                                    np.reshape(data, tuple([len(i) for i in df.index.levels] + [data.shape[-1]])),
+                                    axes=(1,0,2)),
+                            )
+                            if flat:
+                                data = np.reshape(data, (len(df), data.shape[-1]))
                         elif len(data.shape) == 1:
-                            data = np.flipud(np.reshape(data, tuple([len(i) for i in df.index.levels])))
-                            data = np.reshape(data, (len(df), ))
+                            data = np.flipud(
+                                np.reshape(data, tuple([len(i) for i in df.index.levels])
+                                           )
+                            )
+                            if flat:
+                                data = np.reshape(data, (len(df), ))
                     return np.squeeze(data)
                 except (AttributeError, KeyError):
                     warnings.warn(f"No dataframe loaded in scan dictionary. Have you run interpolate yet?")
+
 
         def read(self, filename=None, associated=None) -> DisplayDict:
             f"""{SGMScan.DataDict.read.__doc__}"""
