@@ -303,7 +303,7 @@ def make_xrfmapreport(data, emission=None, sample = None, i0=1):
                 "x": ["xp (mm)"] + list(data.index.get_level_values('xp')),
                 "y": ["yp (mm)"] + list(data.index.get_level_values('yp')),
 
-                "z": [["tey"] + list(np.nansum(tey, axis=1)),
+                "z": [["tey"] + list(tey),
                        ["sdd1"] + list(np.nansum(sdd1[:, int(p/10 - fit['widths'][i]/10):int(p/10 + fit['widths'][i]/10)], axis=1)),
                        ["sdd2"] + list(np.nansum(sdd2[:, int(p/10 - fit['widths'][i]/10):int(p/10 + fit['widths'][i]/10)], axis=1)),
                        ["sdd3"] + list(np.nansum(sdd3[:, int(p/10 - fit['widths'][i]/10):int(p/10 + fit['widths'][i]/10)], axis=1)),
