@@ -181,9 +181,7 @@ def preprocess(sample="", data_id=0, **kwargs) -> object:
                 score = 1.0
                 sgmq.post_report(k, report, [], score, report_id=pk)
                 pk = sgmq.report_ids[k]
-                if len(interp) > 1:
-                    report = "XRF Stack Report"
-                sgmq.write_processed(k, report)
+                sgmq.write_processed(k, 'MAP')
                 callback = reports.get(report, False)
                 if callable(callback):
                     js_report, fits = callback(sgm_data, sample=sample, i0=i0)

@@ -123,7 +123,8 @@ def norm_arr(a, max):
     if abs(max) > 0:
         a = max * (a / np.amax(a))
         return a
-    a = a /np.amax(a)
+    max_a = np.amax(a) if np.amax(a) > 0 else 1
+    a = a / max_a
     return a
 
 
