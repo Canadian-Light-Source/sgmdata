@@ -342,4 +342,4 @@ def make_xrfmapreport(data, emission=None, sample = None, i0=1):
 
     return report, fit
 
-reports = {'XAS Report': make_eemsreport, 'XRF Map': make_xrfmapreport}
+reports = {'XAS Report': make_eemsreport, 'XRF Map': make_xrfmapreport, "MAP Report": make_xrfmapreport, "MAP Stacks": make_xrfmapreport}
