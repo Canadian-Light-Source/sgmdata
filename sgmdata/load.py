@@ -551,6 +551,8 @@ class SGMData(object):
 
         >**processed()** -- convenience method to get a list of all interpolated SGMScan data.
 
+        >**get(attr: str)** -- convenience method to grab a list of arrays, files or entry attributes from SGMData
+
 
     ### Attributes
         >**scans** *(SGMScan)* By default the query will create an SGMData object containing your data, this can be turned off with the data keyword.

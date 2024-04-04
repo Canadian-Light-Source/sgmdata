@@ -36,6 +36,10 @@ see interpolate() documentation.
 >**mean()** -- averages all interpolated data together (organized by sample, scan type & range), returns list, saves data
 under a dictionary in SGMData().averaged
 
+>**processed()** -- convenience method to get a list of all interpolated SGMScan data.
+
+>**get(attr: str)** -- convenience method to grab a list of arrays, files or entry attributes from SGMData
+
 
 ### Attributes
 >**scans** *(SGMScan)* By default the query will create an SGMData object containing your data, this can be turned off with the data keyword.
