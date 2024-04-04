@@ -788,6 +788,8 @@ class SGMData(object):
             warnings.warn(f"Some scan files were not loaded: {err}")
             for e in err:
                 del self.scans[e]
+        if len(self.scans) == 0:
+            raise FileNotFoundError("No files loaded.  Check path and/or permissions.")
         self.scans.update({k: SGMScan(**v) for d in L for k, v in d.items()})
         self.entries = self.scans.items
         self.interpolated = False
