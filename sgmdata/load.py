@@ -982,6 +982,26 @@ class SGMData(object):
             dfs, _ = interpolate(independent, signals, command=command, **kwargs)
             return dfs
 
+    def get(self, attr, compute=True):
+        attrs = []
+        for k, file in self.scans.items():
+            if attr == k:
+                attrs.append(file)
+            for entry, scan in file.__dict__.items():
+                if attr == entry:
+                    attrs.append(scan)
+                elif hasattr(scan, attr):
+                    attrs.append(scan[attr])
+                elif attr in scan['signals'].keys():
+                    attrs.append(scan['signals'][attr])
+                elif attr in scan['independent'].keys():
+                    attrs.append(scan['independent'][attr])
+                elif attr in scan['other'].keys():
+                    attrs.append(scan['other'][attr])
+        if compute:
+            attrs = [v.compute() if hasattr(v,'compute') else v for v in attrs]
+        return OneList(attrs)
+
     def processed(self, dask=False, bad_scans=None, verbose=False) -> OneList:
         """
         ### Description:
@@ -995,7 +1015,7 @@ class SGMData(object):
         """
         if bad_scans is None:
             bad_scans = []
-        sample_scans = {}
+        sample_scans = DisplayDict()
         interpolated = OneList([])
         if self.interpolated:
             i = 0
@@ -1015,7 +1035,7 @@ class SGMData(object):
                         key = ":".join(key)
                         if i not in bad_scans:
                             df = scan['binned']
-                            if dask:
+                            if dask and isinstance(df, pd.DataFrame):
                                 df = dd.from_pandas(df, npartitions=self.chunks)
                             if key in sample_scans.keys():
                                 l = sample_scans[key]['data'] + [df]
