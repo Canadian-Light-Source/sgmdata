@@ -862,7 +862,7 @@ class SGMData(object):
                     commands = [
                         str(h5[entry + '/command'][()]).split() if isinstance(h5[entry + '/command'][()], str) else str(
                             h5[entry + '/command'][()], 'utf-8').split() for entry in NXentries]
-            except:
+            except Exception as e:
                 warnings.warn(
                     "Scan entry didn't have a 'command' string saved. Command load can be skipped by providing a list of independent axis names")
                 return {"ERROR": file_root}
@@ -880,6 +880,8 @@ class SGMData(object):
             )
             return {"ERROR": file_root}
         indep = [self._find_data(h5[entry], independent[i]) for i, entry in enumerate(NXentries)]
+        NXentries = [n for i,n in enumerate(NXentries) if len(indep[i])]
+        indep = [i for i in indep if i]
         # search for data that is not an array mentioned in the command
         data = [self._find_data(h5[entry], independent[i], other=True) for i, entry in enumerate(NXentries)]
         # filter for data that is the same length as the independent axis
@@ -887,7 +889,7 @@ class SGMData(object):
             signals = [DisplayDict({check_key(k): da.from_array(v, chunks=chunks).astype('f') for k, v in d.items() if
                         np.abs(v.shape[0] - list(indep[i].values())[0].shape[0]) < 30}) for i, d in enumerate(data)]
         except:
-            return {"ERROR": file_root}
+            return {"ERROR": f"Collect 'signals' for {file_root}"}
 
         # group all remaining arrays
         try:
@@ -896,7 +898,7 @@ class SGMData(object):
                  if
                  np.abs(v.shape[0] - list(indep[i].values())[0].shape[0]) > 2}) for i, d in enumerate(data)]
         except:
-            return {"ERROR": file_root}
+            return {"ERROR": f"Collect 'other' for {file_root}"}
         # Reload independent axis data as dataarray
         try:
             indep = [DisplayDict({check_key(k): da.from_array(v,
