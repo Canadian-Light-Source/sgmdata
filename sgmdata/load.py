@@ -211,7 +211,7 @@ class SGMScan(DisplayDict):
                 data = {k: np.squeeze(v[()]) for k, v in h5[d].items() if
                         v.shape[0] == indep_shape[i][0] and k not in axes[i]}
                 if len(axes[i]) == 1:
-                    index = pd.DataFrame.from_dict({ax: h5[d][ax] for ax in axes[i]})
+                    index = pd.DataFrame.from_dict({ax: np.squeeze(h5[d][ax]) for ax in axes[i]})
                     df_sdd = DisplayDict({k: index.join(pd.DataFrame.from_dict(
                         {k + f"-{j}": v[:, j] for j in range(0, v.shape[1])})).set_index(axes[i]) for k, v in
                                                 data.items()
@@ -631,13 +631,13 @@ class SGMData(object):
                 data = {k: np.squeeze(v[()]) for k, v in h5[d].items() if
                         v.shape[0] == indep_shape[i][0] and k not in axes[i]}
                 if len(axes[i]) == 1:
-                    index = pd.DataFrame.from_dict({ax: h5[d][ax] for ax in axes[i]})
+                    index = pd.DataFrame.from_dict({ax: np.squeeze(h5[d][ax]) for ax in axes[i]})
                     df_sdd = DisplayDict({k: index.join(pd.DataFrame.from_dict(
                         {k + f"-{j}": v[:, j] for j in range(0, v.shape[1])})).set_index(axes[i]) for k, v in
                                                 data.items()
                                                 if len(v.shape) == 2})
                     df_sca = DisplayDict(
-                        {k: index.join(pd.DataFrame.from_dict({k: v})).set_index(axes[i]) for k, v, in
+                        {k: index.join(pd.DataFrame.from_dict({k: np.squeeze(v)})).set_index(axes[i]) for k, v, in
                          data.items() if
                          len(v.shape) < 2})
                     df_sca.update(df_sdd)
@@ -790,7 +790,7 @@ class SGMData(object):
             warnings.warn(f"Some scan files were not loaded: {err}")
             for e in err:
                 del self.scans[e]
-        if len(self.scans) == 0:
+        if len(L) == 0:
             raise FileNotFoundError("No files loaded.  Check path and/or permissions.")
         self.scans.update({k: SGMScan(**v) for d in L for k, v in d.items()})
         self.entries = self.scans.items
