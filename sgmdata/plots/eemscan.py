@@ -350,16 +350,16 @@ def plot_json(**kwargs):
     #Layout
     fluo = row(flslider, wdslider)
     functions = row(checkbox_group,button)
-    if sizing_mode == 'scale_both' or scale < 0.6:
+    if sizing_mode != 'scale_both' and scale >= 0.6:
+        options = column(select, functions, fluo, slider)
+        lout = gridplot([[xas, options], [plot, xrf]], sizing_mode=sizing_mode)
+    else:
         options = column(select, fluo, slider)
         lout = layout([
             [xas],
             [plot, xrf, options]
             [functions]
         ], sizing_mode=sizing_mode)
-    else:
-        options = column(select, functions, fluo, slider)
-        lout = gridplot([[xas, options], [plot, xrf]], sizing_mode=sizing_mode)
     return json_item(lout, target="61b4f88e-a524-45b8-9e01-5a1967ccfb8b")
 
 
@@ -377,7 +377,7 @@ def make_eems_json(scan, pk):
         else:
             data.update({'image': scan['signals']['sdd3'][::ds].compute(), 'filename': str(scan['sample'])})
     data.update({"scale":0.75, "json":True})
-    json_pl = plot(**data)
+    json_pl = plot_json(**data)
     json_pl['doc']['title'] = f"DAT-0{pk[:2]}-{pk[2:]}"
     return json_pl
 

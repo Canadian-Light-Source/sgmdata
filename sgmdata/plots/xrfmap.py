@@ -521,5 +521,5 @@ def plot_xyz(shift=False, table=False, **kwargs):
     else:
         layout = gridplot([[plot, options]], sizing_mode=sizing_mode)
     if kwargs.get('json', False):
-        return json.dumps(json_item(layout, "xrf"))
+        return json.dumps(json_item(layout, target="c8e5d2b1-e59e-4042-b775-e7d335a372eb"))
     show(layout)
