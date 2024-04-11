@@ -845,7 +845,11 @@ class SGMData(object):
                 warnings.warn(f"Could not open file, h5pyd raised: {f}")
                 return {"ERROR": file_root}
         # Find the number of scans within the file
-        NXentries = [str(x) for x in h5['/'].keys() if 'NXentry' in str(h5[x].attrs.get('NX_class'))]
+        try:
+            NXentries = [str(x) for x in h5['/'].keys() if 'NXentry' in str(h5[x].attrs.get('NX_class'))]
+        except Exception as f:
+            warnings.warn(f"Could not find NXentry, h5py raised: {f}")
+            return {"ERROR": file_root}
         # Get the commands used to declare the above scans
         independent = []
         if not hasattr(self, 'axes'):
