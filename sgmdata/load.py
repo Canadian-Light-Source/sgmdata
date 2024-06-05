@@ -12,7 +12,7 @@ from multiprocessing.pool import ThreadPool
 from functools import partial
 from sgmdata.plots import eemscan, xrfmap
 from sgmdata.xrffit import fit_peaks
-from sgmdata.interpolate import interpolate, shift_cmesh
+from sgmdata.interpolate import interpolate, shift_cmesh, start_stop
 from .utilities.magicclass import OneList, DisplayDict
 
 import warnings
@@ -964,11 +964,25 @@ class SGMData(object):
             >**resolution** *(list or number)* -- used instead of bins to define the bin to bin distance.
             >**sig_digits** *(int)* -- used to overide the default uncertainty of the interpolation axis of 2 (e.g. 0.01)
         """
-        _interpolate = partial(self._interpolate, **kwargs)
         entries = []
+        max_start, min_stop = None, None
         for file, val in self.entries():
             for key, entry in val.__dict__.items():
                 entries.append(entry)
+                if len(entry.independent.values()) == 2 and not kwargs.get('stop', False):
+                    kwargs['method'] = 'linear'
+                    if not max_start:
+                        start, stop = start_stop(entry.command, entry.independent, **kwargs)
+                        max_start, min_stop = start, stop
+                    temp_start = np.fmax(np.min(np.array([e.compute() + 10**(-1*(kwargs.get('sig_digits', 4))) for e in entry.independent.values()]), axis=1), max_start).tolist()
+                    temp_stop = np.fmin(np.max(np.array([e.compute() - 10**(-1*(kwargs.get('sig_digits', 4))) for e in entry.independent.values()]), axis=1), min_stop).tolist()
+                    if np.max(np.abs(np.subtract(temp_start, max_start))) < 10**(-1*(kwargs.get('sig_digits', 4) - 2))*5:
+                        max_start = temp_start
+                    if np.max(np.abs(np.subtract(temp_stop, min_stop))) < 10**(-1*(kwargs.get('sig_digits', 4) - 2))*5:
+                        min_stop = temp_stop
+        kwargs['start'] = max_start
+        kwargs['stop'] = min_stop
+        _interpolate = partial(self._interpolate, **kwargs)
         with ThreadPool(self.threads) as pool:
             results = list(tqdm(pool.imap_unordered(_interpolate, entries), total=len(entries)))
         self.interpolated = True
@@ -977,11 +991,11 @@ class SGMData(object):
     def _interpolate(self, entry, **kwargs) -> dict:
         compute = kwargs.get('compute', True)
         if compute:
-            try:
-                return entry.interpolate(**kwargs)
-            except Exception as e:
-                print(f"Exception raise while interpolating {entry}: {e}")
-                return None
+            # try:
+            return entry.interpolate(**kwargs)
+            # except Exception as e:
+            #     print(f"Exception raise while interpolating {entry}: {e}")
+            #     return None
         else:
             independent = entry['independent']
             signals = entry['signals']
