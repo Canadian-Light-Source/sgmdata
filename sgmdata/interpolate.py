@@ -240,7 +240,6 @@ def interpolate(independent, signals, command=None, **kwargs):
         df_idx = dd.from_pandas(pd.DataFrame({nm[0]: bins[0]}), npartitions=npartitions).groupby(nm[0]).mean()
     elif len(nm) == 2:
         x_new, y_new = np.meshgrid(bins[0], bins[1])
-        print(x_new.shape)
         g = [x_new.flatten(), y_new.flatten()]
         labels = {k: g[i] for i,k in enumerate(independent.keys())}
         dfs, _ = make_df_2d(independent, signals, x_new, y_new, labels, npartitions=npartitions, method=method)
