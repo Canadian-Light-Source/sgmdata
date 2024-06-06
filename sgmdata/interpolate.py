@@ -5,7 +5,7 @@ import dask.dataframe as dd
 import pandas as pd
 import warnings
 from dask.distributed import get_client
-from .utilities.magicclass import DisplayDict
+from sgmdata.utilities.magicclass import DisplayDict
 from sys import getsizeof
 
 def label_bins(bins, bin_edges, independent):
@@ -41,20 +41,20 @@ def make_df(independent, signals, labels, npartitions=1):
     return dfs
 
 
-def interpolate_row(x, y, z, x_new, y_new, method='linear'):
+def interpolate_row(x, y, z, x_new, y_new, method='nearest'):
     from scipy.interpolate import griddata
-    points = np.column_stack((x, y))
-    grid_z = griddata(points, z, (x_new, y_new), method=method)
-    return da.from_array(grid_z)
+    points = da.stack([x, y], axis=1)
+    grid_z = delayed(griddata)(points, z, (x_new, y_new), method=method)
+    return da.from_delayed(grid_z, shape=x_new.shape, dtype=z.dtype)
 
-def make_df_2d(independent, signals, x_new, y_new, labels, npartitions=1):
+def make_df_2d(independent, signals, x_new, y_new, labels, npartitions=1, method='nearest'):
     c = [v for k, v in independent.items()]
     df = dd.from_dict(labels, npartitions=npartitions)
     dfs = DisplayDict()
     for k,v in signals.items():
         if len(v.shape) == 2:
             columns = [k + "-" + str(i) for i in range(v.shape[1])]
-            interpolated_rows = [interpolate_row(c[0], c[1], z, x_new, y_new) for z in v.T]
+            interpolated_rows = [interpolate_row(c[0], c[1], z, x_new, y_new, method=method) for z in v.T]
             interpolated_matrix = da.stack(interpolated_rows)
             shape = interpolated_matrix.shape
             rows = shape[1]*shape[2]
@@ -62,12 +62,12 @@ def make_df_2d(independent, signals, x_new, y_new, labels, npartitions=1):
             dfs[k] = df.merge(
                         dd.from_dask_array(
                             interpolated_matrix.T,
-                            columns=columns))
+                            columns=columns)).groupby([k for k in labels.keys()]).mean()
         elif len(v.shape) == 1:
             columns = [k]
-            interpolated_matrix = interpolate_row(c[0],c[1],v, x_new, y_new)
+            interpolated_matrix = interpolate_row(c[0],c[1],v, x_new, y_new, method=method)
             dfs[k] = df.merge(
-                dd.from_dask_array(interpolated_matrix.flatten(), columns=columns))
+                dd.from_dask_array(interpolated_matrix.flatten(), columns=columns)).groupby([k for k in labels.keys()]).mean()
         else:
             continue
 
@@ -86,7 +86,7 @@ def dask_unique(value):
     else:
         return int(np.unique(value).shape[0] / 5)
 
-def compute_df(dfs, df_idx, ldim=1, method = 'nearest'):
+def compute_df(dfs, df_idx, ldim=1):
     df_dict = DisplayDict()
     if ldim == 1:
         df_dict.update({k: dd.merge(df_idx,
@@ -98,16 +98,14 @@ def compute_df(dfs, df_idx, ldim=1, method = 'nearest'):
                         .sort_index(level=0, sort_remaining=True)
                         .interpolate() for k, df in dfs.items()})
     elif ldim == 2:
-        df_dict.update({k: df.compute().set_index(['xp', 'yp'], sorted=True) for k, df in dfs.items()})
-        # df_dict.update({k: dd.merge(df_idx,
-        #                 df,
-        #                 how='left',
-        #                 left_index=True,
-        #                 right_index=True
-        #                ).compute()
-        #                 .sort_index(level=0, sort_remaining=True)
-        #                 .interpolate(method=method)
-        #                 .fillna(0) for k, df in dfs.items()})
+        df_dict.update({k: dd.merge(df_idx,
+                        df,
+                        how='left',
+                        left_index=True,
+                        right_index=True
+                       ).compute()
+                        .sort_index(level=0, sort_remaining=True)
+                        .fillna(0) for k, df in dfs.items()})
     return df_dict
 
 def shift_cmesh(x, shift=0.5):
@@ -241,13 +239,15 @@ def interpolate(independent, signals, command=None, **kwargs):
         dfs = make_df(independent, signals, labels, npartitions=npartitions)
         df_idx = dd.from_pandas(pd.DataFrame({nm[0]: bins[0]}), npartitions=npartitions).groupby(nm[0]).mean()
     elif len(nm) == 2:
-        x_new, y_new = np.meshgrid(bin_edges[0], bin_edges[1])
+        x_new, y_new = np.meshgrid(bins[0], bins[1])
+        print(x_new.shape)
         g = [x_new.flatten(), y_new.flatten()]
         labels = {k: g[i] for i,k in enumerate(independent.keys())}
-        dfs, df_idx = make_df_2d(independent, signals, x_new, y_new, labels, npartitions=npartitions)
+        dfs, _ = make_df_2d(independent, signals, x_new, y_new, labels, npartitions=npartitions, method=method)
         _y = np.array([bins[1] for b in bins[0]]).flatten()
         _x = np.array([[bins[0][j] for i in range(len(bins[1]))] for j in range(len(bins[0]))]).flatten()
         d = {nm[0]: _x, nm[1]: _y}
+        df_idx = dd.from_pandas(pd.DataFrame(d), npartitions=npartitions).groupby(nm).mean()
     else:
         raise ValueError("Too many independent axis for interpolation")
     if compute:
@@ -257,3 +257,4 @@ def interpolate(independent, signals, command=None, **kwargs):
             print("Trouble computing dataframe, error msg: %s" % e)
             return None, None
     return dfs, df_idx
+

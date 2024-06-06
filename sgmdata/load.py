@@ -969,19 +969,19 @@ class SGMData(object):
         for file, val in self.entries():
             for key, entry in val.__dict__.items():
                 entries.append(entry)
-                if len(entry.independent.values()) == 2 and not kwargs.get('stop', False):
-                    kwargs['method'] = 'linear'
-                    if not max_start:
-                        start, stop = start_stop(entry.command, entry.independent, **kwargs)
-                        max_start, min_stop = start, stop
-                    temp_start = np.fmax(np.min(np.array([e.compute() + 10**(-1*(kwargs.get('sig_digits', 4))) for e in entry.independent.values()]), axis=1), max_start).tolist()
-                    temp_stop = np.fmin(np.max(np.array([e.compute() - 10**(-1*(kwargs.get('sig_digits', 4))) for e in entry.independent.values()]), axis=1), min_stop).tolist()
-                    if np.max(np.abs(np.subtract(temp_start, max_start))) < 10**(-1*(kwargs.get('sig_digits', 4) - 2))*5:
-                        max_start = temp_start
-                    if np.max(np.abs(np.subtract(temp_stop, min_stop))) < 10**(-1*(kwargs.get('sig_digits', 4) - 2))*5:
-                        min_stop = temp_stop
-        kwargs['start'] = max_start
-        kwargs['stop'] = min_stop
+        #         if len(entry.independent.values()) == 2 and not kwargs.get('stop', False):
+        #             kwargs['method'] = 'linear'
+        #             if not max_start:
+        #                 start, stop = start_stop(entry.command, entry.independent, **kwargs)
+        #                 max_start, min_stop = start, stop
+        #             temp_start = np.fmax(np.min(np.array([e.compute() + 10**(-1*(kwargs.get('sig_digits', 4))) for e in entry.independent.values()]), axis=1), max_start).tolist()
+        #             temp_stop = np.fmin(np.max(np.array([e.compute() - 10**(-1*(kwargs.get('sig_digits', 4))) for e in entry.independent.values()]), axis=1), min_stop).tolist()
+        #             if np.max(np.abs(np.subtract(temp_start, max_start))) < 10**(-1*(kwargs.get('sig_digits', 4) - 2))*5:
+        #                 max_start = temp_start
+        #             if np.max(np.abs(np.subtract(temp_stop, min_stop))) < 10**(-1*(kwargs.get('sig_digits', 4) - 2))*5:
+        #                 min_stop = temp_stop
+        # kwargs['start'] = max_start
+        # kwargs['stop'] = min_stop
         _interpolate = partial(self._interpolate, **kwargs)
         with ThreadPool(self.threads) as pool:
             results = list(tqdm(pool.imap_unordered(_interpolate, entries), total=len(entries)))
