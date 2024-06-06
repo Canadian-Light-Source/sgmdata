@@ -252,7 +252,7 @@ def interpolate(independent, signals, command=None, **kwargs):
         raise ValueError("Too many independent axis for interpolation")
     if compute:
         try:
-            dfs = compute_df(dfs, df_idx, ldim=len(nm), method=method)
+            dfs = compute_df(dfs, df_idx, ldim=len(nm))
         except Exception as e:
             print("Trouble computing dataframe, error msg: %s" % e)
             return None, None
