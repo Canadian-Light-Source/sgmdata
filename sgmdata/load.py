@@ -87,7 +87,7 @@ class SGMScan(DisplayDict):
                                     axes=(1,0,2)),
                             )
                             if flat:
-                                data = np.reshape(data, (len(df), data.shape[-1]))
+                                data = np.reshape(df.to_numpy(), (len(df), data.shape[-1]))
                         elif len(data.shape) == 1:
                             data = np.flipud(
                                 np.reshape(data, tuple([len(i) for i in df.index.levels])
@@ -970,7 +970,6 @@ class SGMData(object):
             for key, entry in val.__dict__.items():
                 entries.append(entry)
                 if len(entry.independent.values()) == 2 and not kwargs.get('stop', False):
-                    kwargs['method'] = 'linear'
                     if not max_start:
                         start, stop = start_stop(entry.command, entry.independent, **kwargs)
                         max_start, min_stop = start, stop

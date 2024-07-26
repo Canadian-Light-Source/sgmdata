@@ -62,12 +62,18 @@ def make_df_2d(independent, signals, x_new, y_new, labels, npartitions=1, method
             dfs[k] = df.merge(
                         dd.from_dask_array(
                             interpolated_matrix.T,
-                            columns=columns)).groupby([k for k in labels.keys()]).mean()
+                            columns=columns),
+                            how='left'
+                    ).groupby([k for k in labels.keys()]).mean()
         elif len(v.shape) == 1:
             columns = [k]
             interpolated_matrix = interpolate_row(c[0],c[1],v, x_new, y_new, method=method)
             dfs[k] = df.merge(
-                dd.from_dask_array(interpolated_matrix.flatten(), columns=columns)).groupby([k for k in labels.keys()]).mean()
+                            dd.from_dask_array(
+                                interpolated_matrix.flatten(),
+                                columns=columns),
+                            how='left'
+                    ).groupby([k for k in labels.keys()]).mean()
         else:
             continue
 
@@ -98,12 +104,7 @@ def compute_df(dfs, df_idx, ldim=1):
                         .sort_index(level=0, sort_remaining=True)
                         .interpolate() for k, df in dfs.items()})
     elif ldim == 2:
-        df_dict.update({k: dd.merge(df_idx,
-                        df,
-                        how='left',
-                        left_index=True,
-                        right_index=True
-                       ).compute()
+        df_dict.update({k: df.compute()
                         .sort_index(level=0, sort_remaining=True)
                         .fillna(0) for k, df in dfs.items()})
     return df_dict
@@ -205,11 +206,10 @@ def interpolate(independent, signals, command=None, **kwargs):
         max_res = [dask_max(v, sig_digits=accuracy) for k, v in axis.items()]
         bin_num = [int(abs(stop[i] - start[i]) / resolution[i]) for i, _ in enumerate(axis.keys())]
         for i, l in enumerate(max_res):
-            if l < bin_num[i] and l > 0:
+            if l*2 < bin_num[i] and l > 0:
                 warnings.warn(
-                    "Resolution setting can't be higher than experimental resolution, setting resolution for axis %s to %f" % (
+                    "Resolution setting may be higher than twice the experimental resolution, try setting the resolution for axis %s to %f" % (
                         i, abs(stop[i] - start[i]) / l), UserWarning)
-                bin_num[i] = l
         offset = [item / 2 for item in resolution]
         bins = [np.linspace(start[i], stop[i], bin_num[i], endpoint=True) for i in range(len(bin_num))]
     elif 'bins' in kwargs.keys():

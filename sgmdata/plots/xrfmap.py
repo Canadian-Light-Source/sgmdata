@@ -26,9 +26,9 @@ def make_data(df, keys, sgm_data):
     data.update({k: np.reshape(v, (len(df.index.levels[0]), len(df.index.levels[1]), v.shape[-1])) if len(
         v.shape) == 2 else np.reshape(v, (len(df.index.levels[0]), len(df.index.levels[1]))) for k, v in data.items()})
     data.update({n: df.index.levels[i] for i, n in enumerate(list(df.index.names))})
-    data.update({'emission': sgm_data.scans["2020-01-31t15-01-25-0600"].entry1.fit['emission']})
-    data.update({'peaks': sgm_data.scans["2020-01-31t15-01-25-0600"].entry1.fit['peaks']})
-    data.update({'width': sgm_data.scans["2020-01-31t15-01-25-0600"].entry1.fit['width']})
+    data.update({'emission': sgm_data.scans.first().first().fit['emission']})
+    data.update({'peaks': sgm_data.scans.first().first().fit['peaks']})
+    data.update({'width': sgm_data.scans.first().first().fit['width']})
     return data
 
 
@@ -167,6 +167,8 @@ def plot(**kwargs):
     layout = gridplot([[plot, options]], sizing_mode=sizing_mode)
     if kwargs.get('json', False):
         return json.dumps(json_item(layout, "xrf"))
+    if kwargs.get('layout', False):
+        return layout
     show(layout)
 
 
@@ -317,6 +319,8 @@ def plot_interp(**kwargs):
     layout = gridplot([[plot, options]], sizing_mode=sizing_mode)
     if kwargs.get('json', False):
         return json.dumps(json_item(layout, "xrf"))
+    if kwargs.get('layout', False):
+        return layout
     show(layout)
 
 def shifted(saxis, shift=0.5):
@@ -522,4 +526,6 @@ def plot_xyz(shift=False, table=False, **kwargs):
         layout = gridplot([[plot, options]], sizing_mode=sizing_mode)
     if kwargs.get('json', False):
         return json.dumps(json_item(layout, target="c8e5d2b1-e59e-4042-b775-e7d335a372eb"))
+    if kwargs.get('layout', False):
+        return layout
     show(layout)
