@@ -189,6 +189,8 @@ def plot(**kwargs):
         lout = gridplot([[xas, options], [plot, xrf]], sizing_mode=sizing_mode)
     if kwargs.get('json', False):
         return json.dumps(json_item(lout, "eems"))
+    if kwargs.get('layout', False):
+        return lout
     show(lout)
 
 def plot_json(**kwargs):

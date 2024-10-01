@@ -272,7 +272,7 @@ def make_xrfmapreport(data, emission=None, sample = None, i0=1):
             energies.append(entry.other['en'].compute()[0])
     for i, entry in enumerate(interp):
         data = next(iter(entry['binned'].values()))
-        fit, emission = sel_map_roi(entry, emission=emission)
+        fit, emission = sel_map_roi(entry, emission=emission, max_en=np.max(energies))
         xrf_plot = [{
             "title": "XRF Plot",
             "kind": "lineplot",
@@ -290,7 +290,7 @@ def make_xrfmapreport(data, emission=None, sample = None, i0=1):
             },
             "style": "col-12"
         }]
-        ds = int(data.index.get_level_values('xp').shape[0] / 640*480) + 1
+        ds = int(data.index.get_level_values('xp').shape[0] / (640*480)) + 1
         tey = norm_arr(np.nan_to_num(entry.get_arr("tey", flat=True)), i0)
         #pd = norm_arr(np.nan_to_num(entry.get_arr("pd")), i0)
         sdd1 = norm_arr(entry.get_arr("sdd1", flat=True), i0)
@@ -301,14 +301,14 @@ def make_xrfmapreport(data, emission=None, sample = None, i0=1):
             "title": f"XRF Map for ROI{i}",
             "kind": "heatmap",
             "data": {
-                "x": ["xp (mm)"] + list(data.index.get_level_values('xp'))[::ds],
-                "y": ["yp (mm)"] + list(data.index.get_level_values('yp'))[::ds],
+                "x": ["xp (mm)"] + list(data.index.get_level_values('xp')[::ds]),
+                "y": ["yp (mm)"] + list(data.index.get_level_values('yp')[::ds]),
 
-                "z": [["tey"] + list(tey)[::ds],
-                       ["sdd1"] + list(np.nansum(sdd1[:, int(p/10 - fit['widths'][i]/10):int(p/10 + fit['widths'][i]/10)], axis=1))[::ds],
-                       ["sdd2"] + list(np.nansum(sdd2[:, int(p/10 - fit['widths'][i]/10):int(p/10 + fit['widths'][i]/10)], axis=1))[::ds],
-                       ["sdd3"] + list(np.nansum(sdd3[:, int(p/10 - fit['widths'][i]/10):int(p/10 + fit['widths'][i]/10)], axis=1))[::ds],
-                       ["sdd4"] + list(np.nansum(sdd4[:, int(p/10 - fit['widths'][i]/10):int(p/10 + fit['widths'][i]/10)], axis=1))[::ds]
+                "z": [["tey"] + list(tey[::ds]),
+                       ["sdd1"] + list(np.nansum(sdd1[:, int(p/10 - fit['widths'][i]/10):int(p/10 + fit['widths'][i]/10)], axis=1)[::ds]),
+                       ["sdd2"] + list(np.nansum(sdd2[:, int(p/10 - fit['widths'][i]/10):int(p/10 + fit['widths'][i]/10)], axis=1)[::ds]),
+                       ["sdd3"] + list(np.nansum(sdd3[:, int(p/10 - fit['widths'][i]/10):int(p/10 + fit['widths'][i]/10)], axis=1)[::ds]),
+                       ["sdd4"] + list(np.nansum(sdd4[:, int(p/10 - fit['widths'][i]/10):int(p/10 + fit['widths'][i]/10)], axis=1)[::ds])
                        ],
                 "selected": ["sdd1", "sdd2", "sdd3", "sdd4"],
                 "aspect-ratio": 1.5,

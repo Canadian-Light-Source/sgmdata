@@ -1,11 +1,11 @@
 import numpy as np
-from dask import delayed
+from dask import delayed, compute
 import dask.array as da
 import dask.dataframe as dd
 import pandas as pd
 import warnings
 from dask.distributed import get_client
-from .utilities.magicclass import DisplayDict
+from sgmdata.utilities.magicclass import DisplayDict
 from sys import getsizeof
 
 def label_bins(bins, bin_edges, independent):
@@ -28,7 +28,7 @@ def label_bins(bins, bin_edges, independent):
 
 def make_df(independent, signals, labels, npartitions=1):
     c = [k for k, v in independent.items()]
-    df = dd.from_delayed(labels).persist()
+    df = dd.from_dict(labels).persist()
     dfs = DisplayDict()
     for k, v in signals.items():
         if len(v.shape) == 2:
@@ -39,6 +39,45 @@ def make_df(independent, signals, labels, npartitions=1):
             continue
         dfs[k] = df.merge(dd.from_dask_array(v, columns=columns)).groupby(c).mean(split_out=npartitions)
     return dfs
+
+
+def interpolate_row(x, y, z, x_new, y_new, method='nearest'):
+    from scipy.interpolate import griddata
+    points = da.stack([x, y], axis=1)
+    grid_z = delayed(griddata)(points, z, (x_new, y_new), method=method)
+    return da.from_delayed(grid_z, shape=x_new.shape, dtype=z.dtype)
+
+def make_df_2d(independent, signals, x_new, y_new, labels, npartitions=1, method='nearest'):
+    c = [v for k, v in independent.items()]
+    df = dd.from_dict(labels, npartitions=npartitions)
+    dfs = DisplayDict()
+    for k,v in signals.items():
+        if len(v.shape) == 2:
+            columns = [k + "-" + str(i) for i in range(v.shape[1])]
+            interpolated_rows = [interpolate_row(c[0], c[1], z, x_new, y_new, method=method) for z in v.T]
+            interpolated_matrix = da.stack(interpolated_rows)
+            shape = interpolated_matrix.shape
+            rows = shape[1]*shape[2]
+            interpolated_matrix = interpolated_matrix.reshape((shape[0], rows))
+            dfs[k] = df.merge(
+                        dd.from_dask_array(
+                            interpolated_matrix.T,
+                            columns=columns),
+                            how='left'
+                    ).groupby([k for k in labels.keys()]).mean()
+        elif len(v.shape) == 1:
+            columns = [k]
+            interpolated_matrix = interpolate_row(c[0],c[1],v, x_new, y_new, method=method)
+            dfs[k] = df.merge(
+                            dd.from_dask_array(
+                                interpolated_matrix.flatten(),
+                                columns=columns),
+                            how='left'
+                    ).groupby([k for k in labels.keys()]).mean()
+        else:
+            continue
+
+    return dfs, df
 
 def dask_max(value, sig_digits=2):
     res = 10**sig_digits
@@ -53,7 +92,7 @@ def dask_unique(value):
     else:
         return int(np.unique(value).shape[0] / 5)
 
-def compute_df(dfs, df_idx, ldim=1, method = 'nearest'):
+def compute_df(dfs, df_idx, ldim=1):
     df_dict = DisplayDict()
     if ldim == 1:
         df_dict.update({k: dd.merge(df_idx,
@@ -65,19 +104,44 @@ def compute_df(dfs, df_idx, ldim=1, method = 'nearest'):
                         .sort_index(level=0, sort_remaining=True)
                         .interpolate() for k, df in dfs.items()})
     elif ldim == 2:
-        df_dict.update({k: dd.merge(df_idx,
-                        df,
-                        how='left',
-                        left_index=True,
-                        right_index=True
-                       ).compute()
+        df_dict.update({k: df.compute()
                         .sort_index(level=0, sort_remaining=True)
-                        .interpolate(method=method)
                         .fillna(0) for k, df in dfs.items()})
     return df_dict
 
 def shift_cmesh(x, shift=0.5):
     return shift * (x + np.roll(x, -1))
+
+def start_stop(command, axis, **kwargs):
+    if 'start' not in kwargs.keys():
+        if command:
+            if 'scan' in command[0]:
+                start = [round(float(command[2]))]
+            elif 'mesh' in command[0]:
+                xstart = min((float(command[2]), float(command[3])))
+                ystart = min((float(command[6]), float(command[7])))
+                start = [xstart, ystart]
+        else:
+            start = [round(v.min()) for k, v in axis.items()]
+    else:
+        start = kwargs['start']
+    if 'stop' not in kwargs.keys():
+        if command:
+            if 'scan' in command[0]:
+                stop = [round(float(command[3]))]
+            elif 'mesh' in command[0]:
+                xstop = max((float(command[2]), float(command[3])))
+                ystop = max((float(command[6]), float(command[7])))
+                stop = [xstop, ystop]
+        else:
+            stop = [round(v.max()) + 1 for k, v in axis.items()]
+    else:
+        stop = kwargs['stop']
+    if not isinstance(start, list):
+        start = [start for i, _ in enumerate(axis.keys())]
+    if not isinstance(stop, list):
+        stop = [stop for i, _ in enumerate(axis.keys())]
+    return start,stop
 
 def interpolate(independent, signals, command=None, **kwargs):
     """
@@ -108,34 +172,8 @@ def interpolate(independent, signals, command=None, **kwargs):
     axis = independent
     client = get_client()
     dim = len(axis.keys())
-    if 'start' not in kwargs.keys():
-        if command:
-            if 'scan' in command[0]:
-                start = [round(float(command[2]))]
-            elif 'mesh' in command[0]:
-                xstart = min((float(command[2]), float(command[3])))
-                ystart = min((float(command[6]), float(command[7])))
-                start = [xstart, ystart]
-        else:
-            start = [round(v.min()) for k, v in axis.items()]
-    else:
-        start = kwargs['start']
-    if 'stop' not in kwargs.keys():
-        if command:
-            if 'scan' in command[0]:
-                stop = [round(float(command[3]))]
-            elif 'mesh' in command[0]:
-                xstop = max((float(command[2]), float(command[3])))
-                ystop = max((float(command[6]), float(command[7])))
-                stop = [xstop, ystop]
-        else:
-            stop = [round(v.max()) + 1 for k, v in axis.items()]
-    else:
-        stop = kwargs['stop']
-    if not isinstance(start, list):
-        start = [start for i, _ in enumerate(axis.keys())]
-    if not isinstance(stop, list):
-        stop = [stop for i, _ in enumerate(axis.keys())]
+    start, stop = start_stop(command, axis, **kwargs)
+
     if len(start) != len(stop):
         raise ValueError("Start and Stop coordinates must have same length")
     if 'resolution' in kwargs.keys() and 'bins' in kwargs.keys():
@@ -168,11 +206,10 @@ def interpolate(independent, signals, command=None, **kwargs):
         max_res = [dask_max(v, sig_digits=accuracy) for k, v in axis.items()]
         bin_num = [int(abs(stop[i] - start[i]) / resolution[i]) for i, _ in enumerate(axis.keys())]
         for i, l in enumerate(max_res):
-            if l < bin_num[i] and l > 0:
+            if l*2 < bin_num[i] and l > 0:
                 warnings.warn(
-                    "Resolution setting can't be higher than experimental resolution, setting resolution for axis %s to %f" % (
+                    "Resolution setting may be higher than twice the experimental resolution, try setting the resolution for axis %s to %f" % (
                         i, abs(stop[i] - start[i]) / l), UserWarning)
-                bin_num[i] = l
         offset = [item / 2 for item in resolution]
         bins = [np.linspace(start[i], stop[i], bin_num[i], endpoint=True) for i in range(len(bin_num))]
     elif 'bins' in kwargs.keys():
@@ -195,24 +232,28 @@ def interpolate(independent, signals, command=None, **kwargs):
 
     bin_edges = [np.linspace(start[i] - offset[i], stop[i] + offset[i], bin_num[i] + 1, endpoint=True) for i in
                  range(len(bin_num))]
-    labels = delayed(label_bins)(bins, bin_edges, independent)
     npartitions = kwargs.get('npartitions', 3 if len(bin_num) > 1 else 1)
-    dfs = make_df(independent, signals, labels, npartitions=npartitions)
     nm = [k for k, v in independent.items()]
     if len(nm) == 1:
+        labels = delayed(label_bins)(bins, bin_edges, independent)
+        dfs = make_df(independent, signals, labels, npartitions=npartitions)
         df_idx = dd.from_pandas(pd.DataFrame({nm[0]: bins[0]}), npartitions=npartitions).groupby(nm[0]).mean()
     elif len(nm) == 2:
+        x_new, y_new = np.meshgrid(bins[0], bins[1])
+        g = [x_new.flatten(), y_new.flatten()]
+        labels = {k: g[i] for i,k in enumerate(independent.keys())}
+        dfs, _ = make_df_2d(independent, signals, x_new, y_new, labels, npartitions=npartitions, method=method)
         _y = np.array([bins[1] for b in bins[0]]).flatten()
         _x = np.array([[bins[0][j] for i in range(len(bins[1]))] for j in range(len(bins[0]))]).flatten()
-        array = [_x, _y]
         d = {nm[0]: _x, nm[1]: _y}
         df_idx = dd.from_pandas(pd.DataFrame(d), npartitions=npartitions).groupby(nm).mean()
     else:
         raise ValueError("Too many independent axis for interpolation")
     if compute:
         try:
-            dfs = compute_df(dfs, df_idx, ldim=len(nm), method=method)
+            dfs = compute_df(dfs, df_idx, ldim=len(nm))
         except Exception as e:
             print("Trouble computing dataframe, error msg: %s" % e)
             return None, None
     return dfs, df_idx
+

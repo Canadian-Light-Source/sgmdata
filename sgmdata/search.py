@@ -267,7 +267,11 @@ class SGMQuery(object):
         for k, v in interp.items():
             if k in data.scans.keys():
                 for entry in data.scans[k].__dict__.values():
-                    entry.write(self.prepend + v)
+                    try:
+                        entry.write(self.prepend + v)
+                    except AttributeError:
+                        warnings.warn(f"No interpolated data written for {k}")
+                        continue
                     self.interp_paths[pk].append(v)
 
     def write_average(self, pk: str, kind='XAS'):
