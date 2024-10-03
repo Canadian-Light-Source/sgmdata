@@ -190,9 +190,9 @@ def plot(**kwargs):
     else:
         functions = row(select, button)
         options = column(checkbox_group, fluo, slider)
-        lout = layout([
+        lout = gridplot([
             [xas, options],
-            [plot, xrf]
+            [plot, xrf],
             [functions]
         ], sizing_mode=sizing_mode)
     if kwargs.get('json', False):
