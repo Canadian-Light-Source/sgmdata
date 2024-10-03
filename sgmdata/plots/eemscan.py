@@ -30,10 +30,10 @@ def get_callback(name):
     return js
 
 def plot(**kwargs):
-    #Check vars
+    # Check vars
     sizing_mode = kwargs.get('sizing_mode', 'fixed')
     scale = kwargs.get('scale', 1)
-    height, width = (int(600*scale), int(600*scale))
+    height, width = (int(450 * scale), int(550 * scale))
     if 'emission' not in kwargs.keys():
         kwargs['emission'] = np.linspace(0, 2560, 256)
     if 'io' in kwargs.keys() and np.any(kwargs['io']):
@@ -102,6 +102,7 @@ def plot(**kwargs):
 
     xrf = figure(width=width*27//64, height=height, y_range=plot.y_range, tools="save,hover,box_zoom, pan",
                  title="XRF Projection")
+    xrf.title.text_font_size="6pt"
     fluo = Rect(x='y', y='x', width='width', height='height', fill_alpha=0.1, line_color=None, fill_color='yellow')
     xrf.add_glyph(peak_source, fluo)
     xrf.circle('proj_x', 'emission', source=xrf_source, alpha=0.6)
@@ -110,6 +111,7 @@ def plot(**kwargs):
 
     xas = figure(width=width, height=height*27//64, x_range=plot.x_range, tools="save,hover,box_zoom,wheel_zoom,pan",
                   title="XAS Projection")
+    xas.title.text_font_size="6pt"
     xas.line('en', 'proj_y', source=xas_source, line_color='purple', alpha=0.6, legend_label="EEMs")
     xas.line('en', 'tey', source=aux_source, line_color='black', alpha=0.6, legend_label="TEY")
     xas.line('en', 'pd', source=aux_source, line_color="navy", alpha=0.6, legend_label="Diode")
@@ -126,18 +128,19 @@ def plot(**kwargs):
     plot.yaxis.axis_label = 'Emisison Energy (eV)'
 
     #Interactive plot widgets:
-    select = CheckboxButtonGroup(name="Detector Select:", labels=['sdd1', 'sdd2', 'sdd3', 'sdd4'], active=[0],
-                                 height=height*1//20, width=width*3//8)
-    button = Button(label="Download XAS", button_type="success", height_policy="min", width_policy='min',
-                    height=height*1//15, width=width*3//16)
+    #Interactive plot widgets:
+    select = CheckboxButtonGroup(name="Detector:", labels=['sdd1', 'sdd2', 'sdd3', 'sdd4'], active=[0],
+                                 height=height*1//15, width=width*3//8)
+    button = Button(label="CSV", button_type="success", height_policy="min", width_policy='min',
+                    height=height*1//15, width=width//2)
     checkbox_group = RadioGroup(labels=["dx/dy", "1/y", "None"], active=2, name="Functions",  height_policy='min',
                                 height=height*1//15, width=width*3//16)
-    flslider = Slider(start=10, end=2560, value=1280, step=10, title="Line Peak",  height=height*1//20, width=width*3//16)
-    wdslider = Slider(start=20, end=500, value=100, step=10, title="Line Width", height=height*1//20, width=width*3//16)
-    slider = RangeSlider(title="Color Scale:", start=0, end=4 * np.amax(kwargs['sdd1']) + 1,
-                         value=(0, np.amax(kwargs['sdd1']) + 1), step=20, height=height*1//20, width=width*3//8)
-    select_palette = Select(title="Colormap Select:", options=['Viridis', 'Spectral', 'Inferno'], value='Spectral',
-                             height=height*1//25, width=width*3//8)
+    flslider = Slider(start=10, end=2560, value=1280, step=10, title="Peak",  height=height*1//20, width=width*3//16)
+    wdslider = Slider(start=20, end=500, value=100, step=10, title="Width", height=height*1//20, width=width*3//16)
+    slider = RangeSlider(title="Scale:", start=0, end=4 * np.amax(kwargs['sdd1']+1),
+                         value=(0, np.amax(kwargs['sdd1']))+1, step=20, height=height*1//20, width=width*3//16, name="Scale:")
+    select_palette = Select( options=['Viridis', 'Spectral', 'Inferno'], value='Spectral',
+                             height=height*1//25, width=width*3//16)
 
     #Declaring CustomJS Callbacks
     select_callback = CustomJS(args=dict(s1=source, xrf=xrf_source, xas=xas_source, xy=xy_source, sel=rect_source,
@@ -180,13 +183,17 @@ def plot(**kwargs):
 
     #Layout
     fluo = row(flslider, wdslider)
-    functions = row(button, checkbox_group)
-    if sizing_mode == 'scale_both' or scale < 0.6:
-        options = column(select, fluo, slider)
-        lout = layout([[xas], [plot, xrf, options],[functions, select_palette]], sizing_mode=sizing_mode)
-    else:
-        options = column(select, functions, fluo, slider, select_palette)
+    functions = row(checkbox_group,button)
+    if sizing_mode != 'scale_both' and scale >= 0.4:
+        options = column(select, functions, fluo, slider)
         lout = gridplot([[xas, options], [plot, xrf]], sizing_mode=sizing_mode)
+    else:
+        options = column(select, fluo, slider)
+        lout = layout([
+            [xas],
+            [plot, xrf, options]
+            [functions]
+        ], sizing_mode=sizing_mode)
     if kwargs.get('json', False):
         return json.dumps(json_item(lout, "eems"))
     if kwargs.get('layout', False):
@@ -352,7 +359,7 @@ def plot_json(**kwargs):
     #Layout
     fluo = row(flslider, wdslider)
     functions = row(checkbox_group,button)
-    if sizing_mode != 'scale_both' and scale >= 0.6:
+    if sizing_mode != 'scale_both' and scale >= 0.4:
         options = column(select, functions, fluo, slider)
         lout = gridplot([[xas, options], [plot, xrf]], sizing_mode=sizing_mode)
     else:
