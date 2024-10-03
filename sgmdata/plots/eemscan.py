@@ -184,14 +184,15 @@ def plot(**kwargs):
     #Layout
     fluo = row(flslider, wdslider)
     functions = row(checkbox_group,button)
-    if sizing_mode != 'scale_both' and scale >= 0.4:
+    if sizing_mode != 'scale_both' and scale >= 0.8:
         options = column(select, functions, fluo, slider)
         lout = gridplot([[xas, options], [plot, xrf]], sizing_mode=sizing_mode)
     else:
-        options = column(select, fluo, slider)
+        functions = row(select, button)
+        options = column(checkbox_group, fluo, slider)
         lout = layout([
-            [xas],
-            [plot, xrf, options]
+            [xas, options],
+            [plot, xrf]
             [functions]
         ], sizing_mode=sizing_mode)
     if kwargs.get('json', False):
