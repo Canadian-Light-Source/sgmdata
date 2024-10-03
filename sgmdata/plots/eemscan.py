@@ -130,7 +130,7 @@ def plot(**kwargs):
     #Interactive plot widgets:
     #Interactive plot widgets:
     select = CheckboxButtonGroup(name="Detector:", labels=['sdd1', 'sdd2', 'sdd3', 'sdd4'], active=[0],
-                                 height=height*1//15, width=width*3//8)
+                                 height=height*1//15, width=width*3//8, width_policy='min')
     button = Button(label="CSV", button_type="success", height_policy="min", width_policy='min',
                     height=height*1//15, width=width//2)
     checkbox_group = RadioGroup(labels=["dx/dy", "1/y", "None"], active=2, name="Functions",  height_policy='min',
@@ -192,7 +192,7 @@ def plot(**kwargs):
         lout = gridplot([
             [xas, options],
             [plot, xrf],
-            [None,select,button]
+            [button,select]
         ], sizing_mode=sizing_mode)
     if kwargs.get('json', False):
         return json.dumps(json_item(lout, "eems"))
