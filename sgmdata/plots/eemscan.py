@@ -188,12 +188,11 @@ def plot(**kwargs):
         options = column(select, functions, fluo, slider)
         lout = gridplot([[xas, options], [plot, xrf]], sizing_mode=sizing_mode)
     else:
-        functions = row(select, button)
         options = column(checkbox_group, fluo, slider)
         lout = gridplot([
             [xas, options],
             [plot, xrf],
-            [functions]
+            [None,select,button]
         ], sizing_mode=sizing_mode)
     if kwargs.get('json', False):
         return json.dumps(json_item(lout, "eems"))
