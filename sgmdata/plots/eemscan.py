@@ -1,4 +1,4 @@
-from bokeh.layouts import column, row, gridplot, layout
+from bokeh.layouts import column, row, gridplot, layout, Spacer
 from bokeh.palettes import all_palettes
 from bokeh.models import CustomJS, ColumnDataSource, Select, RangeSlider, ColorBar, LinearColorMapper, Rect, Button, \
     CheckboxButtonGroup, Slider, RadioGroup
@@ -33,7 +33,7 @@ def plot(**kwargs):
     # Check vars
     sizing_mode = kwargs.get('sizing_mode', 'fixed')
     scale = kwargs.get('scale', 1)
-    height, width = (int(450 * scale), int(550 * scale))
+    height, width = (int(550 * scale), int(550 * scale))
     if 'emission' not in kwargs.keys():
         kwargs['emission'] = np.linspace(0, 2560, 256)
     if 'io' in kwargs.keys() and np.any(kwargs['io']):
@@ -92,7 +92,7 @@ def plot(**kwargs):
 
 
     #Plots & Glyphs
-    plot = figure(width=width, height=height, tools="box_select,save,box_zoom, wheel_zoom,hover,pan,reset")
+    plot = figure(width=width+80, height=height, tools="box_select,save,box_zoom, wheel_zoom,hover,pan,reset")
     color_mapper = LinearColorMapper(palette="Spectral11", low=1, high=np.amax(kwargs['sdd1']))
 
     im = plot.image(image='image', y='emission', x='en', dh='bins', dw='delta', source=source,
@@ -138,9 +138,9 @@ def plot(**kwargs):
     flslider = Slider(start=10, end=2560, value=1280, step=10, title="Peak",  height=height*1//20, width=width*3//16)
     wdslider = Slider(start=20, end=500, value=100, step=10, title="Width", height=height*1//20, width=width*3//16)
     slider = RangeSlider(title="Scale:", start=0, end=4 * np.amax(kwargs['sdd1']+1),
-                         value=(0, np.amax(kwargs['sdd1'])+1), step=20, height=height*1//20, width=width*3//16, name="Scale:")
+                         value=(0, np.amax(kwargs['sdd1'])+1), step=20, height=height*1//20, width=width*6//16, name="Scale:")
     select_palette = Select( options=['Viridis', 'Spectral', 'Inferno'], value='Spectral',
-                             height=height*1//25, width=width*3//16)
+                             height=height*1//25, width=width*6//16)
 
     #Declaring CustomJS Callbacks
     select_callback = CustomJS(args=dict(s1=source, xrf=xrf_source, xas=xas_source, xy=xy_source, sel=rect_source,
@@ -188,11 +188,11 @@ def plot(**kwargs):
         options = column(select, functions, fluo, slider)
         lout = gridplot([[xas, options], [plot, xrf]], sizing_mode=sizing_mode)
     else:
-        options = column(checkbox_group, fluo, slider)
+        options = column(fluo, Spacer(height=10), slider,  Spacer(height=20), select_palette)
         lout = gridplot([
-            [xas, options],
+            [row(Spacer(width=width*1//16), column(button, checkbox_group), xas), options],
             [plot, xrf],
-            [button,select]
+            [row(Spacer(width=width*1//2), select),]
         ], sizing_mode=sizing_mode)
     if kwargs.get('json', False):
         return json.dumps(json_item(lout, "eems"))
