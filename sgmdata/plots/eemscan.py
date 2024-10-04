@@ -42,9 +42,10 @@ def plot(**kwargs):
         filename = "xas"
     else:
         filename = kwargs['filename']
-
-    delta = max(kwargs['en']) - min(kwargs['en'])
-    bins = max(kwargs['emission']) - min(kwargs['emission'])
+    en = kwargs['en']
+    emission = kwargs['emission']
+    delta = max(en) - min(en)
+    bins = max(emission) - min(emission)
 
     #Data Sources
     source = ColumnDataSource(dict(image=[kwargs['image'].T],
@@ -92,7 +93,11 @@ def plot(**kwargs):
 
 
     #Plots & Glyphs
-    plot = figure(width=width+80, height=height, tools="box_select,save,box_zoom, wheel_zoom,hover,pan,reset")
+    plot = figure(width=width+90,
+                  x_range=(min(en), max(en)),
+                  y_range=(min(emission), max(emission)),
+                  height=height,
+                  tools="box_select,save,box_zoom, wheel_zoom,hover,pan,reset")
     color_mapper = LinearColorMapper(palette="Spectral11", low=1, high=np.amax(kwargs['sdd1']))
 
     im = plot.image(image='image', y='emission', x='en', dh='bins', dw='delta', source=source,
@@ -117,7 +122,7 @@ def plot(**kwargs):
     xas.line('en', 'pd', source=aux_source, line_color="navy", alpha=0.6, legend_label="Diode")
     xas.legend.click_policy = "hide"
     xas.legend.location = "top_left"
-    xas.legend.label_text_font_size = "8pt"
+    xas.legend.label_text_font_size = "6pt"
     xas.legend.background_fill_alpha = 0.0
     xas.xaxis.visible = False
 
