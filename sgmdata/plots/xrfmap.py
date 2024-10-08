@@ -385,7 +385,7 @@ def plot_xyz(shift=False, table=False, **kwargs):
     """
     sizing_mode = kwargs.get('sizing_mode', 'fixed')
     scale = kwargs.get('scale', 1)
-    pheight, pwidth = (int(550 * scale), int(550 * scale))
+    pheight, pwidth = (int(650 * scale), int(550 * scale))
     # Verify the data in kwargs
     if 'xp' in kwargs.keys() and 'yp' in kwargs.keys():
         x = kwargs['xp']
