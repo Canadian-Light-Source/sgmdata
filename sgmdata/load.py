@@ -381,9 +381,9 @@ class SGMScan(DisplayDict):
                     return xrfmap.plot_interp(**kwargs)
                 else:
                     print("Plotting Raw Data")
-                    ds = int(self.independent['xp'].shape[0] / 10000) + 1
+                    ds = round(self.independent['xp'].shape[0] / 50000) + 1
                     data = {k: self.signals[s][::ds].compute() for s in self.signals.keys() for k in keys if k in s}
-                    data.update({'command': self.command})
+                    data.update({'command': self.command, 'ds':ds})
                     data.update(
                         {k: self.independent[s][::ds].compute() for s in self.independent.keys() for k in keys if
                          k in s})

@@ -1,7 +1,7 @@
 from bokeh.layouts import column, row, gridplot
 from bokeh.palettes import all_palettes
 from bokeh.models import CustomJS, ColumnDataSource, Select, RangeSlider, ColorBar, LinearColorMapper, Rect, Slider, \
-    Range1d, DataTable, TableColumn, Button, TextAreaInput, SelectEditor, CellEditor, IntEditor
+    Range1d, DataTable, TableColumn, Button, TextAreaInput, SelectEditor, CellEditor, IntEditor, Div
 from bokeh.plotting import figure, show
 from bokeh.embed import json_item
 from bokeh import events
@@ -12,7 +12,7 @@ import json
 import numpy as np
 import os
 
-required = ['image', 'sdd1', 'sdd2', 'sdd3', 'sdd4', 'tey', 'xp', 'yp', 'emission']
+required = ['image', 'sdd1', 'sdd2', 'sdd3', 'sdd4', 'tey', 'xp', 'yp', 'emission', 'en']
 version = '1.x.x' if '1' in bokeh.__version__[0] or '0' in bokeh.__version__[0] else '2.x.x'
 
 
@@ -33,7 +33,9 @@ def make_data(df, keys, sgm_data):
 
 
 def plot(**kwargs):
-    sizing_mode = kwargs.get('sizing_mode', 'stretch_both')
+    sizing_mode = kwargs.get('sizing_mode', 'fixed')
+    scale = kwargs.get('scale', 1)
+    height, width = (int(550 * scale), int(550 * scale))
     # Create datasources
     if 'emission' not in kwargs.keys():
         kwargs['emission'] = np.linspace(0, 2560, 256)
@@ -109,19 +111,23 @@ def plot(**kwargs):
     # Create main image plot
     x_delta = max(kwargs['xp']) - min(kwargs['xp'])
     y_delta = max(kwargs['yp']) - min(kwargs['yp'])
-    plot = figure(width=600, height=600, tools="box_select,save,box_zoom, wheel_zoom,hover,pan,reset")
+    plot = figure(width=width+90, height=height, tools="box_select,save,box_zoom, wheel_zoom,hover,pan,reset")
     color_mapper = LinearColorMapper(palette="Spectral11", low=0, high=np.amax(im1))
     im = plot.image(image='image', y=min(kwargs['yp']), x=min(kwargs['xp']), dh=y_delta, dw=x_delta, source=img_source,
                     palette="Spectral11")
 
     ##add image plot annotations
-    color_bar = ColorBar(color_mapper=color_mapper, label_standoff=12, border_line_color=None, location=(0, 0))
+    color_bar = ColorBar(color_mapper=color_mapper,
+                         label_standoff=12,
+                         border_line_color=None,
+                         location=(0, 0),
+                         height=height*8//10, width=width*1//20)
     plot.xaxis.axis_label = 'X (mm)'
     plot.yaxis.axis_label = 'Y (mm)'
     plot.add_layout(color_bar, 'left')
 
     # Create XRF plot
-    xrf = figure(width=300, height=250, tools="save,hover", title="XRF Projection")
+    xrf = figure(width=width*27//64, height=height*27//64, tools="save,hover", title="XRF Projection")
     xrf.line('emission', 'x1', source=xrf_source, line_color='purple', alpha=0.6, legend_label="sdd1")
     xrf.line('emission', 'x2', source=xrf_source, line_color='blue', alpha=0.6, legend_label="sdd2")
     xrf.line('emission', 'x3', source=xrf_source, line_color='black', alpha=0.6, legend_label="sdd3")
@@ -135,7 +141,10 @@ def plot(**kwargs):
 
     ##Change Detector Source for image
     det_callback = CustomJS(args=dict(source=img_source), code=get_callback('det_select'))
-    det_select = Select(title="Detector Select:", options=['sdd1', 'sdd2', 'sdd3', 'sdd4', 'tey'], value='sdd1')
+    det_select = Select(title="Detector Select:",
+                        options=['sdd1', 'sdd2', 'sdd3', 'sdd4', 'tey'],
+                        value='sdd1',
+                        width=width*27//64)
     det_select.js_on_change('value', det_callback)
 
     ##Color Palette Change
@@ -145,18 +154,28 @@ def plot(**kwargs):
     callback_color_range = CustomJS(args=dict(im=im, cl=color_bar), code=get_callback('color_range'))
 
     ##Change Pallette Selectbox
-    palette_select = Select(title="Colormap Select:", options=['Viridis', 'Spectral', 'Inferno'], value='Spectral')
+    palette_select = Select(title="Colormap Select:",
+                            options=['Viridis', 'Spectral', 'Inferno'],
+                            value='Spectral',
+                            width=width*27//64)
     palette_select.js_on_change('value', callback_color_palette)
     ##Change Color Intensity Slider
-    intensity_slider = RangeSlider(title="Color Scale:", start=0, end=2 * np.amax(im1),
-                                   value=(0, np.amax(im1)), step=20, )
+    intensity_slider = RangeSlider(title="Color Scale:",
+                                   start=0,
+                                   end=2 * np.amax(im1),
+                                   value=(0, np.amax(im1)),
+                                   step=20,
+                                   width=width*27//64 )
     intensity_slider.js_on_change('value', callback_color_range)
 
     if 'peaks' in kwargs.keys() and 'width' in kwargs.keys():
         ##ROI change
-        callback_roi_select = CustomJS(args=dict(source=img_source, mca=mca_source, det=det_select), code=get_callback('roi_select'))
+        callback_roi_select = CustomJS(args=dict(source=img_source, mca=mca_source, det=det_select,), code=get_callback('roi_select'))
         roi_menu = [(i, "%.1f" % e) for i, e in enumerate(kwargs['peaks'])]
-        roi_slider = Select(title="Fluorescence Line:", options=roi_menu, value="%.1f" % kwargs['peaks'][max_var])
+        roi_slider = Select(title="Fluorescence Line:",
+                            options=roi_menu,
+                            value="%.1f" % kwargs['peaks'][max_var],
+                            width=width*27//64)
         roi_slider.js_on_change('value', callback_roi_select)
 
         ##Layout and display
@@ -178,7 +197,9 @@ def plot_interp(**kwargs):
         Keywords:
             **kwargs (dict):  DataDict from plot function.
     """
-    sizing_mode = kwargs.get('sizing_mode', 'stretch_both')
+    sizing_mode = kwargs.get('sizing_mode', 'fixed')
+    scale = kwargs.get('scale', 1)
+    pheight, pwidth = (int(550 * scale), int(550 * scale))
     # Verify the data in kwargs
     if 'xp' in kwargs.keys() and 'yp' in kwargs.keys():
         x = kwargs['xp']
@@ -235,8 +256,8 @@ def plot_interp(**kwargs):
     sdd_source = ColumnDataSource(sdd_data)
 
     # Create XRF Map plot
-    plot = figure(width=600,
-                  height=600,
+    plot = figure(width=pwidth+90,
+                  height=pheight,
                   tools="box_select,save,box_zoom,wheel_zoom,hover,pan,reset",
                   x_range=xr,
                   y_range=yr,
@@ -272,7 +293,7 @@ def plot_interp(**kwargs):
                 line_color='orange', fill_color='black')
 
     # Create XRF plot
-    xrf = figure(width=300, height=250, tools="save,hover", title="Total XRF")
+    xrf = figure(width=pwidth*27//64, height=pheight*27//64, tools="save,hover", title="Total XRF")
     xrf.line('emission', 'x1', source=xrf_source, line_color='purple', alpha=0.6, legend_label="sdd1")
     xrf.line('emission', 'x2', source=xrf_source, line_color='blue', alpha=0.6, legend_label="sdd2")
     xrf.line('emission', 'x3', source=xrf_source, line_color='black', alpha=0.6, legend_label="sdd3")
@@ -281,13 +302,21 @@ def plot_interp(**kwargs):
 
     ##add xrf plot annotations
     xrf.xaxis.axis_label = 'Emission (eV)'
-    xrf.yaxis.axis_label = 'Intensity (a.u.)'
+    xrf.xaxis.axis_label_text_font_size = "8pt"
     xrf.yaxis.visible = False
     xrf.legend.click_policy = "hide"
     xrf.legend.background_fill_alpha = 0.6
+    xrf.title.text_font_size="8pt"
+    xrf.legend.label_text_font_size = "5pt"
+    xrf.legend.spacing = 0
+    xrf.legend.padding = 0
+    xrf.legend.margin = 0
+    xrf.legend.glyph_width = 10
+    xrf.legend.glyph_height = 10
+    xrf.legend.location = 'top_right'
 
-    slider = RangeSlider(start=0, end=2560, step=10, value=(450, 550), title="Fluorescent Line: ")
-    det_select = Select(title="Detector Select:", options=['sdd1', 'sdd2', 'sdd3', 'sdd4', 'tey'], value='sdd3')
+    slider = RangeSlider(start=0, end=2560, step=10, value=(450, 550), title="Fluorescent Line: ", width=pwidth*27//64)
+    det_select = Select(title="Detector:", options=['sdd1', 'sdd2', 'sdd3', 'sdd4', 'tey'], value='sdd3', width=pwidth*27//64)
 
     # Change Detector Source for image
     det_callback = CustomJS(args=dict(source=source,
@@ -306,12 +335,12 @@ def plot_interp(**kwargs):
     callback_color_range = CustomJS(args=dict(im=im, cl=color_bar), code=get_callback('color_range'))
 
     # Change Pallette Selectbox
-    palette_select = Select(title="Colormap Select:", options=['Viridis', 'Spectral', 'Inferno'], value='Viridis')
+    palette_select = Select(title="Colormap Select:", options=['Viridis', 'Spectral', 'Inferno'], value='Viridis', width=pwidth*27//64)
     palette_select.js_on_change('value', callback_color_palette)
     # Change Color Intensity Slider
     color_max = np.max([np.amax(np.add.reduceat(x, np.arange(0, 256, 10), axis=-1)) for x in [sdd1, sdd2, sdd3, sdd4]])
     intensity_slider = RangeSlider(title="Color Scale:", start=0, end=2 * color_max,
-                                   value=(0, max_col), step=20, )
+                                   value=(0, max_col), step=20, width=pwidth*27//64 )
     intensity_slider.js_on_change('value', callback_color_range)
 
     options = column(det_select, intensity_slider, palette_select, xrf, slider)
@@ -333,6 +362,19 @@ def shifted(saxis, shift=0.5):
         shifted_data[i] = saxis[i] + shift * (saxis[i] - saxis[i - 1])
     return shifted_data
 
+def sd_outlier(x, axis = None, bar = 1, side = 'both'):
+    import scipy.stats as stat
+    assert side in ['gt', 'lt', 'both'], 'Side should be `gt`, `lt` or `both`.'
+
+    d_z = stat.zscore(x, axis=axis)
+
+    if side == 'gt':
+        return d_z > bar
+    elif side == 'lt':
+        return d_z < -bar
+    elif side == 'both':
+        return np.abs(d_z) > bar
+
 def plot_xyz(shift=False, table=False, **kwargs):
     """
     Function to plot interactive XRF maps from raw or interpolated sgm data.
@@ -341,11 +383,14 @@ def plot_xyz(shift=False, table=False, **kwargs):
             table (bool):  False (default) - displays helper tool / datatable for macro generation at SGM.
             **kwargs (dict):  DataDict from plot function.
     """
-    sizing_mode = kwargs.get('sizing_mode', 'stretch_both')
+    sizing_mode = kwargs.get('sizing_mode', 'fixed')
+    scale = kwargs.get('scale', 1)
+    pheight, pwidth = (int(550 * scale), int(550 * scale))
     # Verify the data in kwargs
     if 'xp' in kwargs.keys() and 'yp' in kwargs.keys():
         x = kwargs['xp']
         y = kwargs['yp']
+        en = kwargs.get('en', None)
     else:
         raise (Exception, "Improper data passed to plot function. Need x & y axes")
     if 'sdd1' in kwargs.keys():
@@ -379,7 +424,7 @@ def plot_xyz(shift=False, table=False, **kwargs):
         ydelta = abs(float(command[6]) - float(command[7]))
         height = ydelta / float(command[8])
         width = xdelta / (sdd3.shape[0] / float(command[8]))
-    elif 'y' in slew_axis:
+    else:
         xdelta = abs(float(command[6]) - float(command[7]))
         ydelta = abs(float(command[2]) - float(command[3]))
         height = ydelta / (sdd3.shape[0] / float(command[8]))
@@ -403,6 +448,12 @@ def plot_xyz(shift=False, table=False, **kwargs):
     data.update({n: sdd3[:, i] for i, n in enumerate(n3)})
     data.update({n: sdd4[:, i] for i, n in enumerate(n4)})
     data.update({'tey': np.nanmax(data['sdd3-15']) * (tey / np.nanmax(tey))})
+    length = set([d.shape[0] for d in data.values()])
+    sdds = [sdd1, sdd2, sdd3, sdd4]
+    if len(length) > 1:
+        length = np.amax(list(length))
+        data = {k: np.pad(v, (0, length - v.shape[0])) for k, v in data.items()}
+        sdds = [np.pad(v, (0, length - v.shape[0])) for v in sdds]
     source = ColumnDataSource(data, name='xrfm-images')
 
     # XRF Coordinates to Clipboard.
@@ -438,8 +489,12 @@ def plot_xyz(shift=False, table=False, **kwargs):
         clipboard_callback = CustomJS(args=dict(clip=clipboard_source), code=get_callback('clipboard'))
 
     # Create XRF Map plot
-    plot = figure(width=600,
-                  height=600,
+    title = ""
+    if en:
+        title = f"@{en[0]:.2f} eV"
+    plot = figure(title=title,
+                  width=pwidth+90,
+                  height=pheight,
                   tools="box_select,save,box_zoom,wheel_zoom,hover,pan,reset",
                   x_range=xr,
                   y_range=yr,
@@ -460,26 +515,35 @@ def plot_xyz(shift=False, table=False, **kwargs):
     color_bar = ColorBar(color_mapper=color_mapper, border_line_color=None, location=(0, 0))
     plot.xaxis.axis_label = 'X (mm)'
     plot.yaxis.axis_label = 'Y (mm)'
+    plot.xaxis.axis_label_text_font_size = '9pt'
+    plot.yaxis.axis_label_text_font_size = '9pt'
     plot.add_layout(color_bar, 'left')
 
     # XRF Plot Data
+    emit_length = np.amax([s.shape[1] for s in sdds] + [256])
+    x1 = np.nansum(kwargs['sdd1'], axis=0) / len(kwargs['sdd1'])
+    x2 = np.nansum(kwargs['sdd2'], axis=0) / len(kwargs['sdd2'])
+    x3 = np.nansum(kwargs['sdd3'], axis=0) / len(kwargs['sdd3'])
+    x4 = np.nansum(kwargs['sdd4'], axis=0) / len(kwargs['sdd4'])
+
     xrf_source = ColumnDataSource(dict(
-        emission=kwargs.get('emission', np.linspace(0, kwargs['sdd1'].shape[1] * 10, kwargs['sdd1'].shape[1])),
-        x1=np.sum(kwargs['sdd1'], axis=0),
-        x2=np.sum(kwargs['sdd2'], axis=0),
-        x3=np.sum(kwargs['sdd3'], axis=0),
-        x4=np.sum(kwargs['sdd4'], axis=0),
+        emission=np.linspace(10, emit_length * 10, emit_length),
+        x1=x1,
+        x2=x2,
+        x3=x3,
+        x4=x4
     ))
 
     # Glyph to highlight XRF peak.
-    ymax = np.max([np.amax(v) for k, v in xrf_source.data.items() if 'x' in k])
+    maxima = np.array([np.nanmax(v[25:-10]) for k, v in xrf_source.data.items() if 'x' in k])
+    ymax = np.max(maxima)
     halfmax = ymax / 2
     rect_source = ColumnDataSource({'x': [765], 'y': [halfmax], 'width': [50], 'height': [ymax]}, name='rectangle')
     rect = Rect(x='x', y='y', width='width', height='height', fill_alpha=0.1,
                 line_color='orange', fill_color='black')
 
     # Create XRF plot
-    xrf = figure(width=300, height=250, tools="save,hover", title="Total XRF")
+    xrf = figure(width=pwidth*30//64, height=pheight*30//64,tools="save,hover")
     xrf.line('emission', 'x1', source=xrf_source, line_color='purple', alpha=0.6, legend_label="sdd1")
     xrf.line('emission', 'x2', source=xrf_source, line_color='blue', alpha=0.6, legend_label="sdd2")
     xrf.line('emission', 'x3', source=xrf_source, line_color='black', alpha=0.6, legend_label="sdd3")
@@ -488,14 +552,30 @@ def plot_xyz(shift=False, table=False, **kwargs):
 
     ##add xrf plot annotations
     xrf.xaxis.axis_label = 'Emission (eV)'
-    xrf.yaxis.axis_label = 'Intensity (a.u.)'
+    xrf.xaxis.axis_label_text_font_size = "9pt"
     xrf.yaxis.visible = False
     xrf.legend.click_policy = "hide"
     xrf.legend.background_fill_alpha = 0.6
+    xrf.title.text_font_size="8pt"
+    xrf.legend.label_text_font_size = "6pt"
+    xrf.legend.spacing = 0
+    xrf.legend.padding = 0
+    xrf.legend.margin = 0
+    xrf.legend.glyph_width = 10
+    xrf.legend.glyph_height = 10
+    xrf.legend.location = 'top_right'
 
-    slider = Slider(start=0, end=2560, step=51, value=765,
-                    title="Fluorescent Line: ", width=300)
-    det_select = Select(title="Detector Select:", options=['sdd1', 'sdd2', 'sdd3', 'sdd4', 'tey'], value='sdd3', width=300)
+    slider = Slider(title="ROI",
+                    start=0,
+                    end=2560,
+                    step=51,
+                    value=765,
+                    height=pheight*1//15,
+                    width=pwidth*27//64)
+    det_select = Select(options=['sdd1', 'sdd2', 'sdd3', 'sdd4', 'tey'],
+                        value='sdd3',
+                        height=pheight*1//15,
+                        width=pwidth*30//64)
 
     # Change Detector Source for image
     det_callback = CustomJS(args=dict(source=source, sl=slider, im=im, det=det_select, rect=rect_source),
@@ -510,15 +590,24 @@ def plot_xyz(shift=False, table=False, **kwargs):
     callback_color_range = CustomJS(args=dict(im=im, cl=color_bar), code=get_callback('color_range'))
 
     # Change Pallette Selectbox
-    palette_select = Select(title="Colormap Select:", options=['Viridis', 'Spectral', 'Inferno'], value='Viridis', width=300)
+    palette_select = Select(options=['Viridis', 'Spectral', 'Inferno'],
+                            value='Viridis',
+                            height=pheight*1//15,
+                            width=pwidth*27//64)
     palette_select.js_on_change('value', callback_color_palette)
     # Change Color Intensity Slider
-    color_max = np.max([np.amax(x, axis=1) for x in [sdd1, sdd2, sdd3, sdd4]])
-    intensity_slider = RangeSlider(title="Color Scale:", start=0, end=2 * color_max,
-                                   value=(0, np.amax(z)), step=20, width=300)
+    color_max = np.max([np.amax(x, axis=1) for x in sdds])
+    intensity_slider = RangeSlider(title="Scale",
+                                   start=0,
+                                   end=2 * color_max,
+                                   value=(0, np.amax(z)),
+                                   step=20,
+                                   height=pheight*1//15,
+                                   width=pwidth*27//64)
     intensity_slider.js_on_change('value', callback_color_range)
+    horizontal_break = Div(text="<hr>", width=pwidth*27//64)  # Adjust width as needed
 
-    options = column(det_select, palette_select, intensity_slider, xrf, slider)
+    options = column(det_select, horizontal_break, intensity_slider, palette_select, horizontal_break, slider, xrf)
     if table:
         layout = gridplot([[plot, options],
                            [data_table, column(table_macro, table_delete, text_area)]])
